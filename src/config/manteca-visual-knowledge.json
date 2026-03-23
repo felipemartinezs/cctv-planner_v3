@@ -1,0 +1,1112 @@
+{
+  "seedName": "manteca-part-number-04",
+  "partNumberProfiles": [
+    {
+      "partNumber": "3680 TOWER",
+      "iconDevices": [
+        "3680 Tower"
+      ]
+    },
+    {
+      "partNumber": "BNB-SCB-1KIT",
+      "iconDevices": [
+        "PSA-W4-BAXFA51",
+        "BNB-SCB-1KIT"
+      ]
+    },
+    {
+      "partNumber": "CB-AXTU9001",
+      "iconDevices": [
+        "CB-AXTU9001"
+      ]
+    },
+    {
+      "partNumber": "CIP-AX4115",
+      "iconDevices": [
+        "CIP-AX4115"
+      ]
+    },
+    {
+      "partNumber": "CIP-QND8011",
+      "iconDevices": [
+        "CIP QND8011"
+      ]
+    },
+    {
+      "partNumber": "CIP-QNP6250H",
+      "iconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Outdoor",
+        "CIP-QNP6250H Pendant"
+      ]
+    },
+    {
+      "partNumber": "DE-HASPD-24-MONITOR",
+      "iconDevices": [
+        "DE-HASPD 24 LED Monitor Desk MountWall Mount"
+      ]
+    },
+    {
+      "partNumber": "GVM32-0-3011-B",
+      "iconDevices": [
+        "MCLV-BAXFA51 32"
+      ]
+    },
+    {
+      "partNumber": "MCLB-BAXFA51",
+      "iconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor 43 Back to Back"
+      ]
+    },
+    {
+      "partNumber": "MCLV-BAXFA51",
+      "iconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor",
+        "MCLV-BAXFA51 32"
+      ]
+    },
+    {
+      "partNumber": "NDE-5704-AL-W",
+      "iconDevices": [
+        "NDE-5704-AL-W OUTDOOR"
+      ]
+    },
+    {
+      "partNumber": "NDS-5704-F360-W",
+      "iconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ]
+    },
+    {
+      "partNumber": "PSA-W4-BAXFA51",
+      "iconDevices": [
+        "BNB-SCB-1KIT",
+        "PSA-W4-BAXFA51"
+      ]
+    },
+    {
+      "partNumber": "PVM10-B-2086-WMT",
+      "iconDevices": [
+        "PVM10-B-2086-WMT"
+      ]
+    }
+  ],
+  "namePatternRules": [
+    {
+      "namePattern": "EMGX PVM GARDEN CEN TER",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM SPORTING G OODS",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM BABY FORMULA",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "ENT PICKUP DOOR PVM",
+      "suggestedPartNumber": "DE-HASPD-24-MONITOR",
+      "candidatePartNumbers": [
+        "DE-HASPD-24-MONITOR"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "DE-HASPD 24 LED Monitor Desk MountWall Mount",
+      "candidateIconDevices": [
+        "DE-HASPD 24 LED Monitor Desk MountWall Mount"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EXT CROSSWALK PICKUP",
+      "suggestedPartNumber": "NDE-5704-AL-W",
+      "candidatePartNumbers": [
+        "NDE-5704-AL-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDE-5704-AL-W OUTDOOR",
+      "candidateIconDevices": [
+        "NDE-5704-AL-W OUTDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EXT PICKUP PARKING CUSTOMER ENGAGEME NT",
+      "suggestedPartNumber": "NDE-5704-AL-W",
+      "candidatePartNumbers": [
+        "NDE-5704-AL-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDE-5704-AL-W OUTDOOR",
+      "candidateIconDevices": [
+        "NDE-5704-AL-W OUTDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "FRNT GM FRONT END P VM",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "FRNT GROCERY FRONT END PVM",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "FRNT LOTTERY KIOSK",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "FRNT LOTTERY KIOSK G M",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "FRNT MONEY CENTER",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "FRNT MONEY CENTER C USTOMER PROFILE",
+      "suggestedPartNumber": "CIP-QND8011",
+      "candidatePartNumbers": [
+        "CIP-QND8011"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP QND8011",
+      "candidateIconDevices": [
+        "CIP QND8011"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "FRNT MONEY CENTER P VM",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "FRNT SELF CHECKOUT B ULLPEN EXIT PVM G M",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "MONITOR-32IN-24VDC",
+      "suggestedPartNumber": "GVM32-0-3011-B",
+      "candidatePartNumbers": [
+        "GVM32-0-3011-B"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "POS",
+      "suggestedPartNumber": "BNB-SCB-1KIT",
+      "candidatePartNumbers": [
+        "BNB-SCB-1KIT",
+        "PSA-W4-BAXFA51"
+      ],
+      "partConfidence": 0.778,
+      "suggestedIconDevice": "PSA-W4-BAXFA51",
+      "candidateIconDevices": [
+        "PSA-W4-BAXFA51",
+        "BNB-SCB-1KIT"
+      ],
+      "iconConfidence": 0.556
+    },
+    {
+      "namePattern": "POS COSMETICS",
+      "suggestedPartNumber": "CIP-QND8011",
+      "candidatePartNumbers": [
+        "CIP-QND8011"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP QND8011",
+      "candidateIconDevices": [
+        "CIP QND8011"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "POS ELECTRONICS",
+      "suggestedPartNumber": "CIP-QND8011",
+      "candidatePartNumbers": [
+        "CIP-QND8011"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP QND8011",
+      "candidateIconDevices": [
+        "CIP QND8011"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "POS JEWELRY",
+      "suggestedPartNumber": "CIP-QND8011",
+      "candidatePartNumbers": [
+        "CIP-QND8011"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP QND8011",
+      "candidateIconDevices": [
+        "CIP QND8011"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "POS MONEY CENTER",
+      "suggestedPartNumber": "CIP-QND8011",
+      "candidatePartNumbers": [
+        "CIP-QND8011"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP QND8011",
+      "candidateIconDevices": [
+        "CIP QND8011"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "POS PHARMACY",
+      "suggestedPartNumber": "CIP-QND8011",
+      "candidatePartNumbers": [
+        "CIP-QND8011"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP QND8011",
+      "candidateIconDevices": [
+        "CIP QND8011"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "PRECISION CTO BASE WITH SSD DRIVE",
+      "suggestedPartNumber": "3680 TOWER",
+      "candidatePartNumbers": [
+        "3680 TOWER"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "3680 Tower",
+      "candidateIconDevices": [
+        "3680 Tower"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "PTZ AA INFANTS",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ APPAREL INFANT S",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ APPAREL MENS",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ APPAREL SHOES",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ APPAREL WOME NS",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ BEDDING",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ BIKES",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ CELB",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ DAIRY",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ EXT GRC",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Outdoor",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Outdoor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "PTZ EXT OGP",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Outdoor",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Outdoor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "PTZ FABRICS",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ FRNT",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ FRNT POS",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ FROZEN",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ GARDEN CENTER",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ GROCERY DRY",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ GROCERY DSD",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ HARDWARE",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ HOME DECOR",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ HOUSEWARE",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ PAPER",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ PETS",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ PHOTO LAB",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ PRODUCE",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ SAL GARDEN CE NTER",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ SEASONAL",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "PTZ STATIONARY",
+      "suggestedPartNumber": "CIP-QNP6250H",
+      "candidatePartNumbers": [
+        "CIP-QNP6250H"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-QNP6250H Ceiling",
+      "candidateIconDevices": [
+        "CIP-QNP6250H Ceiling",
+        "CIP-QNP6250H Pendant"
+      ],
+      "iconConfidence": 0.5
+    },
+    {
+      "namePattern": "RX C2 COUNTER",
+      "suggestedPartNumber": "CIP-QND8011",
+      "candidatePartNumbers": [
+        "CIP-QND8011"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP QND8011",
+      "candidateIconDevices": [
+        "CIP QND8011"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "RX DRUG FILL STATION",
+      "suggestedPartNumber": "CIP-QND8011",
+      "candidatePartNumbers": [
+        "CIP-QND8011"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP QND8011",
+      "candidateIconDevices": [
+        "CIP QND8011"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "RX DRUG FILLING COUN TER",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "RX INTERIOR AISLE",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "RX INTERIOR AISLE WIL L CALL BAG",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "RX INTERIOR AISLE WIL L CALL BAG OVERVIEW",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "RX SALESFLOOR OVERVI EW",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL COSMETICS ENCLOS URE",
+      "suggestedPartNumber": "CIP-AX4115",
+      "candidatePartNumbers": [
+        "CIP-AX4115"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CIP-AX4115",
+      "candidateIconDevices": [
+        "CIP-AX4115"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL COSMETICS ENCLOS URE PVM",
+      "suggestedPartNumber": "PVM10-B-2086-WMT",
+      "candidatePartNumbers": [
+        "PVM10-B-2086-WMT"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "PVM10-B-2086-WMT",
+      "candidateIconDevices": [
+        "PVM10-B-2086-WMT"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL COSMETICS PVM",
+      "suggestedPartNumber": "PVM10-B-2086-WMT",
+      "candidatePartNumbers": [
+        "PVM10-B-2086-WMT"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "PVM10-B-2086-WMT",
+      "candidateIconDevices": [
+        "PVM10-B-2086-WMT"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL ELECTRONICS PC G AMES",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL ELECTRONICS PHON ES",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL ELECTRONICS SOUN D",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL ELECTRONICS TABLE TS",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL ELECTRONICS TELEV ISIONS",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL ELECTRONICS VIDEO GAMES",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL FREEZER AISLE",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL JEWELRY",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "SAL LIQUOR PVM",
+      "suggestedPartNumber": "MCLB-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLB-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor 43 Back to Back",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor 43 Back to Back"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "STK BAKERY OVERVIEW",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "STK DELI COUNTER",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "STK DELI PREP",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "STK MEAT UTILITY",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "STK PICKUP OVERVIEW AISLE RECEIVING",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "STK SALAD PREP",
+      "suggestedPartNumber": "NDS-5704-F360-W",
+      "candidatePartNumbers": [
+        "NDS-5704-F360-W"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "NDS-5704-F360 INDOOR",
+      "candidateIconDevices": [
+        "NDS-5704-F360 INDOOR"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "VMS CONTROL BOARD AXIS TU9001",
+      "suggestedPartNumber": "CB-AXTU9001",
+      "candidatePartNumbers": [
+        "CB-AXTU9001"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "CB-AXTU9001",
+      "candidateIconDevices": [
+        "CB-AXTU9001"
+      ],
+      "iconConfidence": 1
+    }
+  ]
+}

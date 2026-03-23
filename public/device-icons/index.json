@@ -1,0 +1,333 @@
+{
+  "aliases": [
+    {
+      "alias": "BNB-SCB-1KIT SCO Arm Camera",
+      "path": "Camera Symbols/BNB/BNB-SCB-1KIT/BNB-SCB-1KIT.txt"
+    },
+    {
+      "alias": "HANWHA 5MP INDOOR Micro Dome Fixed\r\nCamera",
+      "path": "Camera Symbols/CIP QND/CIP QND8011/CIP QND8011.txt"
+    },
+    {
+      "alias": "HANWHA CIP-QNP6250H 1080P Indoor\r\nRecessed Ceiling PTZ Dome",
+      "path": "Camera Symbols/CIP QNP/CIP-QNP6250H Ceiling/CIP-QNP6250H Ceiling.txt"
+    },
+    {
+      "alias": "HANWHA CIP-QNP6250H 1080P Outdoor PTZ\r\nDome",
+      "path": "Camera Symbols/CIP QNP/CIP-QNP6250H Outdoor/CIP-QNP6250H Outdoor.txt"
+    },
+    {
+      "alias": "HANWHA CIP-QNP6250H 1080P Indoor\r\nDome",
+      "path": "Camera Symbols/CIP QNP/CIP-QNP6250H Pendant/CIP-QNP6250H Pendant.txt"
+    },
+    {
+      "alias": "DE-HASPD 24\" LED Monitor Desk Mount/Wall Mount",
+      "path": "Camera Symbols/DE-HASPD 24 LED Monitor Desk MountWall Mount/DE-HASPD 24 LED Monitor Desk MountWall Mount.txt"
+    },
+    {
+      "alias": "Bosch Video Decoder",
+      "path": "Camera Symbols/DECODER/Bosch Video Decoder/Bosch Video Decoder.txt"
+    },
+    {
+      "alias": "Hanwha Video Decoder",
+      "path": "Camera Symbols/DECODER/Hanwha Video Decoder/Hanwha Video Decoder.txt"
+    },
+    {
+      "alias": "5820 DVRPC Tower",
+      "path": "Camera Symbols/DVR/5820 DVRPC Tower/5820 DVRPC Tower.txt"
+    },
+    {
+      "alias": "MCLB-BAXFA51 PVM Camera Kit with FA51 Included",
+      "path": "Camera Symbols/MCLB-BAXFA51 PVM Camera Kit with FA51 Included/MCLB-BAXFA51 PVM Camera Kit with FA51 Included.txt"
+    },
+    {
+      "alias": "MCLB-BAXFA54 PVM Camera Kit with FA54 Included (Cosmetic Bullpen Only)",
+      "path": "Camera Symbols/MCLB-BAXFA54 PVM Camera Kit with FA54 Included (Cosmetic Bullpen Only)/MCLB-BAXFA54 PVM Camera Kit with FA54 Included (Cosmetic Bullpen Only).txt"
+    },
+    {
+      "alias": "Bosch NBN-50022-C INDOOR Box Camera with Lens",
+      "path": "Camera Symbols/NBN/NBN-50022-C INDOOR Box Camera with Lens/Bosch NBN-50022-C INDOOR Box Camera with Lens.txt"
+    },
+    {
+      "alias": "Bosch NDE-5703-A-W 5 Megapixel OUTDOOR Verifocal Fixed Camera",
+      "path": "Camera Symbols/NDE/NDE-5703-A-W OUTDOOR/NDE-5703-A-W OUTDOOR.txt"
+    },
+    {
+      "alias": "Bosch NDE-5704-AL-W 8 Megapixel OUTDOOR Verifocal Fixed Camera\r\n",
+      "path": "Camera Symbols/NDE/NDE-5704-AL-W OUTDOOR/NDE-5704-AL-W OUTDOOR.txt"
+    },
+    {
+      "alias": "Bosch NDS-5704-F360 12 Megapixel INDOOR\r\nPanoramic Camera",
+      "path": "Camera Symbols/NDS/NDS-5704-F360 INDOOR/NDS-5704-F360 INDOOR.txt"
+    },
+    {
+      "alias": "Bosch NDS-5704-F360LE 12 Megapixel 360 Outdoor Panoramic Camera\r\n",
+      "path": "Camera Symbols/NDS/NDS-5704-F360LE Outdoor /NDS-5704-F360LE Outdoor.txt"
+    },
+    {
+      "alias": "Bosch NDV-5704-AL 2 Megapixel INDOOR\r\nVerifocal Fixed Camera",
+      "path": "Camera Symbols/NDV/NDV-5704-AL INDOOR/NDV-5704-AL INDOOR.txt"
+    },
+    {
+      "alias": "PSA-W3-BAXFA51 Staffed Lane Camera",
+      "path": "Camera Symbols/PSA/PSA-W4-BAXFA51/PSA-W4-BAXFA51.txt"
+    },
+    {
+      "alias": "MCLV-BAXFA51 32\" LED Monitor Ceiling Mount",
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32/MCLV-BAXFA51 32.txt"
+    },
+    {
+      "alias": "MCLV-BAXFA51 32\" LED Monitor Double Fuel Mount",
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32  Double/MCLV-BAXFA51 32 Double.txt"
+    },
+    {
+      "alias": "MCLV-BAXFA51 32 LED Monitor Single Fuel Mount",
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32  Fuel Mount/MCLV-BAXFA51 32  Fuel Mount.txt"
+    },
+    {
+      "alias": "32\" LED Monitor Wall Mount",
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32 WALL/32 LED Monitor Wall Mount.txt"
+    },
+    {
+      "alias": "MCLV-BAXFA51 43  43\" LED Monitor Ceiling Mount",
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor /MCLV-BAXFA51 43 .txt"
+    },
+    {
+      "alias": "43\" Ceiling Mount Monitor-Back to Back",
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor 43 Back to Back/43 Ceiling Mount Monitor-Back to Back.txt"
+    },
+    {
+      "alias": "PVM10-B-2086-WMT 10\" ePVM Monitor w/intergrated camera",
+      "path": "Camera Symbols/PVM/PVM10-B-2086-WMT/PVM10-B-2086-WMT.txt"
+    }
+  ],
+  "generatedAt": "2026-03-23T16:09:55.884Z",
+  "iconCount": 56,
+  "icons": [
+    {
+      "path": "Camera Symbols/3680 Tower /3680 Tower.png",
+      "url": "/device-icons/Camera%20Symbols/3680%20Tower%20/3680%20Tower.png"
+    },
+    {
+      "path": "Camera Symbols/3680 Tower /DVRPC.svg",
+      "url": "/device-icons/Camera%20Symbols/3680%20Tower%20/DVRPC.svg"
+    },
+    {
+      "path": "Camera Symbols/BNB/BNB-SCB-1KIT/BNB-SCB-1KIT.png",
+      "url": "/device-icons/Camera%20Symbols/BNB/BNB-SCB-1KIT/BNB-SCB-1KIT.png"
+    },
+    {
+      "path": "Camera Symbols/BNB/BNB-SCB-1KIT/BNB-SCB-1KIT.svg",
+      "url": "/device-icons/Camera%20Symbols/BNB/BNB-SCB-1KIT/BNB-SCB-1KIT.svg"
+    },
+    {
+      "path": "Camera Symbols/CB-AXTU9001/CB-AXTU9001.png",
+      "url": "/device-icons/Camera%20Symbols/CB-AXTU9001/CB-AXTU9001.png"
+    },
+    {
+      "path": "Camera Symbols/CB-AXTU9001/CB-AXTU9001.svg",
+      "url": "/device-icons/Camera%20Symbols/CB-AXTU9001/CB-AXTU9001.svg"
+    },
+    {
+      "path": "Camera Symbols/CIP QND/CIP QND8011/CIP QND8011.png",
+      "url": "/device-icons/Camera%20Symbols/CIP%20QND/CIP%20QND8011/CIP%20QND8011.png"
+    },
+    {
+      "path": "Camera Symbols/CIP QND/CIP QND8011/CIP QND8011.svg",
+      "url": "/device-icons/Camera%20Symbols/CIP%20QND/CIP%20QND8011/CIP%20QND8011.svg"
+    },
+    {
+      "path": "Camera Symbols/CIP QNP/CIP-QNP6250H Ceiling/CIP-QNP6250H Ceiling.png",
+      "url": "/device-icons/Camera%20Symbols/CIP%20QNP/CIP-QNP6250H%20Ceiling/CIP-QNP6250H%20Ceiling.png"
+    },
+    {
+      "path": "Camera Symbols/CIP QNP/CIP-QNP6250H Ceiling/CIP-QNP6250H Ceiling.svg",
+      "url": "/device-icons/Camera%20Symbols/CIP%20QNP/CIP-QNP6250H%20Ceiling/CIP-QNP6250H%20Ceiling.svg"
+    },
+    {
+      "path": "Camera Symbols/CIP QNP/CIP-QNP6250H Outdoor/CIP-QNP6250H Outdoor.png",
+      "url": "/device-icons/Camera%20Symbols/CIP%20QNP/CIP-QNP6250H%20Outdoor/CIP-QNP6250H%20Outdoor.png"
+    },
+    {
+      "path": "Camera Symbols/CIP QNP/CIP-QNP6250H Outdoor/CIP-QNP6250H Outdoor.svg",
+      "url": "/device-icons/Camera%20Symbols/CIP%20QNP/CIP-QNP6250H%20Outdoor/CIP-QNP6250H%20Outdoor.svg"
+    },
+    {
+      "path": "Camera Symbols/CIP QNP/CIP-QNP6250H Pendant/CIP-QNP6250H Pendant.png",
+      "url": "/device-icons/Camera%20Symbols/CIP%20QNP/CIP-QNP6250H%20Pendant/CIP-QNP6250H%20Pendant.png"
+    },
+    {
+      "path": "Camera Symbols/CIP QNP/CIP-QNP6250H Pendant/CIP-QNP6250H Pendant.svg",
+      "url": "/device-icons/Camera%20Symbols/CIP%20QNP/CIP-QNP6250H%20Pendant/CIP-QNP6250H%20Pendant.svg"
+    },
+    {
+      "path": "Camera Symbols/CIP-AX4115/CIP-AX4115.png",
+      "url": "/device-icons/Camera%20Symbols/CIP-AX4115/CIP-AX4115.png"
+    },
+    {
+      "path": "Camera Symbols/CIP-AX4115/CIP-AX4115.svg",
+      "url": "/device-icons/Camera%20Symbols/CIP-AX4115/CIP-AX4115.svg"
+    },
+    {
+      "path": "Camera Symbols/DE-HASPD 24 LED Monitor Desk MountWall Mount/DE-HASPD 24 LED Monitor Desk MountWall Mount.png",
+      "url": "/device-icons/Camera%20Symbols/DE-HASPD%2024%20LED%20Monitor%20Desk%20MountWall%20Mount/DE-HASPD%2024%20LED%20Monitor%20Desk%20MountWall%20Mount.png"
+    },
+    {
+      "path": "Camera Symbols/DE-HASPD 24 LED Monitor Desk MountWall Mount/DE-HASPD 24 LED Monitor Desk MountWall Mount.svg",
+      "url": "/device-icons/Camera%20Symbols/DE-HASPD%2024%20LED%20Monitor%20Desk%20MountWall%20Mount/DE-HASPD%2024%20LED%20Monitor%20Desk%20MountWall%20Mount.svg"
+    },
+    {
+      "path": "Camera Symbols/DECODER/Bosch Video Decoder/Bosch Video Decoder.png",
+      "url": "/device-icons/Camera%20Symbols/DECODER/Bosch%20Video%20Decoder/Bosch%20Video%20Decoder.png"
+    },
+    {
+      "path": "Camera Symbols/DECODER/Bosch Video Decoder/Bosch Video Decoder.svg",
+      "url": "/device-icons/Camera%20Symbols/DECODER/Bosch%20Video%20Decoder/Bosch%20Video%20Decoder.svg"
+    },
+    {
+      "path": "Camera Symbols/DECODER/Hanwha Video Decoder/Hanwha Video Decoder.png",
+      "url": "/device-icons/Camera%20Symbols/DECODER/Hanwha%20Video%20Decoder/Hanwha%20Video%20Decoder.png"
+    },
+    {
+      "path": "Camera Symbols/DECODER/Hanwha Video Decoder/Hanwha Video Decoder.svg",
+      "url": "/device-icons/Camera%20Symbols/DECODER/Hanwha%20Video%20Decoder/Hanwha%20Video%20Decoder.svg"
+    },
+    {
+      "path": "Camera Symbols/DVR/5820 DVRPC Tower/5820 DVRPC Tower.png",
+      "url": "/device-icons/Camera%20Symbols/DVR/5820%20DVRPC%20Tower/5820%20DVRPC%20Tower.png"
+    },
+    {
+      "path": "Camera Symbols/DVR/5820 DVRPC Tower/5820 DVRPC Tower.svg",
+      "url": "/device-icons/Camera%20Symbols/DVR/5820%20DVRPC%20Tower/5820%20DVRPC%20Tower.svg"
+    },
+    {
+      "path": "Camera Symbols/MCLB-BAXFA51 PVM Camera Kit with FA51 Included/MCLB-BAXFA51 PVM Camera Kit with FA51 Included.png",
+      "url": "/device-icons/Camera%20Symbols/MCLB-BAXFA51%20PVM%20Camera%20Kit%20with%20FA51%20Included/MCLB-BAXFA51%20PVM%20Camera%20Kit%20with%20FA51%20Included.png"
+    },
+    {
+      "path": "Camera Symbols/MCLB-BAXFA51 PVM Camera Kit with FA51 Included/MCLB-BAXFA51 PVM Camera Kit with FA51 Included.svg",
+      "url": "/device-icons/Camera%20Symbols/MCLB-BAXFA51%20PVM%20Camera%20Kit%20with%20FA51%20Included/MCLB-BAXFA51%20PVM%20Camera%20Kit%20with%20FA51%20Included.svg"
+    },
+    {
+      "path": "Camera Symbols/MCLB-BAXFA54 PVM Camera Kit with FA54 Included (Cosmetic Bullpen Only)/MCLB-BAXFA54 PVM Camera Kit with FA54 Included (Cosmetic Bullpen Only).png",
+      "url": "/device-icons/Camera%20Symbols/MCLB-BAXFA54%20PVM%20Camera%20Kit%20with%20FA54%20Included%20(Cosmetic%20Bullpen%20Only)/MCLB-BAXFA54%20PVM%20Camera%20Kit%20with%20FA54%20Included%20(Cosmetic%20Bullpen%20Only).png"
+    },
+    {
+      "path": "Camera Symbols/MCLB-BAXFA54 PVM Camera Kit with FA54 Included (Cosmetic Bullpen Only)/MCLB-BAXFA54 PVM Camera Kit with FA54 Included (Cosmetic Bullpen Only).svg",
+      "url": "/device-icons/Camera%20Symbols/MCLB-BAXFA54%20PVM%20Camera%20Kit%20with%20FA54%20Included%20(Cosmetic%20Bullpen%20Only)/MCLB-BAXFA54%20PVM%20Camera%20Kit%20with%20FA54%20Included%20(Cosmetic%20Bullpen%20Only).svg"
+    },
+    {
+      "path": "Camera Symbols/NBN/NBN-50022-C INDOOR Box Camera with Lens/Bosch NBN-50022-C INDOOR Box Camera with Lens.png",
+      "url": "/device-icons/Camera%20Symbols/NBN/NBN-50022-C%20INDOOR%20Box%20Camera%20with%20Lens/Bosch%20NBN-50022-C%20INDOOR%20Box%20Camera%20with%20Lens.png"
+    },
+    {
+      "path": "Camera Symbols/NBN/NBN-50022-C INDOOR Box Camera with Lens/Bosch NBN-50022-C INDOOR Box Camera with Lens.svg",
+      "url": "/device-icons/Camera%20Symbols/NBN/NBN-50022-C%20INDOOR%20Box%20Camera%20with%20Lens/Bosch%20NBN-50022-C%20INDOOR%20Box%20Camera%20with%20Lens.svg"
+    },
+    {
+      "path": "Camera Symbols/NDE/NDE-5703-A-W OUTDOOR/NDE-5703-A-W OUTDOOR.png",
+      "url": "/device-icons/Camera%20Symbols/NDE/NDE-5703-A-W%20OUTDOOR/NDE-5703-A-W%20OUTDOOR.png"
+    },
+    {
+      "path": "Camera Symbols/NDE/NDE-5703-A-W OUTDOOR/NDE-5703-A-W OUTDOOR.svg",
+      "url": "/device-icons/Camera%20Symbols/NDE/NDE-5703-A-W%20OUTDOOR/NDE-5703-A-W%20OUTDOOR.svg"
+    },
+    {
+      "path": "Camera Symbols/NDE/NDE-5704-AL-W OUTDOOR/NDE-5704-AL-W OUTDOOR.png",
+      "url": "/device-icons/Camera%20Symbols/NDE/NDE-5704-AL-W%20OUTDOOR/NDE-5704-AL-W%20OUTDOOR.png"
+    },
+    {
+      "path": "Camera Symbols/NDE/NDE-5704-AL-W OUTDOOR/NDE-5704-AL-W OUTDOOR.svg",
+      "url": "/device-icons/Camera%20Symbols/NDE/NDE-5704-AL-W%20OUTDOOR/NDE-5704-AL-W%20OUTDOOR.svg"
+    },
+    {
+      "path": "Camera Symbols/NDS/NDS-5704-F360 INDOOR/NDS-5704-F360 INDOOR.png",
+      "url": "/device-icons/Camera%20Symbols/NDS/NDS-5704-F360%20INDOOR/NDS-5704-F360%20INDOOR.png"
+    },
+    {
+      "path": "Camera Symbols/NDS/NDS-5704-F360 INDOOR/NDS-5704-F360 INDOOR.svg",
+      "url": "/device-icons/Camera%20Symbols/NDS/NDS-5704-F360%20INDOOR/NDS-5704-F360%20INDOOR.svg"
+    },
+    {
+      "path": "Camera Symbols/NDS/NDS-5704-F360LE Outdoor /NDS-5704-F360LE Outdoor.png",
+      "url": "/device-icons/Camera%20Symbols/NDS/NDS-5704-F360LE%20Outdoor%20/NDS-5704-F360LE%20Outdoor.png"
+    },
+    {
+      "path": "Camera Symbols/NDS/NDS-5704-F360LE Outdoor /NDS-5704-F360LE Outdoor.svg",
+      "url": "/device-icons/Camera%20Symbols/NDS/NDS-5704-F360LE%20Outdoor%20/NDS-5704-F360LE%20Outdoor.svg"
+    },
+    {
+      "path": "Camera Symbols/NDV/NDV-5704-AL INDOOR/NDV-5704-AL INDOOR.png",
+      "url": "/device-icons/Camera%20Symbols/NDV/NDV-5704-AL%20INDOOR/NDV-5704-AL%20INDOOR.png"
+    },
+    {
+      "path": "Camera Symbols/NDV/NDV-5704-AL INDOOR/NDV-5704-AL INDOOR.svg",
+      "url": "/device-icons/Camera%20Symbols/NDV/NDV-5704-AL%20INDOOR/NDV-5704-AL%20INDOOR.svg"
+    },
+    {
+      "path": "Camera Symbols/PSA/PSA-W4-BAXFA51/PSA-W4-BAXFA51.png",
+      "url": "/device-icons/Camera%20Symbols/PSA/PSA-W4-BAXFA51/PSA-W4-BAXFA51.png"
+    },
+    {
+      "path": "Camera Symbols/PSA/PSA-W4-BAXFA51/PSA-W4-BAXFA51.svg",
+      "url": "/device-icons/Camera%20Symbols/PSA/PSA-W4-BAXFA51/PSA-W4-BAXFA51.svg"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32/MCLV-BAXFA51 32.png",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2032/MCLV-BAXFA51%2032.png"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32/MCLV-BAXFA51 32.svg",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2032/MCLV-BAXFA51%2032.svg"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32  Double/MCLV-BAXFA51 32 Double.png",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2032%20%20Double/MCLV-BAXFA51%2032%20Double.png"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32  Double/MCLV-BAXFA51 32 Double.svg",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2032%20%20Double/MCLV-BAXFA51%2032%20Double.svg"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32  Fuel Mount/MCLV-BAXFA51 32  Fuel Mount.png",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2032%20%20Fuel%20Mount/MCLV-BAXFA51%2032%20%20Fuel%20Mount.png"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32  Fuel Mount/MCLV-BAXFA51 32  Fuel Mount.svg",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2032%20%20Fuel%20Mount/MCLV-BAXFA51%2032%20%20Fuel%20Mount.svg"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32 WALL/32 LED Monitor Wall Mount.png",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2032%20WALL/32%20LED%20Monitor%20Wall%20Mount.png"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 32 WALL/32 LED Monitor Wall Mount.svg",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2032%20WALL/32%20LED%20Monitor%20Wall%20Mount.svg"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor /MCLV-BAXFA51 43 .png",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2043%20LED%20Monitor%20/MCLV-BAXFA51%2043%20.png"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor /MCLV-BAXFA51 43 .svg",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2043%20LED%20Monitor%20/MCLV-BAXFA51%2043%20.svg"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor 43 Back to Back/43 Ceiling Mount Monitor-Back to Back.png",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2043%20LED%20Monitor%2043%20Back%20to%20Back/43%20Ceiling%20Mount%20Monitor-Back%20to%20Back.png"
+    },
+    {
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor 43 Back to Back/43 Ceiling Mount Monitor-Back to Back.svg",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2043%20LED%20Monitor%2043%20Back%20to%20Back/43%20Ceiling%20Mount%20Monitor-Back%20to%20Back.svg"
+    },
+    {
+      "path": "Camera Symbols/PVM/PVM10-B-2086-WMT/PVM10-B-2086-WMT.png",
+      "url": "/device-icons/Camera%20Symbols/PVM/PVM10-B-2086-WMT/PVM10-B-2086-WMT.png"
+    },
+    {
+      "path": "Camera Symbols/PVM/PVM10-B-2086-WMT/PVM10-B-2086-WMT.svg",
+      "url": "/device-icons/Camera%20Symbols/PVM/PVM10-B-2086-WMT/PVM10-B-2086-WMT.svg"
+    }
+  ],
+  "root": "Camera Symbols"
+}
