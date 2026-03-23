@@ -3,6 +3,7 @@ import { attachIcons, buildMetrics, countBy, normalizeRows, parseTabularFile } f
 import { getNamePatternKnowledge } from "./lib/visual-knowledge";
 import { loadIconsFromDirectory, loadIconsFromManifest, loadIconsFromZip, mergeIconMaps } from "./lib/icons";
 import { loadPlan } from "./lib/pdf";
+import { useI18n } from "./i18n";
 import type { DeviceCategory, DeviceRecord, ImportBundle, PlanData } from "./types";
 import { mergeDeviceRecords } from "./modules/device-records";
 import { parsePdfDataRecords } from "./modules/pdf-data-parser";
@@ -39,8 +40,8 @@ function compactSwitchLabel(record: DeviceRecord): string {
   return switchDisplayLabel(record);
 }
 
-function fileLabel(file: File | null): string {
-  return file ? file.name : "Sin archivo";
+function fileLabel(file: File | null, fallback: string): string {
+  return file ? file.name : fallback;
 }
 
 function formatFileSize(bytes: number): string {
@@ -80,6 +81,14 @@ interface IconDebugInfo {
   sampleKeys: string[];
 }
 
+type StatusDescriptor =
+  | { kind: "raw"; text: string }
+  | {
+      kind: "translated";
+      key: string;
+      vars?: Record<string, string | number | boolean | undefined>;
+    };
+
 function buildIconDebugInfo(iconMap: Map<string, string>, lastModifiedLabel = ""): IconDebugInfo {
   return {
     bnb: iconMap.has("bnbscb1kit"),
@@ -94,64 +103,90 @@ function buildIconDebugInfo(iconMap: Map<string, string>, lastModifiedLabel = ""
   };
 }
 
-function categoryLabel(category: DeviceCategory): string {
+function categoryLabel(
+  category: DeviceCategory,
+  t: (key: string, vars?: Record<string, string | number | boolean | undefined>) => string
+): string {
   switch (category) {
     case "ptz":
       return "PTZ";
     case "camera":
-      return "Camara";
+      return t("filter.category.camera");
     case "monitor":
-      return "Monitor";
+      return t("filter.category.monitor");
     case "mount":
-      return "Mount";
+      return t("filter.category.mount");
     case "infrastructure":
-      return "Infra";
+      return t("filter.category.infrastructure");
     default:
-      return "Revisar";
+      return t("filter.category.unknown");
   }
 }
 
-function taskTitle(record: DeviceRecord): string {
+function taskTitle(
+  record: DeviceRecord,
+  t: (key: string, vars?: Record<string, string | number | boolean | undefined>) => string
+): string {
   switch (record.category) {
     case "ptz":
-      return "Instalar camara PTZ";
+      return t("task.title.ptz");
     case "camera":
-      return "Instalar camara";
+      return t("task.title.camera");
     case "monitor":
-      return "Instalar monitor";
+      return t("task.title.monitor");
     case "infrastructure":
-      return "Instalar equipo de soporte";
+      return t("task.title.infrastructure");
     default:
-      return "Revisar punto";
+      return t("task.title.unknown");
   }
 }
 
-function primaryInstall(record: DeviceRecord): string {
-  return record.iconDevice || record.partNumber || record.deviceTaskType || "Equipo por confirmar";
+function primaryInstall(
+  record: DeviceRecord,
+  t: (key: string, vars?: Record<string, string | number | boolean | undefined>) => string
+): string {
+  return record.iconDevice || record.partNumber || record.deviceTaskType || t("task.primaryUnknown");
+}
+
+function installationHeightLabel(record: DeviceRecord): string {
+  return record.mountHeightFt !== null ? `${record.mountHeightFt} ft` : "";
+}
+
+function installationHeightRuleText(
+  record: DeviceRecord,
+  t: (key: string, vars?: Record<string, string | number | boolean | undefined>) => string
+): string {
+  return record.mountHeightRuleKey ? t(record.mountHeightRuleKey) : "";
 }
 
 function shouldRenderRecordIcon(record: DeviceRecord): boolean {
   return SHOW_FIELD_TASK_ICONS && Boolean(record.iconUrl);
 }
 
-function cableNote(record: DeviceRecord): string {
+function cableNote(
+  record: DeviceRecord,
+  t: (key: string, vars?: Record<string, string | number | boolean | undefined>) => string
+): string {
   if (record.cables === 0) {
-    return "Sin cable de red en esta regla";
+    return t("task.cable.none");
   }
   if (record.cables === 2) {
-    return "Correr 2 cables CAT5";
+    return t("task.cable.two");
   }
-  return "Correr 1 cable CAT5";
+  return t("task.cable.one");
 }
 
-function stateLabel(value: TaskState): string {
+function stateLabel(
+  value: TaskState,
+  t: (key: string, vars?: Record<string, string | number | boolean | undefined>) => string
+): string {
   switch (value) {
     case "active":
-      return "En proceso";
+      return t("state.active");
     case "done":
-      return "Hecho";
+      return t("state.done");
     default:
-      return "Pendiente";
+      return t("state.pending");
   }
 }
 
@@ -178,19 +213,25 @@ function ambiguityFor(record: DeviceRecord) {
   return knowledge;
 }
 
-function taskWarnings(record: DeviceRecord): string[] {
+function taskWarnings(
+  record: DeviceRecord,
+  t: (key: string, vars?: Record<string, string | number | boolean | undefined>) => string
+): string[] {
   const warnings: string[] = [];
   if (!record.partNumber) {
-    warnings.push("Sin part number");
+    warnings.push(t("task.warning.noPartNumber"));
   }
   if (!hasSwitchAssignment(record)) {
-    warnings.push("Sin switch asignado");
+    warnings.push(t("task.warning.noSwitch"));
   }
   if (!record.hasPosition) {
-    warnings.push("Sin ubicacion exacta en plano");
+    warnings.push(t("task.warning.noPosition"));
   }
   if (ambiguityFor(record)) {
-    warnings.push("Validar visualmente en campo");
+    warnings.push(t("task.warning.validateField"));
+  }
+  if (record.mountHeightNeedsFieldValidation) {
+    warnings.push(t("task.warning.validateHeight"));
   }
   return warnings;
 }
@@ -206,6 +247,7 @@ function summaryLine(values: Array<[string, number]>, fallback: string): string 
 }
 
 export default function App() {
+  const { lang, setLang, t } = useI18n();
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [extraDataFile, setExtraDataFile] = useState<File | null>(null);
@@ -223,7 +265,10 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState<"all" | DeviceCategory>("all");
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [showSegmentationModal, setShowSegmentationModal] = useState(false);
-  const [status, setStatus] = useState("Carga el PDF y pulsa Procesar.");
+  const [status, setStatus] = useState<StatusDescriptor>({
+    kind: "translated",
+    key: "status.initial",
+  });
   const [processedAt, setProcessedAt] = useState("");
   const [iconCount, setIconCount] = useState(0);
   const [bundledIconCount, setBundledIconCount] = useState(0);
@@ -234,24 +279,35 @@ export default function App() {
   const [isBusy, setIsBusy] = useState(false);
   const iconFolderInputRef = useRef<HTMLInputElement | null>(null);
   const deferredSearch = useDeferredValue(search);
+  const statusText = useMemo(
+    () => (status.kind === "raw" ? status.text : t(status.key, status.vars)),
+    [status, t]
+  );
   const iconSourceLabel = useMemo(() => {
-    const bundledLabel = bundledIconCount > 0 ? `Libreria interna · ${bundledIconCount} iconos` : "Libreria interna pendiente";
+    const bundledLabel =
+      bundledIconCount > 0
+        ? `${t("icons.internalLibrary")} · ${bundledIconCount} ${t("snapshot.icons").toLowerCase()}`
+        : t("icons.internalLibraryPending");
     if (iconZipFile) {
       const suffix = iconFileFingerprint ? ` · sha16 ${iconFileFingerprint}` : "";
-      return `${bundledLabel} + ${iconZipFile.name} · ${formatFileSize(iconZipFile.size)}${suffix} · ${iconCount} iconos`;
+      return `${bundledLabel} + ${iconZipFile.name} · ${formatFileSize(iconZipFile.size)}${suffix} · ${iconCount} ${t("snapshot.icons").toLowerCase()}`;
     }
     if (iconFolderFiles.length > 0) {
-      return `${bundledLabel} + folder extra · ${iconFolderFiles.length} archivos · ${iconCount} iconos`;
+      return `${bundledLabel} + ${t("ingest.extraFolder").toLowerCase()} · ${iconFolderFiles.length} ${t("common.filePlural")} · ${iconCount} ${t("snapshot.icons").toLowerCase()}`;
     }
-    return bundledIconCount > 0 ? `${bundledLabel} · ${iconCount || bundledIconCount} iconos` : "Sin libreria de iconos cargada";
-  }, [bundledIconCount, iconCount, iconFileFingerprint, iconFolderFiles.length, iconZipFile]);
+    return bundledIconCount > 0
+      ? `${bundledLabel} · ${iconCount || bundledIconCount} ${t("snapshot.icons").toLowerCase()}`
+      : t("icons.noLibrary");
+  }, [bundledIconCount, iconCount, iconFileFingerprint, iconFolderFiles.length, iconZipFile, t]);
   const iconDebugLabel = useMemo(() => {
     if (!iconDebugInfo) {
       return "";
     }
     const mod = iconDebugInfo.lastModifiedLabel ? ` · mod ${iconDebugInfo.lastModifiedLabel}` : "";
-    return `Debug ZIP: BNB ${iconDebugInfo.bnb ? "si" : "no"} · PSA ${iconDebugInfo.psa ? "si" : "no"} · CIP ${iconDebugInfo.cip ? "si" : "no"}${mod}`;
-  }, [iconDebugInfo]);
+    return `Debug ZIP: BNB ${iconDebugInfo.bnb ? t("common.yes") : t("common.no")} · PSA ${
+      iconDebugInfo.psa ? t("common.yes") : t("common.no")
+    } · CIP ${iconDebugInfo.cip ? t("common.yes") : t("common.no")}${mod}`;
+  }, [iconDebugInfo, t]);
 
   useEffect(() => {
     if (!iconFolderInputRef.current) {
@@ -351,13 +407,13 @@ export default function App() {
 
   async function handleProcess() {
     if (!planFile) {
-      setStatus("Falta seleccionar el PDF del plano.");
+      setStatus({ kind: "translated", key: "status.missingPlan" });
       return;
     }
 
     setIsBusy(true);
     setShowPdfViewer(false);
-    setStatus("Procesando PDF y datos...");
+    setStatus({ kind: "translated", key: "status.processing" });
 
     try {
       const nextPlan = await loadPlan(planFile);
@@ -474,12 +530,33 @@ export default function App() {
         setProcessedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
         setStatus(
           records.length
-            ? `Listo. ${records.length} registros · ${parsedPdf.dataPages} pags. datos · ${nextPlan.markers.size} marcadores · ${nextIconCount} iconos disponibles${extraDataFile ? ` · extra: ${parsedExtraPdf?.records.length ?? extraRows.length} reg.` : ""}.`
-            : `Listo. Sin registros. Marcadores: ${nextPlan.markers.size}. Iconos disponibles: ${nextIconCount}.`
+            ? {
+                kind: "translated",
+                key: "status.readyRecords",
+                vars: {
+                  extra: extraDataFile ? parsedExtraPdf?.records.length ?? extraRows.length : undefined,
+                  icons: nextIconCount,
+                  markers: nextPlan.markers.size,
+                  pages: parsedPdf.dataPages,
+                  records: records.length,
+                },
+              }
+            : {
+                kind: "translated",
+                key: "status.readyEmpty",
+                vars: {
+                  icons: nextIconCount,
+                  markers: nextPlan.markers.size,
+                },
+              }
         );
       });
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "No pude procesar el plano.");
+      setStatus(
+        error instanceof Error
+          ? { kind: "raw", text: error.message }
+          : { kind: "translated", key: "status.processError" }
+      );
     } finally {
       setIsBusy(false);
     }
@@ -501,7 +578,7 @@ export default function App() {
     const matchesSearch =
       !searchValue ||
       record.name.toLowerCase().includes(searchValue) ||
-      primaryInstall(record).toLowerCase().includes(searchValue) ||
+      primaryInstall(record, t).toLowerCase().includes(searchValue) ||
       record.area.toLowerCase().includes(searchValue) ||
       compactSwitchLabel(record).toLowerCase().includes(searchValue);
 
@@ -546,7 +623,7 @@ export default function App() {
     { pending: 0, active: 0, done: 0 }
   );
 
-  const selectedWarnings = selectedRecord ? taskWarnings(selectedRecord) : [];
+  const selectedWarnings = selectedRecord ? taskWarnings(selectedRecord, t) : [];
   const selectedAmbiguity = selectedRecord ? ambiguityFor(selectedRecord) : null;
   const canViewPlan = Boolean(plan?.viewerUrl);
 
@@ -557,20 +634,38 @@ export default function App() {
           <h1>CCTV Field Planner</h1>
         </div>
         <div className="status-block">
-          <span className={`status-pill ${isBusy ? "status-pill--busy" : ""}`}>{status}</span>
-          {processedAt && <span className="status-note">Ultimo proceso: {processedAt}</span>}
+          <div className="topbar__utility-row">
+            <div className="language-toggle" role="group" aria-label="Language selector">
+              <button
+                type="button"
+                className={`language-toggle__button${lang === "es" ? " language-toggle__button--active" : ""}`}
+                onClick={() => setLang("es")}
+              >
+                {t("language.es")}
+              </button>
+              <button
+                type="button"
+                className={`language-toggle__button${lang === "en" ? " language-toggle__button--active" : ""}`}
+                onClick={() => setLang("en")}
+              >
+                {t("language.en")}
+              </button>
+            </div>
+          </div>
+          <span className={`status-pill ${isBusy ? "status-pill--busy" : ""}`}>{statusText}</span>
+          {processedAt && <span className="status-note">{t("status.processedAt", { time: processedAt })}</span>}
         </div>
       </header>
 
       <section className="ingest-card">
         <div className="ingest-card__header">
           <div>
-            <p className="eyebrow">Entrada</p>
-            <h2>Cargar proyecto</h2>
+            <p className="eyebrow">{t("ingest.eyebrow")}</p>
+            <h2>{t("ingest.title")}</h2>
           </div>
           <div className="ingest-card__actions">
             <button type="button" className="primary-action" disabled={isBusy || !planFile} onClick={handleProcess}>
-              {isBusy ? "Procesando..." : "Procesar"}
+              {isBusy ? t("ingest.processing") : t("ingest.process")}
             </button>
             <button
               type="button"
@@ -578,7 +673,7 @@ export default function App() {
               disabled={!canViewPlan}
               onClick={() => setShowPdfViewer(true)}
             >
-              Ver pagina 1
+              {t("ingest.viewPage1")}
             </button>
             <button
               type="button"
@@ -586,50 +681,50 @@ export default function App() {
               disabled={!canViewPlan || !segmentation}
               onClick={() => setShowSegmentationModal(true)}
             >
-              Ver segmentacion
+              {t("ingest.viewSegmentation")}
             </button>
           </div>
         </div>
 
         <div className="upload-grid">
           <label className="upload-card">
-            <span>PDF del plano</span>
+            <span>{t("ingest.planPdf")}</span>
             <input
               type="file"
               accept="application/pdf"
               onChange={(event) => setPlanFile(event.target.files?.[0] || null)}
             />
-            <strong>{fileLabel(planFile)}</strong>
+            <strong>{fileLabel(planFile, t("common.noFile"))}</strong>
           </label>
           <label className="upload-card">
-            <span>CSV base (opcional)</span>
+            <span>{t("ingest.baseCsv")}</span>
             <input
               type="file"
               accept=".csv,text/csv"
               onChange={(event) => setDataFile(event.target.files?.[0] || null)}
             />
-            <strong>{fileLabel(dataFile)}</strong>
+            <strong>{fileLabel(dataFile, t("common.noFile"))}</strong>
           </label>
           <label className="upload-card">
-            <span>PDF / CSV adicional (opcional)</span>
+            <span>{t("ingest.extraData")}</span>
             <input
               type="file"
               accept="application/pdf,.pdf,.csv,text/csv"
               onChange={(event) => setExtraDataFile(event.target.files?.[0] || null)}
             />
-            <strong>{fileLabel(extraDataFile)}</strong>
+            <strong>{fileLabel(extraDataFile, t("common.noFile"))}</strong>
           </label>
           <label className="upload-card">
-            <span>CSV de partes / iconos</span>
+            <span>{t("ingest.mappingCsv")}</span>
             <input
               type="file"
               accept=".csv,text/csv"
               onChange={(event) => setMappingFile(event.target.files?.[0] || null)}
             />
-            <strong>{fileLabel(mappingFile)}</strong>
+            <strong>{fileLabel(mappingFile, t("common.noFile"))}</strong>
           </label>
           <label className="upload-card">
-            <span>ZIP de iconos extra (opcional)</span>
+            <span>{t("ingest.extraZip")}</span>
             <input
               type="file"
               accept=".zip,application/zip"
@@ -652,11 +747,11 @@ export default function App() {
                 setIconZipFile(nextFile);
               }}
             />
-            <strong>{fileLabel(iconZipFile)}</strong>
-            <small>Libreria interna incluida; usa esto solo para iconos extra.</small>
+            <strong>{fileLabel(iconZipFile, t("common.noFile"))}</strong>
+            <small>{t("ingest.extraZipHelp")}</small>
           </label>
           <label className="upload-card">
-            <span>Folder de iconos extra (opcional)</span>
+            <span>{t("ingest.extraFolder")}</span>
             <input
               ref={iconFolderInputRef}
               type="file"
@@ -670,8 +765,12 @@ export default function App() {
                 setIconFolderFiles(Array.from(event.target.files || []));
               }}
             />
-            <strong>{iconFolderFiles.length ? `${iconFolderFiles.length} archivos` : "Sin folder"}</strong>
-            <small>Opcional. Sirve para agregar o corregir iconos nuevos.</small>
+            <strong>
+              {iconFolderFiles.length
+                ? `${iconFolderFiles.length} ${t("common.filePlural")}`
+                : t("common.noFolder")}
+            </strong>
+            <small>{t("ingest.extraFolderHelp")}</small>
           </label>
         </div>
       </section>
@@ -680,32 +779,34 @@ export default function App() {
 
       <section className="snapshot-grid">
         <article className="snapshot-card">
-          <span>Pendientes</span>
+          <span>{t("snapshot.pending")}</span>
           <strong>{taskStateCounts.pending}</strong>
         </article>
         <article className="snapshot-card">
-          <span>En proceso</span>
+          <span>{t("snapshot.active")}</span>
           <strong>{taskStateCounts.active}</strong>
         </article>
         <article className="snapshot-card">
-          <span>Hechas</span>
+          <span>{t("snapshot.done")}</span>
           <strong>{taskStateCounts.done}</strong>
         </article>
         <article className="snapshot-card">
-          <span>Con posicion</span>
+          <span>{t("snapshot.positioned")}</span>
           <strong>{insights?.totals.positioned ?? bundle.metrics.positionedDevices}</strong>
         </article>
         <article className="snapshot-card">
-          <span>Sin switch</span>
+          <span>{t("snapshot.noSwitch")}</span>
           <strong>{insights?.review.missingSwitch ?? 0}</strong>
         </article>
         <article className="snapshot-card">
-          <span>Iconos</span>
+          <span>{t("snapshot.icons")}</span>
           <strong>{iconCount}</strong>
           <small style={{ color: "rgba(255,255,255,0.56)", lineHeight: 1.3 }}>{iconSourceLabel}</small>
           {iconDebugInfo && (
             <small style={{ color: "rgba(255,255,255,0.44)", lineHeight: 1.3 }}>
-              BNB {iconDebugInfo.bnb ? "si" : "no"} · PSA {iconDebugInfo.psa ? "si" : "no"} · CIP {iconDebugInfo.cip ? "si" : "no"}
+              BNB {iconDebugInfo.bnb ? t("common.yes") : t("common.no")} · PSA{" "}
+              {iconDebugInfo.psa ? t("common.yes") : t("common.no")} · CIP{" "}
+              {iconDebugInfo.cip ? t("common.yes") : t("common.no")}
               {iconDebugInfo.lastModifiedLabel ? ` · mod ${iconDebugInfo.lastModifiedLabel}` : ""}
             </small>
           )}
@@ -717,8 +818,8 @@ export default function App() {
         <section className="tasks-panel">
           <div className="panel-head">
             <div>
-              <p className="eyebrow">Trabajo</p>
-              <h2>Field Tasks</h2>
+              <p className="eyebrow">{t("work.eyebrow")}</p>
+              <h2>{t("work.title")}</h2>
             </div>
             <button
               type="button"
@@ -726,7 +827,7 @@ export default function App() {
               disabled={!canViewPlan}
               onClick={() => setShowPdfViewer(true)}
             >
-              Plano pagina 1
+              {t("work.page1Plan")}
             </button>
             <button
               type="button"
@@ -734,7 +835,7 @@ export default function App() {
               disabled={!canViewPlan || !segmentation}
               onClick={() => setShowSegmentationModal(true)}
             >
-              Segmentacion
+              {t("work.segmentation")}
             </button>
           </div>
 
@@ -742,7 +843,7 @@ export default function App() {
             <input
               className="search-input"
               type="search"
-              placeholder="Buscar tarea, area, switch o equipo"
+              placeholder={t("work.searchPlaceholder")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -756,7 +857,7 @@ export default function App() {
                 className={`filter-chip ${statusFilter === value ? "filter-chip--active" : ""}`}
                 onClick={() => setStatusFilter(value)}
               >
-                {value === "all" ? "Todas" : stateLabel(value)}
+                {value === "all" ? t("filter.allTasks") : stateLabel(value, t)}
               </button>
             ))}
           </div>
@@ -769,7 +870,7 @@ export default function App() {
                 className={`filter-chip ${categoryFilter === value ? "filter-chip--active" : ""}`}
                 onClick={() => setCategoryFilter(value)}
               >
-                {value === "all" ? "Categorias" : categoryLabel(value)}
+                {value === "all" ? t("filter.categories") : categoryLabel(value, t)}
               </button>
             ))}
           </div>
@@ -777,13 +878,13 @@ export default function App() {
           <div className="task-list">
             {orderedRecords.length === 0 && (
               <div className="empty-inline">
-                No hay tareas visibles. Procesa el proyecto o cambia los filtros.
+                {t("task.emptyVisible")}
               </div>
             )}
 
             {orderedRecords.map((record) => {
               const currentState = getTaskState(record);
-              const warnings = taskWarnings(record);
+              const warnings = taskWarnings(record, t);
               return (
                 <button
                   key={record.key}
@@ -794,24 +895,27 @@ export default function App() {
                   <div className="task-card__top">
                     <div className="task-card__icon">
                       {shouldRenderRecordIcon(record) ? (
-                        <img src={record.iconUrl} alt={primaryInstall(record)} />
+                        <img src={record.iconUrl} alt={primaryInstall(record, t)} />
                       ) : (
-                        <span>{record.id ?? categoryLabel(record.category).slice(0, 2).toUpperCase()}</span>
+                        <span>{record.id ?? categoryLabel(record.category, t).slice(0, 2).toUpperCase()}</span>
                       )}
                     </div>
                     <div className="task-card__copy">
                       <strong>{record.name || `ID ${record.id}`}</strong>
-                      <span>{taskTitle(record)}</span>
+                      <span>{taskTitle(record, t)}</span>
                     </div>
-                    <span className={`state-pill state-pill--${currentState}`}>{stateLabel(currentState)}</span>
+                    <span className={`state-pill state-pill--${currentState}`}>{stateLabel(currentState, t)}</span>
                   </div>
 
                   <div className="task-card__meta">
-                    <span>Equipo: {primaryInstall(record)}</span>
-                    <span>Part: {record.partNumber || "Sin dato"}</span>
-                    <span>Area: {record.area}</span>
-                    <span>Red: {compactSwitchLabel(record)}</span>
-                    <span>{cableNote(record)}</span>
+                    <span>{t("task.meta.equipment")}: {primaryInstall(record, t)}</span>
+                    <span>{t("task.meta.part")}: {record.partNumber || t("common.noInfo")}</span>
+                    <span>{t("task.meta.area")}: {record.area}</span>
+                    <span>{t("task.meta.network")}: {compactSwitchLabel(record)}</span>
+                    {installationHeightLabel(record) && (
+                      <span>{t("task.meta.height")}: {installationHeightLabel(record)}</span>
+                    )}
+                    <span>{cableNote(record, t)}</span>
                   </div>
 
                   {warnings.length > 0 && (
@@ -832,8 +936,8 @@ export default function App() {
         <aside className="detail-panel">
           <div className="panel-head">
             <div>
-              <p className="eyebrow">Detalle</p>
-              <h2>Punto de instalacion</h2>
+              <p className="eyebrow">{t("detail.eyebrow")}</p>
+              <h2>{t("detail.title")}</h2>
             </div>
           </div>
 
@@ -843,15 +947,15 @@ export default function App() {
                 <div className="focus-card__top">
                   <div className="task-card__icon task-card__icon--large">
                     {shouldRenderRecordIcon(selectedRecord) ? (
-                      <img src={selectedRecord.iconUrl} alt={primaryInstall(selectedRecord)} />
+                      <img src={selectedRecord.iconUrl} alt={primaryInstall(selectedRecord, t)} />
                     ) : (
-                      <span>{selectedRecord.id ?? categoryLabel(selectedRecord.category).slice(0, 2).toUpperCase()}</span>
+                      <span>{selectedRecord.id ?? categoryLabel(selectedRecord.category, t).slice(0, 2).toUpperCase()}</span>
                     )}
                   </div>
                   <div>
-                    <p className="eyebrow">{stateLabel(getTaskState(selectedRecord))}</p>
+                    <p className="eyebrow">{stateLabel(getTaskState(selectedRecord), t)}</p>
                     <h3>{selectedRecord.name || `ID ${selectedRecord.id}`}</h3>
-                    <p>{taskTitle(selectedRecord)}</p>
+                    <p>{taskTitle(selectedRecord, t)}</p>
                   </div>
                 </div>
 
@@ -861,89 +965,107 @@ export default function App() {
                     className={`state-button ${getTaskState(selectedRecord) === "pending" ? "state-button--active" : ""}`}
                     onClick={() => updateTaskState(selectedRecord.key, "pending")}
                   >
-                    Pendiente
+                    {t("state.pending")}
                   </button>
                   <button
                     type="button"
                     className={`state-button ${getTaskState(selectedRecord) === "active" ? "state-button--active" : ""}`}
                     onClick={() => updateTaskState(selectedRecord.key, "active")}
                   >
-                    En proceso
+                    {t("state.active")}
                   </button>
                   <button
                     type="button"
                     className={`state-button ${getTaskState(selectedRecord) === "done" ? "state-button--active" : ""}`}
                     onClick={() => updateTaskState(selectedRecord.key, "done")}
                   >
-                    Hecho
+                    {t("state.done")}
                   </button>
                 </div>
               </section>
 
               <section className="instruction-card">
-                <h3>Accion recomendada</h3>
+                <h3>{t("detail.recommendedAction")}</h3>
                 <ul className="instruction-list">
-                  <li>Instalar: {primaryInstall(selectedRecord)}</li>
-                  <li>Ubicacion: {selectedRecord.area}</li>
-                  <li>Red: {compactSwitchLabel(selectedRecord)}</li>
-                  <li>Cableado: {cableNote(selectedRecord)}</li>
-                  <li>Referencia: pagina {selectedRecord.sourcePage ?? 1}</li>
+                  <li>{t("detail.install")}: {primaryInstall(selectedRecord, t)}</li>
+                  <li>{t("detail.location")}: {selectedRecord.area}</li>
+                  <li>{t("detail.network")}: {compactSwitchLabel(selectedRecord)}</li>
+                  <li>{t("detail.wiring")}: {cableNote(selectedRecord, t)}</li>
+                  {installationHeightLabel(selectedRecord) && (
+                    <li>{t("detail.mountHeight")}: {installationHeightLabel(selectedRecord)}</li>
+                  )}
+                  {installationHeightRuleText(selectedRecord, t) && (
+                    <li>{t("detail.heightRule")}: {installationHeightRuleText(selectedRecord, t)}</li>
+                  )}
+                  <li>{t("detail.reference")}: {t("detail.referencePage", { page: selectedRecord.sourcePage ?? 1 })}</li>
                 </ul>
               </section>
 
               <section className="detail-grid">
                 <article>
-                  <span>ID</span>
-                  <strong>{selectedRecord.id ?? "Sin ID"}</strong>
+                  <span>{t("detail.id")}</span>
+                  <strong>{selectedRecord.id ?? t("common.noId")}</strong>
                 </article>
                 <article>
-                  <span>Equipo</span>
-                  <strong>{primaryInstall(selectedRecord)}</strong>
+                  <span>{t("detail.equipment")}</span>
+                  <strong>{primaryInstall(selectedRecord, t)}</strong>
                 </article>
                 <article>
-                  <span>Icon device</span>
-                  <strong>{selectedRecord.iconDevice || "Sin dato"}</strong>
+                  <span>{t("detail.iconDevice")}</span>
+                  <strong>{selectedRecord.iconDevice || t("common.noInfo")}</strong>
                 </article>
                 <article>
-                  <span>Part number</span>
-                  <strong>{selectedRecord.partNumber || "Sin dato"}</strong>
+                  <span>{t("detail.partNumber")}</span>
+                  <strong>{selectedRecord.partNumber || t("common.noInfo")}</strong>
                 </article>
                 <article>
-                  <span>Switch / hub</span>
+                  <span>{t("detail.switchHub")}</span>
                   <strong>{compactSwitchLabel(selectedRecord)}</strong>
                 </article>
                 <article>
-                  <span>Cables</span>
+                  <span>{t("detail.cables")}</span>
                   <strong>{selectedRecord.cables}</strong>
                 </article>
+                {installationHeightLabel(selectedRecord) && (
+                  <article>
+                    <span>{t("detail.mountHeight")}</span>
+                    <strong>{installationHeightLabel(selectedRecord)}</strong>
+                  </article>
+                )}
+                {installationHeightRuleText(selectedRecord, t) && (
+                  <article>
+                    <span>{t("detail.heightRule")}</span>
+                    <strong>{installationHeightRuleText(selectedRecord, t)}</strong>
+                  </article>
+                )}
                 <article>
-                  <span>Posicion en plano</span>
-                  <strong>{selectedRecord.hasPosition ? "Si" : "No"}</strong>
+                  <span>{t("detail.positionInPlan")}</span>
+                  <strong>{selectedRecord.hasPosition ? t("common.yes") : t("common.no")}</strong>
                 </article>
               </section>
 
               {selectedAmbiguity && (
                 <section className="instruction-card instruction-card--warning">
-                  <h3>Opciones por validar</h3>
+                  <h3>{t("detail.optionsToValidate")}</h3>
                   <ul className="instruction-list">
                     {selectedAmbiguity.candidatePartNumbers.length > 1 && (
                       <li>
-                        Part numbers posibles: {selectedAmbiguity.candidatePartNumbers.join(" / ")}
+                        {t("detail.possiblePartNumbers")}: {selectedAmbiguity.candidatePartNumbers.join(" / ")}
                       </li>
                     )}
                     {selectedAmbiguity.candidateIconDevices.length > 1 && (
                       <li>
-                        Icon devices posibles: {selectedAmbiguity.candidateIconDevices.join(" / ")}
+                        {t("detail.possibleIconDevices")}: {selectedAmbiguity.candidateIconDevices.join(" / ")}
                       </li>
                     )}
-                    <li>Confirmar visualmente en campo antes de cerrar este punto.</li>
+                    <li>{t("detail.confirmField")}</li>
                   </ul>
                 </section>
               )}
 
               {selectedWarnings.length > 0 && (
                 <section className="instruction-card instruction-card--warning">
-                  <h3>Alertas</h3>
+                  <h3>{t("detail.alerts")}</h3>
                   <ul className="instruction-list">
                     {selectedWarnings.map((warning) => (
                       <li key={warning}>{warning}</li>
@@ -953,13 +1075,13 @@ export default function App() {
               )}
 
               <section className="instruction-card">
-                <h3>Referencia del proyecto</h3>
+                <h3>{t("detail.projectReference")}</h3>
                 <p className="reference-line">
-                  Switches: {summaryLine(topSwitches, "Sin datos")}
+                  {t("detail.switches")}: {summaryLine(topSwitches, t("common.noData"))}
                 </p>
-                <p className="reference-line">Areas: {summaryLine(topAreas, "Sin datos")}</p>
+                <p className="reference-line">{t("detail.areas")}: {summaryLine(topAreas, t("common.noData"))}</p>
                 <p className="reference-line">
-                  Part numbers: {summaryLine(topParts, "Sin datos")}
+                  {t("detail.partNumbers")}: {summaryLine(topParts, t("common.noData"))}
                 </p>
                 <div className="detail-actions">
                   <button
@@ -968,7 +1090,7 @@ export default function App() {
                     disabled={!canViewPlan}
                     onClick={() => setShowPdfViewer(true)}
                   >
-                    Ver plano
+                    {t("detail.viewPlan")}
                   </button>
                   <button
                     type="button"
@@ -981,14 +1103,14 @@ export default function App() {
                       window.open(plan.viewerUrl, "_blank", "noopener,noreferrer");
                     }}
                   >
-                    Abrir PDF
+                    {t("detail.openPdf")}
                   </button>
                 </div>
               </section>
             </div>
           ) : (
             <div className="detail-empty">
-              Selecciona una tarea para ver qué instalar, cuántos cables correr y qué revisar.
+              {t("detail.empty")}
             </div>
           )}
         </aside>

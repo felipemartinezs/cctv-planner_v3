@@ -41,6 +41,9 @@ export interface DeviceRecord {
   area: string;
   category: DeviceCategory;
   cables: number;
+  mountHeightFt: number | null;
+  mountHeightNeedsFieldValidation: boolean;
+  mountHeightRuleKey: string;
   hasPosition: boolean;
   iconUrl: string;
   raw: Record<string, string>;

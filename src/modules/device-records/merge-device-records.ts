@@ -1,4 +1,5 @@
 import type { DeviceRecord } from "../../types";
+import { contextualizeIconDeviceForInstallation, resolveInstallationSpec } from "../../lib/installation-rules";
 
 function pickText(primary: string, secondary: string): string {
   return secondary || primary;
@@ -27,12 +28,39 @@ export function mergeDeviceRecords(
 
     const x = pickNumber(current.x, record.x);
     const y = pickNumber(current.y, record.y);
+    const partNumber = pickText(current.partNumber, record.partNumber);
+    const iconDevice = pickText(current.iconDevice, record.iconDevice);
+    const area = pickText(current.area, record.area);
+    const category = record.category === "unknown" ? current.category : record.category;
+    const name = pickText(current.name, record.name);
+    const installationSpec = resolveInstallationSpec({
+      area,
+      category,
+      iconDevice,
+      name,
+      partNumber,
+    });
+    const contextualIconDevice = contextualizeIconDeviceForInstallation({
+      iconDevice,
+      installationSpec,
+      partNumber,
+    });
+    const finalInstallationSpec =
+      contextualIconDevice === iconDevice
+        ? installationSpec
+        : resolveInstallationSpec({
+            area,
+            category,
+            iconDevice: contextualIconDevice,
+            name,
+            partNumber,
+          });
 
     merged.set(record.key, {
       ...current,
-      name: pickText(current.name, record.name),
+      name,
       abbreviatedName: pickText(current.abbreviatedName, record.abbreviatedName),
-      partNumber: pickText(current.partNumber, record.partNumber),
+      partNumber,
       hub: pickText(current.hub, record.hub),
       switchName: pickText(current.switchName, record.switchName),
       switchFamily: pickText(current.switchFamily, record.switchFamily),
@@ -40,11 +68,14 @@ export function mergeDeviceRecords(
       x,
       y,
       sourcePage: pickNumber(current.sourcePage, record.sourcePage),
-      iconDevice: pickText(current.iconDevice, record.iconDevice),
+      iconDevice: contextualIconDevice,
       deviceTaskType: pickText(current.deviceTaskType, record.deviceTaskType),
-      area: pickText(current.area, record.area),
-      category: record.category === "unknown" ? current.category : record.category,
+      area,
+      category,
       cables: record.cables || current.cables,
+      mountHeightFt: finalInstallationSpec.mountHeightFt,
+      mountHeightNeedsFieldValidation: finalInstallationSpec.mountHeightNeedsFieldValidation,
+      mountHeightRuleKey: finalInstallationSpec.mountHeightRuleKey,
       hasPosition: x !== null && y !== null,
       iconUrl: pickText(current.iconUrl, record.iconUrl),
       raw: {

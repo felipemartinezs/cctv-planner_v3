@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n";
 import type { PlanData } from "../../types";
 import type { PlanSegmentation } from "../plan-segmentation";
 
@@ -9,15 +10,17 @@ interface PlanViewerModalProps {
 }
 
 export function PlanViewerModal({ onClose, open, plan }: PlanViewerModalProps) {
+  const { t } = useI18n();
+
   if (!open || !plan) {
     return null;
   }
 
   return (
-    <div className="pdf-modal" role="dialog" aria-modal="true" aria-label="Plano pagina 1">
+    <div className="pdf-modal" role="dialog" aria-modal="true" aria-label={t("viewer.ariaPage1")}>
       <div className="pdf-modal__header">
         <div>
-          <p className="eyebrow">Plano de campo</p>
+          <p className="eyebrow">{t("viewer.eyebrow")}</p>
           <h2>{plan.title}</h2>
         </div>
         <div className="pdf-modal__actions">
@@ -26,10 +29,10 @@ export function PlanViewerModal({ onClose, open, plan }: PlanViewerModalProps) {
             className="secondary-action"
             onClick={() => window.open(plan.viewerUrl, "_blank", "noopener,noreferrer")}
           >
-            Abrir PDF
+            {t("viewer.openPdf")}
           </button>
           <button type="button" className="primary-action" onClick={onClose}>
-            Cerrar
+            {t("common.close")}
           </button>
         </div>
       </div>
@@ -37,7 +40,7 @@ export function PlanViewerModal({ onClose, open, plan }: PlanViewerModalProps) {
       <div className="pdf-modal__body">
         <iframe
           key={plan.viewerUrl}
-          title="Plano pagina 1"
+          title={t("viewer.ariaPage1")}
           src={plan.viewerUrl}
           className="pdf-modal__frame"
         />

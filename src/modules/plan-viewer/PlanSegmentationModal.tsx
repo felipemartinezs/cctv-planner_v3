@@ -1,5 +1,6 @@
 import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "../../i18n";
 import type { DeviceRecord, PlanData } from "../../types";
 import { lookupIcon, normalizeIconKey } from "../../lib/icons";
 import { getNamePatternKnowledge, getPartNumberKnowledge } from "../../lib/visual-knowledge";
@@ -15,6 +16,7 @@ const MAX_SELECTED_PART_NUMBERS = 2;
 const PART_MARKER_COLOR = "rgba(20, 58, 110, 0.88)";
 const PART_MARKER_PULSE_MS = 1550;
 const PTZ_PART_NUMBER = "CIP-QNP6250H";
+const PTZ_OUTDOOR_RULE_KEY = "install.height.ptzOutdoor";
 const PTZ_CEILING_ICON = "CIP-QNP6250H Ceiling";
 const PTZ_PENDANT_ICON = "CIP-QNP6250H Pendant";
 const PTZ_OUTDOOR_ICON = "CIP-QNP6250H Outdoor";
@@ -67,6 +69,9 @@ interface InteractiveDevice {
   iconUrl: string;
   id: number;
   key: string;
+  mountHeightFt: number | null;
+  mountHeightNeedsFieldValidation: boolean;
+  mountHeightRuleText: string;
   name: string;
   partNumber: string;
   segmentLabel: string;
@@ -130,17 +135,21 @@ function formatVisualChoiceLabel(value: string) {
   return value;
 }
 
-function getVisualAmbiguityHint(partNumber: string, visualChoices: VisualChoice[]) {
+function getVisualAmbiguityHint(
+  partNumber: string,
+  visualChoices: VisualChoice[],
+  t: (key: string, vars?: Record<string, string | number | boolean | undefined>) => string
+) {
   if (visualChoices.length < 2) {
     return "";
   }
 
   if (partNumber === PTZ_PART_NUMBER) {
-    return "Validar en campo: Ceiling / Pendant segun el cielo de la tienda";
+    return t("segmentation.validatePtz");
   }
 
   if (isPosAmbiguousPartNumber(partNumber)) {
-    return "SCO -> BNB-SCB-1KIT · Manned -> PSA-W4-BAXFA51";
+    return t("segmentation.validatePos");
   }
 
   return "";
@@ -204,6 +213,37 @@ function buildVisualChoices(
   return [];
 }
 
+function resolvePtzVisualCandidates(
+  records: Array<Pick<DeviceRecord, "category" | "iconDevice" | "mountHeightRuleKey" | "partNumber">>
+): string[] {
+  if (records.length === 0) {
+    return [PTZ_CEILING_ICON, PTZ_PENDANT_ICON];
+  }
+
+  const hasOutdoor = records.some(
+    (record) =>
+      record.mountHeightRuleKey === PTZ_OUTDOOR_RULE_KEY ||
+      isPtzOutdoorIcon(record.iconDevice)
+  );
+  const hasInterior = records.some(
+    (record) =>
+      (record.category === "ptz" ||
+        normalizeIconKey(record.partNumber) === normalizeIconKey(PTZ_PART_NUMBER)) &&
+      !(
+        record.mountHeightRuleKey === PTZ_OUTDOOR_RULE_KEY ||
+        isPtzOutdoorIcon(record.iconDevice)
+      )
+  );
+
+  if (hasOutdoor && !hasInterior) {
+    return [PTZ_OUTDOOR_ICON];
+  }
+  if (hasInterior && !hasOutdoor) {
+    return [PTZ_CEILING_ICON, PTZ_PENDANT_ICON];
+  }
+  return [PTZ_CEILING_ICON, PTZ_PENDANT_ICON, PTZ_OUTDOOR_ICON];
+}
+
 function colorFor(index: number, alpha: number): string {
   const hue = (index * 57) % 360;
   return `hsla(${hue} 72% 48% / ${alpha})`;
@@ -246,6 +286,7 @@ export function PlanSegmentationModal({
   segmentation,
   onClose,
 }: PlanSegmentationModalProps) {
+  const { t } = useI18n();
   const viewportRef = useRef<HTMLDivElement>(null);
   const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -376,13 +417,17 @@ export function PlanSegmentationModal({
       });
       const iconCandidates = Array.from(
         new Set(
-          [
-            partNumber,
-            preferred?.partNumber || "",
-            preferred?.iconDevice || "",
-            ...scopedNamePatternChoices,
-            ...(partKnowledge?.iconDevices ?? []),
-          ].filter(Boolean)
+          (
+            partNumber === PTZ_PART_NUMBER
+              ? resolvePtzVisualCandidates(recordsInScope)
+              : [
+                  partNumber,
+                  preferred?.partNumber || "",
+                  preferred?.iconDevice || "",
+                  ...scopedNamePatternChoices,
+                  ...(partKnowledge?.iconDevices ?? []),
+                ]
+          ).filter(Boolean)
         )
       );
       const matchedIconCandidate = iconCandidates.find((candidate) => lookupIcon(rawIconMap, candidate));
@@ -407,19 +452,19 @@ export function PlanSegmentationModal({
       }));
       const matchMode = matchedIconCandidate
         ? rawIconMap.has(normalizeIconKey(matchedIconCandidate))
-          ? "exacto"
-          : "flexible"
-        : "ninguno";
+          ? t("segmentation.match.exact")
+          : t("segmentation.match.flexible")
+        : t("segmentation.match.none");
 
       return {
-        ambiguityHint: getVisualAmbiguityHint(partNumber, visualChoices),
+        ambiguityHint: getVisualAmbiguityHint(partNumber, visualChoices, t),
         exactAvailability,
         iconDevice:
           visualChoices.length > 1
             ? partNumber === PTZ_PART_NUMBER
-              ? `PTZ interior · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
-              : `POS ambiguo · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
-            : matchedIconCandidate || preferred?.iconDevice || partNumber,
+              ? `${t("segmentation.ptzInterior")} · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
+              : `${t("segmentation.posAmbiguousTitle")} · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
+            : visualChoices[0]?.iconDevice || matchedIconCandidate || preferred?.iconDevice || partNumber,
         iconOptions: partKnowledge?.iconDevices ?? [],
         iconUrl: visualChoices[0]?.iconUrl || matchedIconUrl || preferred?.iconUrl,
         matchedIconCandidate: matchedIconCandidate || "",
@@ -429,20 +474,20 @@ export function PlanSegmentationModal({
         visualChoices,
       };
     });
-  }, [rawIconMap, records, selectedLabel, selectedPartNumbers]);
+  }, [rawIconMap, records, selectedLabel, selectedPartNumbers, t]);
 
   const mobileSummary = useMemo(() => {
     if (!segmentation) {
-      return { label: "Plano", meta: "" };
+      return { label: t("segmentation.summary.plan"), meta: "" };
     }
 
     if (selectedPartSummary) {
       const partLabel =
         selectedPartNumbers.length === 1
           ? selectedPartNumbers[0]
-          : `${selectedPartNumbers.length} part numbers`;
+          : t("segmentation.partNumbersSelected", { count: selectedPartNumbers.length });
       return {
-        label: selectedLabel || "Todos",
+        label: selectedLabel || t("segmentation.all"),
         meta: `${selectedPartSummary.plotted}/${selectedPartSummary.total} · ${partLabel}`,
       };
     }
@@ -459,10 +504,10 @@ export function PlanSegmentationModal({
     const total = segmented + noSwitch + noPos;
 
     return {
-      label: selectedLabel || "Todos",
-      meta: `${segmented}/${total} dispositivos`,
+      label: selectedLabel || t("segmentation.all"),
+      meta: `${segmented}/${total} ${t("common.devicePlural")}`,
     };
-  }, [segmentation, selectedLabel, selectedPartNumbers, selectedPartSummary]);
+  }, [segmentation, selectedLabel, selectedPartNumbers, selectedPartSummary, t]);
 
   const interactiveDevices = useMemo<InteractiveDevice[]>(() => {
     const devicesByKey = new Map<string, InteractiveDevice>();
@@ -488,11 +533,13 @@ export function PlanSegmentationModal({
       const visualChoices =
         record.partNumber === PTZ_PART_NUMBER || isPosAmbiguousPartNumber(record.partNumber)
           ? buildVisualChoices(
-              [
-                ...(nameKnowledge?.candidateIconDevices ?? []),
-                record.iconDevice,
-                record.partNumber,
-              ],
+              record.partNumber === PTZ_PART_NUMBER
+                ? resolvePtzVisualCandidates([record])
+                : [
+                    ...(nameKnowledge?.candidateIconDevices ?? []),
+                    record.iconDevice,
+                    record.partNumber,
+                  ],
               rawIconMap,
               {
                 iconDevice: record.iconDevice || record.partNumber,
@@ -505,20 +552,23 @@ export function PlanSegmentationModal({
             });
 
       devicesByKey.set(record.key, {
-        ambiguityHint: getVisualAmbiguityHint(record.partNumber, visualChoices),
+        ambiguityHint: getVisualAmbiguityHint(record.partNumber, visualChoices, t),
         iconDevice:
           visualChoices.length > 1
             ? record.partNumber === PTZ_PART_NUMBER
-              ? `PTZ interior · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
-              : `POS ambiguo · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
-            : record.iconDevice || record.partNumber,
+              ? `${t("segmentation.ptzInterior")} · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
+              : `${t("segmentation.posAmbiguousTitle")} · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
+            : visualChoices[0]?.iconDevice || record.iconDevice || record.partNumber,
         iconUrl: visualChoices[0]?.iconUrl || resolvedIconUrl,
         id: record.id,
         key: record.key,
+        mountHeightFt: record.mountHeightFt,
+        mountHeightNeedsFieldValidation: record.mountHeightNeedsFieldValidation,
+        mountHeightRuleText: record.mountHeightRuleKey ? t(record.mountHeightRuleKey) : "",
         name: record.abbreviatedName || record.name,
         partNumber: record.partNumber,
         segmentLabel: record.switchSegment,
-        switchName: record.switchName || record.hub || "Sin switch",
+        switchName: record.switchName || record.hub || t("common.noSwitch"),
         visualChoices,
         x,
         y,
@@ -526,7 +576,7 @@ export function PlanSegmentationModal({
     });
 
     return Array.from(devicesByKey.values());
-  }, [plan, rawIconMap, records]);
+  }, [plan, rawIconMap, records, t]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1148,12 +1198,12 @@ export function PlanSegmentationModal({
       className={`pdf-modal${isMobileViewport ? " pdf-modal--compact" : ""}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Segmentacion de plano"
+      aria-label={t("segmentation.aria")}
       style={{ gridTemplateRows: "auto minmax(0,1fr)" }}
     >
       <div className="pdf-modal__header">
         <div>
-          <p className="eyebrow">Segmentacion de plano</p>
+          <p className="eyebrow">{t("segmentation.eyebrow")}</p>
           <h2>{plan.title}</h2>
           <p
             style={{
@@ -1181,11 +1231,11 @@ export function PlanSegmentationModal({
         <div className="pdf-modal__actions">
           {!isMobileViewport && (
             <button type="button" className="secondary-action" onClick={fitToViewport}>
-              Ajustar vista
+              {t("segmentation.fitView")}
             </button>
           )}
           <button type="button" className="primary-action" onClick={onClose}>
-            Cerrar
+            {t("common.close")}
           </button>
         </div>
       </div>
@@ -1223,17 +1273,17 @@ export function PlanSegmentationModal({
                 alignItems: "center",
                 justifyContent: "center",
                 color: "#888",
-                fontSize: "0.95rem",
-              }}
-            >
-              Cargando plano…
+              fontSize: "0.95rem",
+            }}
+          >
+              {t("segmentation.loadingPlan")}
             </div>
           )}
 
           {isMobileViewport && (
             <div className="segmentation-modal__floating-tools">
               <button type="button" className="secondary-action" onClick={fitToViewport}>
-                Ajustar
+                {t("segmentation.fit")}
               </button>
               {segmentation && (
                 <button
@@ -1241,7 +1291,7 @@ export function PlanSegmentationModal({
                   className="secondary-action"
                   onClick={() => setControlsExpanded((current) => !current)}
                 >
-                  {controlsExpanded ? "Plano amplio" : "Controles"}
+                  {controlsExpanded ? t("segmentation.widePlan") : t("segmentation.controls")}
                 </button>
               )}
             </div>
@@ -1300,7 +1350,7 @@ export function PlanSegmentationModal({
                 type="button"
                 className="segmentation-device-preview__close"
                 onClick={() => setDevicePreview(null)}
-                aria-label={`Cerrar detalle de ID ${devicePreview.device.id}`}
+                aria-label={t("segmentation.closeDevicePreview", { id: devicePreview.device.id })}
               >
                 ×
               </button>
@@ -1332,7 +1382,7 @@ export function PlanSegmentationModal({
                         }}
                       />
                     ) : (
-                      <span>Sin icono</span>
+                      <span>{t("common.noIcon")}</span>
                     )}
                   </div>
                 )}
@@ -1351,16 +1401,31 @@ export function PlanSegmentationModal({
               </div>
               <div className="segmentation-device-preview__meta">
                 <span>
-                  <strong>Switch:</strong> {devicePreview.device.switchName}
+                  <strong>{t("segmentation.switch")}:</strong> {devicePreview.device.switchName}
                 </span>
                 {devicePreview.device.segmentLabel && (
                   <span>
-                    <strong>Segmento:</strong> {devicePreview.device.segmentLabel}
+                    <strong>{t("segmentation.segment")}:</strong> {devicePreview.device.segmentLabel}
                   </span>
                 )}
                 <span>
-                  <strong>Nombre:</strong> {devicePreview.device.name}
+                  <strong>{t("segmentation.name")}:</strong> {devicePreview.device.name}
                 </span>
+                {devicePreview.device.mountHeightFt !== null && (
+                  <span>
+                    <strong>{t("segmentation.height")}:</strong> {devicePreview.device.mountHeightFt} ft
+                  </span>
+                )}
+                {devicePreview.device.mountHeightRuleText && (
+                  <span>
+                    <strong>{t("segmentation.heightRule")}:</strong> {devicePreview.device.mountHeightRuleText}
+                  </span>
+                )}
+                {devicePreview.device.mountHeightNeedsFieldValidation && (
+                  <span className="segmentation-device-preview__hint">
+                    {t("task.warning.validateHeight")}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -1385,7 +1450,7 @@ export function PlanSegmentationModal({
                   className="segment-toggle-pill"
                   onClick={() => setControlsExpanded((current) => !current)}
                 >
-                  {controlsExpanded ? "Ocultar" : "Abrir panel"}
+                  {controlsExpanded ? t("common.hide") : t("common.openPanel")}
                 </button>
               )}
             </div>
@@ -1401,7 +1466,7 @@ export function PlanSegmentationModal({
                   alignItems: "center",
                 }}
               >
-                <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.72rem", fontWeight: 700, flexShrink: 0, letterSpacing: "0.04em", textTransform: "uppercase" }}>Segmento</span>
+                <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.72rem", fontWeight: 700, flexShrink: 0, letterSpacing: "0.04em", textTransform: "uppercase" }}>{t("segmentation.segment")}</span>
                 {(() => {
                   const segmented = segmentation.totals.segmentedPoints;
                   const noSwitch = Object.values(segmentation.partNumberNoSwitch).reduce((sum, entries) => sum + entries.length, 0);
@@ -1409,9 +1474,12 @@ export function PlanSegmentationModal({
                   const total = segmented + noSwitch + noPos;
                   return (
                     <span style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.38)", fontWeight: 500, flexShrink: 0, marginLeft: "0.25rem" }}>
-                      {segmented}/{total} disp.
-                      {noSwitch > 0 ? ` · ${noSwitch} sin switch` : ""}
-                      {noPos > 0 ? ` · ${noPos} sin posicion` : ""}
+                      {t("segmentation.summary.devices", {
+                        noPosition: noPos || undefined,
+                        noSwitch: noSwitch || undefined,
+                        segmented,
+                        total,
+                      })}
                     </span>
                   );
                 })()}
@@ -1421,7 +1489,7 @@ export function PlanSegmentationModal({
                   style={{ flexShrink: 0 }}
                   onClick={() => setSelectedLabel("")}
                 >
-                  Todos
+                  {t("segmentation.all")}
                 </button>
                 {segmentation.segments.map((segment) => {
                   const li = segmentation.labels.indexOf(segment.label);
@@ -1442,7 +1510,7 @@ export function PlanSegmentationModal({
                       <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "0.1rem" }}>
                         <span>{segment.label}</span>
                         <span style={{ fontSize: "0.7rem", opacity: 0.8, fontWeight: 500, lineHeight: 1 }}>
-                          {segment.totalCables} cable{segment.totalCables !== 1 ? "s" : ""}
+                          {segment.totalCables} {segment.totalCables === 1 ? t("common.cableSingular") : t("common.cablePlural")}
                         </span>
                       </span>
                     </button>
@@ -1469,10 +1537,10 @@ export function PlanSegmentationModal({
                       {seg.label}
                     </span>
                     <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
-                      {seg.deviceCount} dispositivo{seg.deviceCount !== 1 ? "s" : ""}
+                      {seg.deviceCount} {seg.deviceCount === 1 ? t("common.deviceSingular") : t("common.devicePlural")}
                     </span>
                     <span style={{ fontSize: "0.75rem", color: "rgba(120,200,255,0.85)", fontWeight: 700 }}>
-                      {seg.totalCables} cable{seg.totalCables !== 1 ? "s" : ""} CAT5
+                      {seg.totalCables} {seg.totalCables === 1 ? t("common.cableSingular") : t("common.cablePlural")} CAT5
                     </span>
                     {seg.switches.length > 0 && (
                       <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.38)", fontWeight: 400 }}>
@@ -1493,7 +1561,7 @@ export function PlanSegmentationModal({
                   flexWrap: "wrap",
                 }}
               >
-            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.72rem", fontWeight: 700, flexShrink: 0, letterSpacing: "0.04em", textTransform: "uppercase" }}>Part number</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.72rem", fontWeight: 700, flexShrink: 0, letterSpacing: "0.04em", textTransform: "uppercase" }}>{t("segmentation.partNumber")}</span>
             <select
               value=""
               onChange={(e) => handlePartNumberSelect(e.target.value)}
@@ -1520,10 +1588,10 @@ export function PlanSegmentationModal({
             >
               <option value="" style={{ background: "#0a2744" }}>
                 {selectedPartNumbers.length === 0
-                  ? "— Seleccionar part number —"
+                  ? t("segmentation.selectPartNumber")
                   : selectedPartNumbers.length < MAX_SELECTED_PART_NUMBERS
-                    ? "— Agregar otro part number —"
-                    : "Máximo 2 part numbers"}
+                    ? t("segmentation.addPartNumber")
+                    : t("segmentation.maxPartNumbers")}
               </option>
               {partNumberCounts.map(({ pn, count }) => (
                 <option
@@ -1532,7 +1600,7 @@ export function PlanSegmentationModal({
                   style={{ background: "#0a2744" }}
                   disabled={selectedPartNumbers.includes(pn)}
                 >
-                  {pn} ({count} {count === 1 ? "dispositivo" : "dispositivos"}{selectedLabel ? ` en ${selectedLabel}` : ""})
+                  {pn} ({count} {count === 1 ? t("common.deviceSingular") : t("common.devicePlural")}{selectedLabel ? ` ${t("segmentation.inSegment", { label: selectedLabel })}` : ""})
                 </option>
               ))}
             </select>
@@ -1592,7 +1660,7 @@ export function PlanSegmentationModal({
                   );
                 })}
                 <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.72rem", fontWeight: 600 }}>
-                  {selectedPartNumbers.length}/{MAX_SELECTED_PART_NUMBERS} seleccionados
+                  {t("segmentation.selectedCount", { count: selectedPartNumbers.length, max: MAX_SELECTED_PART_NUMBERS })}
                 </span>
               </div>
             )}
@@ -1675,13 +1743,13 @@ export function PlanSegmentationModal({
                             lineHeight: 1.2,
                           }}
                         >
-                          Sin icono
+                          {t("common.noIcon")}
                         </span>
                       )}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.18rem", minWidth: 0 }}>
                       <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                        Referencia visual
+                        {t("segmentation.visualReference")}
                       </span>
                       <strong
                         style={{
@@ -1726,7 +1794,7 @@ export function PlanSegmentationModal({
                             wordBreak: "break-word",
                           }}
                         >
-                          Opciones conocidas: {item.iconOptions.join(" / ")}
+                          {t("segmentation.knownOptions", { options: item.iconOptions.join(" / ") })}
                         </span>
                       )}
                       {item.exactAvailability.length > 0 && (
@@ -1738,10 +1806,11 @@ export function PlanSegmentationModal({
                             wordBreak: "break-word",
                           }}
                         >
-                          ZIP activo:{" "}
-                          {item.exactAvailability
-                            .map((entry) => `${entry.label} ${entry.available ? "si" : "no"}`)
-                            .join(" / ")}
+                          {t("segmentation.activeZip", {
+                            values: item.exactAvailability
+                              .map((entry) => `${entry.label} ${entry.available ? t("segmentation.debugYes") : t("segmentation.debugNo")}`)
+                              .join(" / "),
+                          })}
                         </span>
                       )}
                       <span
@@ -1751,10 +1820,12 @@ export function PlanSegmentationModal({
                           lineHeight: 1.3,
                           wordBreak: "break-word",
                         }}
-                      >
-                        Match: {item.matchMode}
-                        {item.matchedIconCandidate ? ` · candidato ${item.matchedIconCandidate}` : ""}
-                        {item.preferredHadIconUrl ? " · record traia icono" : " · record sin icono"}
+                        >
+                        {t("segmentation.match", {
+                          candidate: item.matchedIconCandidate || undefined,
+                          hadRecordIcon: item.preferredHadIconUrl,
+                          mode: item.matchMode,
+                        })}
                       </span>
                       <span
                         style={{
@@ -1763,8 +1834,8 @@ export function PlanSegmentationModal({
                           lineHeight: 1.3,
                           wordBreak: "break-word",
                         }}
-                      >
-                        Fuente iconos: {iconSourceLabel}
+                        >
+                        {t("segmentation.sourceIcons", { source: iconSourceLabel })}
                       </span>
                     </div>
                   </div>
@@ -1806,15 +1877,15 @@ export function PlanSegmentationModal({
                     >
                       {plotted}
                     </span>
-                    {selectedLabel ? `en ${selectedLabel}` : "en el plano"}
+                    {selectedLabel ? t("segmentation.inSegment", { label: selectedLabel }) : t("segmentation.onPlan")}
                     {selectedPartNumbers.length > 1 && (
                       <span style={{ opacity: 0.8, fontSize: "0.75rem", fontWeight: 600 }}>
-                        · {selectedPartNumbers.length} part numbers
+                        · {t("segmentation.partNumbersSelected", { count: selectedPartNumbers.length })}
                       </span>
                     )}
                     {total > 0 && (
                       <span style={{ opacity: 0.6, fontSize: "0.75rem", fontWeight: 600 }}>
-                        / {total} total
+                        / {total} {t("common.total")}
                       </span>
                     )}
                   </span>
@@ -1836,15 +1907,15 @@ export function PlanSegmentationModal({
                         }}
                         className="badge-alert-pulse"
                       >
-                        ⚠ Sin switch:
+                        ⚠ {t("common.noSwitch")}:
                         {noSwitchDevices.map((pt) => (
                           <button
                             key={pt.key}
                             type="button"
                             title={
                               pt.canNavigate && pt.x !== null && pt.y !== null
-                                ? `Ir a ID ${pt.id} en el plano`
-                                : `ID ${pt.id}: sin coordenadas o marcador disponible`
+                                ? t("segmentation.goToId", { id: pt.id })
+                                : t("segmentation.noCoordsOrMarker", { id: pt.id })
                             }
                             disabled={!pt.canNavigate || pt.x === null || pt.y === null}
                             onClick={() => {
@@ -1894,7 +1965,7 @@ export function PlanSegmentationModal({
                         flexShrink: 0,
                       }}
                     >
-                      ✕ Sin posición:
+                      ✕ {t("common.noPosition")}:
                       {unpositionedDevices
                         .slice()
                         .sort((a, b) => a.id - b.id)
@@ -1904,8 +1975,8 @@ export function PlanSegmentationModal({
                             type="button"
                             title={
                               device.canNavigate && device.x !== null && device.y !== null
-                                ? `Ir a ID ${device.id} en el plano`
-                                : `ID ${device.id}: no se puede centrar porque no tiene coordenadas ni marcador en el plano`
+                                ? t("segmentation.goToId", { id: device.id })
+                                : t("segmentation.cannotCenter", { id: device.id })
                             }
                             disabled={!device.canNavigate || device.x === null || device.y === null}
                             onClick={() => {
@@ -1946,7 +2017,7 @@ export function PlanSegmentationModal({
                     style={{ flexShrink: 0, opacity: 0.7 }}
                     onClick={() => setSelectedPartNumbers([])}
                   >
-                    Limpiar
+                    {t("segmentation.clear")}
                   </button>
                 </>
               );

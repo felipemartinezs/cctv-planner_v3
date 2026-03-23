@@ -5,6 +5,7 @@ import { buildSwitchIdentity } from "../switch-segmentation";
 import type { PdfDataParseResult, PdfDataTemplate } from "./types";
 import { matchDeviceRule } from "../../config/device-rules";
 import { estimateNetworkCables } from "../../lib/cable-planning";
+import { contextualizeIconDeviceForInstallation, resolveInstallationSpec } from "../../lib/installation-rules";
 
 GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -320,6 +321,30 @@ function buildRecord(
   const resolvedPartNumber = partNumber || deviceRule?.inferredPartNumber || "";
   const category = categorizeRecord(resolvedPartNumber, deviceTaskType, resolvedName);
   const switchIdentity = buildSwitchIdentity(hub);
+  const area = extractArea(resolvedName);
+  const resolvedIconDevice = deviceRule?.inferredIconDevice || deviceTaskType || resolvedPartNumber;
+  const installationSpec = resolveInstallationSpec({
+    area,
+    category,
+    iconDevice: resolvedIconDevice,
+    name: resolvedName,
+    partNumber: resolvedPartNumber,
+  });
+  const contextualIconDevice = contextualizeIconDeviceForInstallation({
+    iconDevice: resolvedIconDevice,
+    installationSpec,
+    partNumber: resolvedPartNumber,
+  });
+  const finalInstallationSpec =
+    contextualIconDevice === resolvedIconDevice
+      ? installationSpec
+      : resolveInstallationSpec({
+          area,
+          category,
+          iconDevice: contextualIconDevice,
+          name: resolvedName,
+          partNumber: resolvedPartNumber,
+        });
 
   return {
     key: `id:${id}`,
@@ -334,11 +359,14 @@ function buildRecord(
     x: marker?.x ?? null,
     y: marker?.y ?? null,
     sourcePage: pageNumber,
-    iconDevice: deviceRule?.inferredIconDevice || deviceTaskType || resolvedPartNumber,
+    iconDevice: contextualIconDevice,
     deviceTaskType,
-    area: extractArea(resolvedName),
+    area,
     category,
     cables: estimateNetworkCables(resolvedName, resolvedPartNumber, category),
+    mountHeightFt: finalInstallationSpec.mountHeightFt,
+    mountHeightNeedsFieldValidation: finalInstallationSpec.mountHeightNeedsFieldValidation,
+    mountHeightRuleKey: finalInstallationSpec.mountHeightRuleKey,
     hasPosition: marker !== null,
     iconUrl: "",
     raw: {

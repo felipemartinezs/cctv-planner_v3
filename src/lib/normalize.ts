@@ -4,6 +4,7 @@ import { buildSwitchIdentity, switchDisplayLabel } from "../modules/switch-segme
 import { matchDeviceRule } from "../config/device-rules";
 import { estimateNetworkCables } from "./cable-planning";
 import { lookupIcon, normalizeIconKey } from "./icons";
+import { contextualizeIconDeviceForInstallation, resolveInstallationSpec } from "./installation-rules";
 import { getNamePatternKnowledge, resolveRecordVisualKnowledge } from "./visual-knowledge";
 
 const HEADER_ALIASES: Record<string, string[]> = {
@@ -241,6 +242,28 @@ export function normalizeRows(
     const resolvedIconDevice = iconDevice || deviceRule?.inferredIconDevice || "";
     const resolvedCategory = categorizeRecord(resolvedPartNumber, deviceTaskType, resolvedName);
     const area = extractArea(resolvedName);
+    const installationSpec = resolveInstallationSpec({
+      area,
+      category: resolvedCategory,
+      iconDevice: resolvedIconDevice,
+      name: resolvedName,
+      partNumber: resolvedPartNumber,
+    });
+    const contextualIconDevice = contextualizeIconDeviceForInstallation({
+      iconDevice: resolvedIconDevice,
+      installationSpec,
+      partNumber: resolvedPartNumber,
+    });
+    const finalInstallationSpec =
+      contextualIconDevice === resolvedIconDevice
+        ? installationSpec
+        : resolveInstallationSpec({
+            area,
+            category: resolvedCategory,
+            iconDevice: contextualIconDevice,
+            name: resolvedName,
+            partNumber: resolvedPartNumber,
+          });
     const baseRecord: DeviceRecord = {
       key,
       id,
@@ -254,11 +277,14 @@ export function normalizeRows(
       x: x ?? marker?.x ?? null,
       y: y ?? marker?.y ?? null,
       sourcePage,
-      iconDevice: resolvedIconDevice,
+      iconDevice: contextualIconDevice,
       deviceTaskType,
       area,
       category: resolvedCategory,
       cables: estimateNetworkCables(resolvedName, resolvedPartNumber, resolvedCategory),
+      mountHeightFt: finalInstallationSpec.mountHeightFt,
+      mountHeightNeedsFieldValidation: finalInstallationSpec.mountHeightNeedsFieldValidation,
+      mountHeightRuleKey: finalInstallationSpec.mountHeightRuleKey,
       hasPosition: (x ?? marker?.x ?? null) !== null && (y ?? marker?.y ?? null) !== null,
       iconUrl: "",
       raw: row
@@ -274,6 +300,30 @@ export function normalizeRows(
       existing.category === "unknown" ? resolvedCategory : existing.category;
     const nextName = mergeValue(existing.name, baseRecord.name);
     const nextPart = mergeValue(existing.partNumber, baseRecord.partNumber);
+    const nextIconDevice = mergeValue(existing.iconDevice, baseRecord.iconDevice);
+    const nextArea = existing.area === "SIN AREA" ? baseRecord.area : existing.area;
+    const nextInstallationSpec = resolveInstallationSpec({
+      area: nextArea,
+      category: nextCategory,
+      iconDevice: nextIconDevice,
+      name: nextName,
+      partNumber: nextPart,
+    });
+    const mergedContextualIconDevice = contextualizeIconDeviceForInstallation({
+      iconDevice: nextIconDevice,
+      installationSpec: nextInstallationSpec,
+      partNumber: nextPart,
+    });
+    const mergedInstallationSpec =
+      mergedContextualIconDevice === nextIconDevice
+        ? nextInstallationSpec
+        : resolveInstallationSpec({
+            area: nextArea,
+            category: nextCategory,
+            iconDevice: mergedContextualIconDevice,
+            name: nextName,
+            partNumber: nextPart,
+          });
 
     merged.set(key, {
       ...existing,
@@ -287,11 +337,14 @@ export function normalizeRows(
       x: mergeNumber(existing.x, baseRecord.x),
       y: mergeNumber(existing.y, baseRecord.y),
       sourcePage: mergeNumber(existing.sourcePage, baseRecord.sourcePage),
-      iconDevice: mergeValue(existing.iconDevice, baseRecord.iconDevice),
+      iconDevice: mergedContextualIconDevice,
       deviceTaskType: mergeValue(existing.deviceTaskType, baseRecord.deviceTaskType),
-      area: existing.area === "SIN AREA" ? baseRecord.area : existing.area,
+      area: nextArea,
       category: nextCategory,
       cables: estimateNetworkCables(nextName, nextPart, nextCategory),
+      mountHeightFt: mergedInstallationSpec.mountHeightFt,
+      mountHeightNeedsFieldValidation: mergedInstallationSpec.mountHeightNeedsFieldValidation,
+      mountHeightRuleKey: mergedInstallationSpec.mountHeightRuleKey,
       hasPosition:
         mergeNumber(existing.x, baseRecord.x) !== null &&
         mergeNumber(existing.y, baseRecord.y) !== null,
@@ -325,6 +378,28 @@ export function attachIcons(
     const nameKnowledge = getNamePatternKnowledge(record.name);
     const resolvedPartNumber = knowledge?.partNumber || record.partNumber;
     const resolvedIconDevice = knowledge?.iconDevice || record.iconDevice;
+    const installationSpec = resolveInstallationSpec({
+      area: record.area,
+      category: record.category,
+      iconDevice: resolvedIconDevice,
+      name: record.name,
+      partNumber: resolvedPartNumber,
+    });
+    const contextualIconDevice = contextualizeIconDeviceForInstallation({
+      iconDevice: resolvedIconDevice,
+      installationSpec,
+      partNumber: resolvedPartNumber,
+    });
+    const finalInstallationSpec =
+      contextualIconDevice === resolvedIconDevice
+        ? installationSpec
+        : resolveInstallationSpec({
+            area: record.area,
+            category: record.category,
+            iconDevice: contextualIconDevice,
+            name: record.name,
+            partNumber: resolvedPartNumber,
+          });
     const preferredAmbiguousIcon =
       !knowledge &&
       nameKnowledge &&
@@ -333,23 +408,26 @@ export function attachIcons(
         ? nameKnowledge.suggestedIconDevice
         : "";
     const iconUrl = knowledge
-      ? lookupExactIcon(iconMap, resolvedIconDevice) ||
+      ? lookupExactIcon(iconMap, contextualIconDevice) ||
         lookupExactIcon(iconMap, resolvedPartNumber) ||
-        lookupIcon(iconMap, resolvedIconDevice) ||
+        lookupIcon(iconMap, contextualIconDevice) ||
         lookupIcon(iconMap, resolvedPartNumber) ||
         lookupIcon(iconMap, record.deviceTaskType)
       : lookupExactIcon(iconMap, preferredAmbiguousIcon) ||
         lookupIcon(iconMap, preferredAmbiguousIcon) ||
-        lookupExactIcon(iconMap, resolvedIconDevice) ||
+        lookupExactIcon(iconMap, contextualIconDevice) ||
         lookupExactIcon(iconMap, resolvedPartNumber) ||
-        lookupIcon(iconMap, resolvedIconDevice) ||
+        lookupIcon(iconMap, contextualIconDevice) ||
         lookupIcon(iconMap, resolvedPartNumber) ||
         lookupIcon(iconMap, record.deviceTaskType);
 
     return {
       ...record,
       cables: estimateNetworkCables(record.name, resolvedPartNumber, record.category),
-      iconDevice: resolvedIconDevice,
+      iconDevice: contextualIconDevice,
+      mountHeightFt: finalInstallationSpec.mountHeightFt,
+      mountHeightNeedsFieldValidation: finalInstallationSpec.mountHeightNeedsFieldValidation,
+      mountHeightRuleKey: finalInstallationSpec.mountHeightRuleKey,
       partNumber: resolvedPartNumber,
       iconUrl
     };
