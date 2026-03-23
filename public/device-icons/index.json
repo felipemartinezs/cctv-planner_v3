@@ -62,7 +62,7 @@
     },
     {
       "alias": "Bosch NDS-5704-F360LE 12 Megapixel 360 Outdoor Panoramic Camera\r\n",
-      "path": "Camera Symbols/NDS/NDS-5704-F360LE Outdoor /NDS-5704-F360LE Outdoor.txt"
+      "path": "Camera Symbols/NDS/NDS-5704-F360LE Outdoor/NDS-5704-F360LE Outdoor.txt"
     },
     {
       "alias": "Bosch NDV-5704-AL 2 Megapixel INDOOR\r\nVerifocal Fixed Camera",
@@ -90,7 +90,7 @@
     },
     {
       "alias": "MCLV-BAXFA51 43  43\" LED Monitor Ceiling Mount",
-      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor /MCLV-BAXFA51 43 .txt"
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor/MCLV-BAXFA51 43 .txt"
     },
     {
       "alias": "43\" Ceiling Mount Monitor-Back to Back",
@@ -101,16 +101,16 @@
       "path": "Camera Symbols/PVM/PVM10-B-2086-WMT/PVM10-B-2086-WMT.txt"
     }
   ],
-  "generatedAt": "2026-03-23T20:25:00.118Z",
+  "generatedAt": "2026-03-23T21:16:00.175Z",
   "iconCount": 56,
   "icons": [
     {
-      "path": "Camera Symbols/3680 Tower /3680 Tower.png",
-      "url": "/device-icons/Camera%20Symbols/3680%20Tower%20/3680%20Tower.png"
+      "path": "Camera Symbols/3680 Tower/3680 Tower.png",
+      "url": "/device-icons/Camera%20Symbols/3680%20Tower/3680%20Tower.png"
     },
     {
-      "path": "Camera Symbols/3680 Tower /DVRPC.svg",
-      "url": "/device-icons/Camera%20Symbols/3680%20Tower%20/DVRPC.svg"
+      "path": "Camera Symbols/3680 Tower/DVRPC.svg",
+      "url": "/device-icons/Camera%20Symbols/3680%20Tower/DVRPC.svg"
     },
     {
       "path": "Camera Symbols/BNB/BNB-SCB-1KIT/BNB-SCB-1KIT.png",
@@ -249,12 +249,12 @@
       "url": "/device-icons/Camera%20Symbols/NDS/NDS-5704-F360%20INDOOR/NDS-5704-F360%20INDOOR.svg"
     },
     {
-      "path": "Camera Symbols/NDS/NDS-5704-F360LE Outdoor /NDS-5704-F360LE Outdoor.png",
-      "url": "/device-icons/Camera%20Symbols/NDS/NDS-5704-F360LE%20Outdoor%20/NDS-5704-F360LE%20Outdoor.png"
+      "path": "Camera Symbols/NDS/NDS-5704-F360LE Outdoor/NDS-5704-F360LE Outdoor.png",
+      "url": "/device-icons/Camera%20Symbols/NDS/NDS-5704-F360LE%20Outdoor/NDS-5704-F360LE%20Outdoor.png"
     },
     {
-      "path": "Camera Symbols/NDS/NDS-5704-F360LE Outdoor /NDS-5704-F360LE Outdoor.svg",
-      "url": "/device-icons/Camera%20Symbols/NDS/NDS-5704-F360LE%20Outdoor%20/NDS-5704-F360LE%20Outdoor.svg"
+      "path": "Camera Symbols/NDS/NDS-5704-F360LE Outdoor/NDS-5704-F360LE Outdoor.svg",
+      "url": "/device-icons/Camera%20Symbols/NDS/NDS-5704-F360LE%20Outdoor/NDS-5704-F360LE%20Outdoor.svg"
     },
     {
       "path": "Camera Symbols/NDV/NDV-5704-AL INDOOR/NDV-5704-AL INDOOR.png",
@@ -305,12 +305,12 @@
       "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2032%20WALL/32%20LED%20Monitor%20Wall%20Mount.svg"
     },
     {
-      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor /MCLV-BAXFA51 43 .png",
-      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2043%20LED%20Monitor%20/MCLV-BAXFA51%2043%20.png"
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor/MCLV-BAXFA51 43 .png",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2043%20LED%20Monitor/MCLV-BAXFA51%2043%20.png"
     },
     {
-      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor /MCLV-BAXFA51 43 .svg",
-      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2043%20LED%20Monitor%20/MCLV-BAXFA51%2043%20.svg"
+      "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor/MCLV-BAXFA51 43 .svg",
+      "url": "/device-icons/Camera%20Symbols/PVM/MCLV-BAXFA51%2043%20LED%20Monitor/MCLV-BAXFA51%2043%20.svg"
     },
     {
       "path": "Camera Symbols/PVM/MCLV-BAXFA51 43 LED Monitor 43 Back to Back/43 Ceiling Mount Monitor-Back to Back.png",
