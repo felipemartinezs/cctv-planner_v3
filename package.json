@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "start": "node server.mjs",
     "preview": "vite preview"
+  },
+  "engines": {
+    "node": "24.x.x"
   },
   "dependencies": {
     "jszip": "^3.10.1",

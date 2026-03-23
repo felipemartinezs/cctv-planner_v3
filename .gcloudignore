@@ -1,0 +1,9 @@
+.gcloudignore
+.git
+.gitignore
+node_modules
+dist
+tmp
+.analysis-venv
+.DS_Store
+*.log
