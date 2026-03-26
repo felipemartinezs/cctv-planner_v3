@@ -792,9 +792,9 @@ export function PlanSegmentationModal({
     const deviceScale = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
     const viewportWidth = typeof window !== "undefined" ? window.innerWidth || 0 : 0;
     const requestedWidth = clamp(
-      Math.round(Math.max(900, viewportWidth || 900) * deviceScale * 2.3),
+      Math.round(Math.max(900, viewportWidth || 900) * deviceScale * 3.5),
       1800,
-      2600
+      3840
     );
 
     if (plan.previewWidth >= requestedWidth - 64) {
@@ -803,7 +803,7 @@ export function PlanSegmentationModal({
 
     let live = true;
     renderPlanPreview(plan.blobUrl, plan.width, {
-      maxWidth: 2600,
+      maxWidth: 3840,
       minWidth: 1800,
       preferLossless: true,
       targetWidth: requestedWidth,
@@ -1051,8 +1051,8 @@ export function PlanSegmentationModal({
       const seg = segmentation;
       const W = canvas.width;
       const H = canvas.height;
-      const R = 11 * RENDER_SCALE;
-      const FONT_SIZE = 10 * RENDER_SCALE;
+      const R = 7 * RENDER_SCALE;
+      const FONT_SIZE = 8 * RENDER_SCALE;
 
       // Grupo 1: dispositivos con switch asignado — círculo azul sólido
       ctx.setLineDash([]);
