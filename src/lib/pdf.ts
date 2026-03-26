@@ -234,7 +234,7 @@ async function renderPlanPreviewFromPage(page: PDFPageProxy, baseWidth: number) 
     typeof navigator !== "undefined" &&
     /iPad|iPhone|iPod/i.test(navigator.userAgent);
   const compactPreview = isCoarsePointer || isLikelyIOS;
-  const targetWidth = compactPreview ? 1280 : 1800;
+  const targetWidth = compactPreview ? 2000 : 1800;
   const previewScale = Math.min(
     compactPreview ? 1.25 : 2,
     Math.max(compactPreview ? 0.75 : 1.1, targetWidth / Math.max(baseWidth, 1))
@@ -249,17 +249,13 @@ async function renderPlanPreviewFromPage(page: PDFPageProxy, baseWidth: number) 
   canvas.width = Math.round(viewport.width);
   canvas.height = Math.round(viewport.height);
   context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = compactPreview ? "medium" : "high";
+  context.imageSmoothingQuality = "high";
   await page.render({ canvas, canvasContext: context, viewport }).promise;
 
   let previewUrl = "";
   if (typeof canvas.toBlob === "function") {
     const previewBlob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(
-        resolve,
-        compactPreview ? "image/jpeg" : "image/png",
-        compactPreview ? 0.86 : undefined
-      )
+      canvas.toBlob(resolve, "image/png")
     );
     if (previewBlob) {
       previewUrl = URL.createObjectURL(previewBlob);
@@ -267,7 +263,7 @@ async function renderPlanPreviewFromPage(page: PDFPageProxy, baseWidth: number) 
   }
 
   if (!previewUrl) {
-    previewUrl = canvas.toDataURL(compactPreview ? "image/jpeg" : "image/png", compactPreview ? 0.86 : undefined);
+    previewUrl = canvas.toDataURL("image/png");
   }
 
   return {

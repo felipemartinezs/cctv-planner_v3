@@ -784,7 +784,7 @@ export function PlanSegmentationModal({
   }, [open, selectedPartVisuals]);
 
   useEffect(() => {
-    if (!open || !plan || !isMobileViewport) {
+    if (!open || !plan) {
       return;
     }
 
@@ -826,7 +826,45 @@ export function PlanSegmentationModal({
     return () => {
       live = false;
     };
-  }, [isMobileViewport, open, plan]);
+  }, [open, plan]);
+
+  // Zoom-responsive upgrade: when user zooms in past the point where the
+  // current planRaster isn’t dense enough, re-render at a higher resolution.
+  useEffect(() => {
+    if (!open || !plan || !planRaster) {
+      return;
+    }
+    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const neededWidth = Math.ceil(plan.width * xform.s * dpr);
+    const targetWidth = Math.min(Math.ceil(neededWidth * 1.25), 5000);
+
+    // Only upgrade beyond the base 3840px render, and only when current is insufficient
+    if (targetWidth <= 3840 || planRaster.width >= targetWidth - 200) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      renderPlanPreview(plan.blobUrl, plan.width, {
+        maxWidth: 5000,
+        minWidth: 3840,
+        preferLossless: true,
+        targetWidth,
+      })
+        .then((rendered) => {
+          setPlanRaster((current) => {
+            if (current && current.url !== rendered.url) {
+              revokePlanRaster(current);
+            }
+            return rendered;
+          });
+        })
+        .catch((error) => {
+          console.warn("[segmentation] zoom upgrade failed:", error);
+        });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [open, plan, planRaster, xform.s]);
 
   useEffect(() => {
     if (!open || !plan) {
