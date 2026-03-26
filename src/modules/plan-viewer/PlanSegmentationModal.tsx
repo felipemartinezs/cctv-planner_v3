@@ -1,14 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  TransformComponent,
+  TransformWrapper,
+  type ReactZoomPanPinchContentRef,
+} from "react-zoom-pan-pinch";
 import { useI18n } from "../../i18n";
 import type { DeviceRecord, PlanData } from "../../types";
 import { lookupIcon, normalizeIconKey } from "../../lib/icons";
 import { getNamePatternKnowledge, getPartNumberKnowledge } from "../../lib/visual-knowledge";
 import type { PlanSegmentation } from "../plan-segmentation";
+import { renderPlanPreview, type RenderedPlanPreview } from "./render-page-preview";
 
 const RENDER_SCALE = 2;
 const MAX_SELECTED_PART_NUMBERS = 2;
 const PART_MARKER_COLOR = "rgba(20, 58, 110, 0.88)";
 const PART_MARKER_PULSE_MS = 1550;
+const INTERACTIVE_MIN_SCALE = 0.18;
+const MOBILE_MIN_SCALE_RATIO = 0.9;
+const DESKTOP_MIN_SCALE_RATIO = 0.72;
+const MIN_PINCH_DISTANCE = 24;
 const PTZ_PART_NUMBER = "CIP-QNP6250H";
 const PTZ_OUTDOOR_RULE_KEY = "install.height.ptzOutdoor";
 const PTZ_CEILING_ICON = "CIP-QNP6250H Ceiling";
@@ -81,8 +91,26 @@ interface DevicePreviewState {
   y: number;
 }
 
+interface PlanRasterState extends RenderedPlanPreview {}
+
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
+}
+
+function buildBasePlanRaster(plan: PlanData): PlanRasterState {
+  return {
+    height: plan.previewHeight,
+    revokeUrl: false,
+    url: plan.previewUrl,
+    width: plan.previewWidth,
+  };
+}
+
+function revokePlanRaster(raster: PlanRasterState | null) {
+  if (!raster?.revokeUrl) {
+    return;
+  }
+  URL.revokeObjectURL(raster.url);
 }
 
 function isPtzCeilingIcon(value: string) {
@@ -319,6 +347,7 @@ export function PlanSegmentationModal({
 }: PlanSegmentationModalProps) {
   const { t } = useI18n();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const transformRef = useRef<ReactZoomPanPinchContentRef | null>(null);
   const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const partNumCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -329,6 +358,11 @@ export function PlanSegmentationModal({
   const [isMobileViewport, setIsMobileViewport] = useState(() => detectCompactViewport());
   const [controlsExpanded, setControlsExpanded] = useState(() => !detectCompactViewport());
   const [devicePreview, setDevicePreview] = useState<DevicePreviewState | null>(null);
+  const [planRaster, setPlanRaster] = useState<PlanRasterState | null>(
+    () => (plan ? buildBasePlanRaster(plan) : null)
+  );
+  const [isTransformReady, setIsTransformReady] = useState(false);
+  const [isTransformInteracting, setIsTransformInteracting] = useState(false);
   const dragging = useRef(false);
   const xformRef = useRef<Xform>({ x: 0, y: 0, s: 1 });
   const pendingXformRef = useRef<Xform | null>(null);
@@ -344,7 +378,9 @@ export function PlanSegmentationModal({
     startTouchY: 0,
     startXform: { x: 0, y: 0, s: 1 },
   });
+  const planRasterRef = useRef<PlanRasterState | null>(plan ? buildBasePlanRaster(plan) : null);
   const pointerMovedRef = useRef(false);
+  const suppressInspectUntilRef = useRef(0);
   const [navigating, setNavigating] = useState(false);
 
   function commitXform(next: Xform) {
@@ -372,6 +408,18 @@ export function PlanSegmentationModal({
   function matchesSelectedSegment(segmentLabel: string) {
     return !selectedLabel || segmentLabel === selectedLabel;
   }
+
+  function markTransformInteraction() {
+    suppressInspectUntilRef.current = Date.now() + 180;
+  }
+
+  function applyTransform(next: Xform, animationTime = 0) {
+    xformRef.current = next;
+    setXform(next);
+    transformRef.current?.setTransform(next.x, next.y, next.s, animationTime, "easeOutCubic");
+  }
+
+  const canInteractWithPlan = pdfReady && isTransformReady;
 
   // Part numbers disponibles filtrados por segmento activo, ordenados por cantidad.
   // Siempre incluye también los part numbers flotantes para que se puedan revisar
@@ -649,8 +697,50 @@ export function PlanSegmentationModal({
   useEffect(() => {
     if (!open) {
       setDevicePreview(null);
+      setIsTransformInteracting(false);
+      setIsTransformReady(false);
     }
   }, [open]);
+
+  useEffect(() => {
+    setIsTransformReady(false);
+    setIsTransformInteracting(false);
+    setDevicePreview(null);
+    commitXform({ x: 0, y: 0, s: 1 });
+  }, [plan?.blobUrl]);
+
+  useEffect(() => {
+    planRasterRef.current = planRaster;
+  }, [planRaster]);
+
+  useEffect(() => {
+    return () => {
+      revokePlanRaster(planRasterRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    setPlanRaster((current) => {
+      const next = plan ? buildBasePlanRaster(plan) : null;
+      if (current && current.url !== next?.url) {
+        revokePlanRaster(current);
+      }
+      return next;
+    });
+  }, [plan]);
+
+  useEffect(() => {
+    if (open || !plan) {
+      return;
+    }
+    setPlanRaster((current) => {
+      const next = buildBasePlanRaster(plan);
+      if (current && current.url !== next.url) {
+        revokePlanRaster(current);
+      }
+      return next;
+    });
+  }, [open, plan]);
 
   useEffect(() => {
     xformRef.current = xform;
@@ -694,13 +784,65 @@ export function PlanSegmentationModal({
     );
   }, [open, selectedPartVisuals]);
 
-  // Render PDF to canvas at RENDER_SCALE resolution
+  useEffect(() => {
+    if (!open || !plan || !isMobileViewport) {
+      return;
+    }
+
+    const deviceScale = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const viewportWidth = typeof window !== "undefined" ? window.innerWidth || 0 : 0;
+    const requestedWidth = clamp(
+      Math.round(Math.max(900, viewportWidth || 900) * deviceScale * 2.3),
+      1800,
+      2600
+    );
+
+    if (plan.previewWidth >= requestedWidth - 64) {
+      return;
+    }
+
+    let live = true;
+    renderPlanPreview(plan.blobUrl, plan.width, {
+      maxWidth: 2600,
+      minWidth: 1800,
+      preferLossless: true,
+      targetWidth: requestedWidth,
+    })
+      .then((rendered) => {
+        if (!live) {
+          revokePlanRaster(rendered);
+          return;
+        }
+        setPlanRaster((current) => {
+          if (current && current.url !== rendered.url) {
+            revokePlanRaster(current);
+          }
+          return rendered;
+        });
+      })
+      .catch((error) => {
+        console.warn("[segmentation] No pude generar la vista nitida del plano:", error);
+      });
+
+    return () => {
+      live = false;
+    };
+  }, [isMobileViewport, open, plan]);
+
+  useEffect(() => {
+    if (!open || !plan) {
+      setPdfReady(false);
+      return;
+    }
+    setPdfReady(false);
+  }, [open, plan]);
+
+  // Render PDF to canvas at the current preview resolution.
   useEffect(() => {
     let live = true;
-    setPdfReady(false);
 
     async function render() {
-      if (!open || !plan || !pdfCanvasRef.current) {
+      if (!open || !planRaster || !pdfCanvasRef.current) {
         return;
       }
       const canvas = pdfCanvasRef.current;
@@ -713,8 +855,10 @@ export function PlanSegmentationModal({
         if (!live) {
           return;
         }
-        canvas.width = Math.max(1, plan.previewWidth);
-        canvas.height = Math.max(1, plan.previewHeight);
+        canvas.width = Math.max(1, planRaster.width);
+        canvas.height = Math.max(1, planRaster.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
         setPdfReady(true);
@@ -724,14 +868,61 @@ export function PlanSegmentationModal({
           setPdfReady(false);
         }
       };
-      image.src = plan.previewUrl;
+      image.src = planRaster.url;
     }
 
     render();
     return () => {
       live = false;
     };
-  }, [open, plan]);
+  }, [open, planRaster]);
+
+  const getFitScale = useCallback(() => {
+    if (!viewportRef.current || !plan) {
+      return 1;
+    }
+    const vw = viewportRef.current.clientWidth;
+    const vh = viewportRef.current.clientHeight;
+    return Math.min(vw / plan.width, vh / plan.height) * 0.97;
+  }, [plan]);
+
+  const getMinScale = useCallback(() => {
+    const fitScale = getFitScale();
+    const ratio = isMobileViewport ? MOBILE_MIN_SCALE_RATIO : DESKTOP_MIN_SCALE_RATIO;
+    return Math.max(INTERACTIVE_MIN_SCALE, fitScale * ratio);
+  }, [getFitScale, isMobileViewport]);
+
+  const getMaxScale = useCallback(() => (isMobileViewport ? 8 : 20), [isMobileViewport]);
+
+  const currentMinScale = useMemo(() => getMinScale(), [getMinScale]);
+  const currentMaxScale = useMemo(() => getMaxScale(), [getMaxScale]);
+
+  const stepZoom = useCallback((factor: number) => {
+    if (!canInteractWithPlan) {
+      return;
+    }
+    const viewport = viewportRef.current;
+    if (!viewport) {
+      return;
+    }
+    const prev = xformRef.current;
+    const minScale = getMinScale();
+    const maxScale = getMaxScale();
+    const nextScale = clamp(prev.s * factor, minScale, maxScale);
+    if (Math.abs(nextScale - prev.s) < 0.001) {
+      return;
+    }
+    const centerX = viewport.clientWidth / 2;
+    const centerY = viewport.clientHeight / 2;
+    const stageX = (centerX - prev.x) / prev.s;
+    const stageY = (centerY - prev.y) / prev.s;
+    markTransformInteraction();
+    applyTransform({
+      s: nextScale,
+      x: centerX - stageX * nextScale,
+      y: centerY - stageY * nextScale,
+    });
+  }, [canInteractWithPlan, getMaxScale, getMinScale]);
 
   // Fit the whole plan inside the viewport
   const fitToViewport = useCallback(() => {
@@ -740,19 +931,19 @@ export function PlanSegmentationModal({
     }
     const vw = viewportRef.current.clientWidth;
     const vh = viewportRef.current.clientHeight;
-    const s = Math.min(vw / plan.width, vh / plan.height) * 0.97;
-    commitXform({
+    const s = getFitScale();
+    applyTransform({
       s,
       x: (vw - plan.width * s) / 2,
       y: (vh - plan.height * s) / 2,
     });
-  }, [plan]);
+  }, [getFitScale, plan]);
 
   useEffect(() => {
-    if (pdfReady) {
+    if (pdfReady && isTransformReady) {
       fitToViewport();
     }
-  }, [pdfReady, fitToViewport]);
+  }, [fitToViewport, isTransformReady, pdfReady]);
 
   // Draw segmentation overlay at the same pixel dimensions as the PDF canvas
   useEffect(() => {
@@ -832,7 +1023,7 @@ export function PlanSegmentationModal({
       }
     }
 
-  }, [pdfReady, segmentation, selectedLabel]);
+  }, [pdfReady, planRaster?.height, planRaster?.width, segmentation, selectedLabel]);
 
   // Dibujar capa de part numbers — círculos por dispositivo
   useEffect(() => {
@@ -957,32 +1148,17 @@ export function PlanSegmentationModal({
         cancelAnimationFrame(frameId);
       }
     };
-  }, [devicePreview, isMobileViewport, pdfReady, segmentation, selectedLabel, selectedPartNumberSet, selectedPartNumbers]);
-
-  // Wheel zoom toward cursor
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport || !open) {
-      return;
-    }
-  function onWheel(e: WheelEvent) {
-      e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-      const maxScale = isMobileViewport ? 8 : 20;
-      const rect = viewport!.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      scheduleXform((() => {
-        const prev = xformRef.current;
-        const newS = clamp(prev.s * factor, 0.05, maxScale);
-        const stX = (mx - prev.x) / prev.s;
-        const stY = (my - prev.y) / prev.s;
-        return { s: newS, x: mx - stX * newS, y: my - stY * newS };
-      })());
-    }
-    viewport.addEventListener("wheel", onWheel, { passive: false });
-    return () => viewport.removeEventListener("wheel", onWheel);
-  }, [isMobileViewport, open]);
+  }, [
+    devicePreview,
+    isMobileViewport,
+    pdfReady,
+    planRaster?.height,
+    planRaster?.width,
+    segmentation,
+    selectedLabel,
+    selectedPartNumberSet,
+    selectedPartNumbers
+  ]);
 
   // Sync selectedLabel y selectedPartNumber cuando cambia la segmentación
   useEffect(() => {
@@ -1009,11 +1185,11 @@ export function PlanSegmentationModal({
     const vw = viewport.clientWidth;
     const vh = viewport.clientHeight;
     setNavigating(true);
-    commitXform({
+    applyTransform({
       s: TARGET_SCALE,
       x: vw / 2 - stageX * TARGET_SCALE,
       y: vh / 2 - stageY * TARGET_SCALE,
-    });
+    }, 280);
     setTimeout(() => setNavigating(false), 550);
   }
 
@@ -1085,6 +1261,7 @@ export function PlanSegmentationModal({
 
   function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
     if (e.touches.length === 1) {
+      e.preventDefault();
       const touchPoint = getTouchPoint(e.touches[0]);
       gestureRef.current = {
         mode: "pan",
@@ -1100,11 +1277,12 @@ export function PlanSegmentationModal({
     }
 
     if (e.touches.length >= 2) {
+      e.preventDefault();
       const [touchA, touchB] = [e.touches[0], e.touches[1]];
       const midpoint = midpointBetweenTouches(touchA, touchB);
       gestureRef.current = {
         mode: "pinch",
-        startDistance: distanceBetweenTouches(touchA, touchB),
+        startDistance: Math.max(distanceBetweenTouches(touchA, touchB), MIN_PINCH_DISTANCE),
         startMidpointX: midpoint.x,
         startMidpointY: midpoint.y,
         startTouchX: midpoint.x,
@@ -1140,15 +1318,19 @@ export function PlanSegmentationModal({
       e.preventDefault();
       const [touchA, touchB] = [e.touches[0], e.touches[1]];
       const distance = distanceBetweenTouches(touchA, touchB);
+      if (!Number.isFinite(distance) || distance < 1) {
+        return;
+      }
       const midpoint = midpointBetweenTouches(touchA, touchB);
       const start = gestureRef.current;
-      const maxScale = isMobileViewport ? 8 : 20;
+      const maxScale = getMaxScale();
+      const minScale = getMinScale();
       if (Math.abs(distance - start.startDistance) > 4) {
         gestureRef.current.moved = true;
       }
       const newS = clamp(
-        start.startXform.s * (distance / Math.max(start.startDistance, 1)),
-        0.05,
+        start.startXform.s * (distance / Math.max(start.startDistance, MIN_PINCH_DISTANCE)),
+        minScale,
         maxScale
       );
       const stageX = (start.startMidpointX - start.startXform.x) / start.startXform.s;
@@ -1239,6 +1421,9 @@ export function PlanSegmentationModal({
   }
 
   function inspectDeviceAtClientPoint(clientX: number, clientY: number) {
+    if (Date.now() < suppressInspectUntilRef.current) {
+      return;
+    }
     const rect = viewportRef.current?.getBoundingClientRect();
     if (!rect) {
       return;
@@ -1339,17 +1524,7 @@ export function PlanSegmentationModal({
             overflow: "hidden",
             position: "relative",
             padding: 0,
-            cursor: dragging.current ? "grabbing" : "grab",
-            touchAction: "none",
           }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={resetPointerDrag}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchEnd}
         >
           {!pdfReady && (
             <div
@@ -1369,7 +1544,30 @@ export function PlanSegmentationModal({
 
           {isMobileViewport && (
             <div className="segmentation-modal__floating-tools">
-              <button type="button" className="secondary-action" onClick={fitToViewport}>
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={() => stepZoom(1 / 1.35)}
+                aria-label={t("common.zoomOut")}
+                disabled={!canInteractWithPlan}
+              >
+                -
+              </button>
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={() => stepZoom(1.35)}
+                aria-label={t("common.zoomIn")}
+                disabled={!canInteractWithPlan}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={fitToViewport}
+                disabled={!canInteractWithPlan}
+              >
                 {t("segmentation.fit")}
               </button>
               {segmentation && (
@@ -1384,46 +1582,101 @@ export function PlanSegmentationModal({
             </div>
           )}
 
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: plan.width,
-              height: plan.height,
-              transform: `translate(${xform.x}px, ${xform.y}px) scale(${xform.s})`,
-              transformOrigin: "0 0",
-              willChange: "transform",
-              transition: navigating ? "transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)" : undefined,
+          <TransformWrapper
+            ref={transformRef}
+            minScale={currentMinScale}
+            maxScale={currentMaxScale}
+            limitToBounds={false}
+            centerZoomedOut
+            smooth={false}
+            alignmentAnimation={{ disabled: true }}
+            velocityAnimation={{ disabled: true }}
+            pinch={{ disabled: isMobileViewport, step: 0.9 }}
+            wheel={{ disabled: false, step: 0.14, touchPadDisabled: false }}
+            doubleClick={{ disabled: true }}
+            panning={{
+              disabled: !canInteractWithPlan,
+              velocityDisabled: true,
+              allowLeftClickPan: !isMobileViewport,
+              allowMiddleClickPan: false,
+              allowRightClickPan: false,
+            }}
+            onInit={() => setIsTransformReady(true)}
+            onPanningStart={() => setIsTransformInteracting(true)}
+            onPanning={() => markTransformInteraction()}
+            onPanningStop={() => setIsTransformInteracting(false)}
+            onPinchingStart={() => {
+              setIsTransformInteracting(true);
+              markTransformInteraction();
+            }}
+            onPinching={() => markTransformInteraction()}
+            onPinchingStop={() => setIsTransformInteracting(false)}
+            onZoom={() => markTransformInteraction()}
+            onTransformed={(_, state) => {
+              const next = {
+                s: state.scale,
+                x: state.positionX,
+                y: state.positionY,
+              };
+              xformRef.current = next;
+              setXform(next);
             }}
           >
-            <canvas
-              ref={pdfCanvasRef}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-            />
-            <canvas
-              ref={overlayCanvasRef}
-              style={{
-                position: "absolute",
-                inset: 0,
+            <TransformComponent
+              wrapperStyle={{
                 width: "100%",
                 height: "100%",
-                display: "block",
-                pointerEvents: "none",
+                touchAction: "none",
+                cursor: isMobileViewport ? "default" : isTransformInteracting ? "grabbing" : "grab",
               }}
-            />
-            <canvas
-              ref={partNumCanvasRef}
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                display: "block",
-              pointerEvents: "none",
-            }}
-          />
-        </div>
+              contentStyle={{
+                width: `${plan.width}px`,
+                height: `${plan.height}px`,
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  width: plan.width,
+                  height: plan.height,
+                  willChange: navigating ? "transform" : undefined,
+                }}
+                onClick={(e) => {
+                  if (!canInteractWithPlan) {
+                    return;
+                  }
+                  inspectDeviceAtClientPoint(e.clientX, e.clientY);
+                }}
+              >
+                <canvas
+                  ref={pdfCanvasRef}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
+                />
+                <canvas
+                  ref={overlayCanvasRef}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    display: "block",
+                    pointerEvents: "none",
+                  }}
+                />
+                <canvas
+                  ref={partNumCanvasRef}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    display: "block",
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
+            </TransformComponent>
+          </TransformWrapper>
 
           {devicePreview && (
             <div
