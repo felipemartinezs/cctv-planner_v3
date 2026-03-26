@@ -118,7 +118,8 @@ function groupDevicesByPartNumber(devices: FloatingSegmentationDevice[]) {
     grouped[device.partNumber].push(device);
   });
 
-  Object.values(grouped).forEach((entries) => {
+  Object.keys(grouped).forEach((partNumber) => {
+    const entries = grouped[partNumber];
     entries.sort((left, right) => left.id - right.id);
   });
 

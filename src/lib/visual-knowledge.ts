@@ -61,7 +61,7 @@ export function normalizeKnowledgeNamePattern(value: string): string {
   const normalized = value
     .toUpperCase()
     .replace(/\u00a0/g, " ")
-    .replaceAll("/", " ")
+    .replace(/\//g, " ")
     .replace(/[_\s]+/g, " ")
     .trim();
 

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import legacy from "@vitejs/plugin-legacy";
 import { VitePWA } from "vite-plugin-pwa";
 
 function posixRelative(from: string, to: string): string {
@@ -101,6 +102,20 @@ export default defineConfig({
   },
   plugins: [
     deviceIconManifestPlugin(),
+    legacy({
+      targets: ["defaults", "iOS >= 12", "Safari >= 12"],
+      modernPolyfills: [
+        "es.array.at",
+        "es.array.flat",
+        "es.array.flat-map",
+        "es.array.find-last",
+        "es.array.find-last-index",
+        "es.string.replace-all",
+        "es.object.from-entries",
+        "es.promise.finally",
+        "web.structured-clone",
+      ],
+    }),
     react(),
     VitePWA({
       registerType: "autoUpdate",

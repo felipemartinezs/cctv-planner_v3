@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import type { IconAsset } from "../types";
+import { readFileAsArrayBuffer, readFileAsText } from "./file-io";
 
 export function normalizeIconKey(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -319,11 +320,10 @@ async function fileToDataUrl(file: File): Promise<string> {
 }
 
 export async function loadIconsFromZip(file: File): Promise<Map<string, string>> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const entries = Object.values(zip.files).filter((entry) => !entry.dir && isSupportedIconPath(entry.name));
-  const aliasEntries = Object.values(zip.files).filter(
-    (entry) => !entry.dir && isSupportedAliasPath(entry.name)
-  );
+  const zip = await JSZip.loadAsync(await readFileAsArrayBuffer(file));
+  const zipEntries = Object.keys(zip.files).map((key) => zip.files[key]);
+  const entries = zipEntries.filter((entry) => !entry.dir && isSupportedIconPath(entry.name));
+  const aliasEntries = zipEntries.filter((entry) => !entry.dir && isSupportedAliasPath(entry.name));
   const inputs = await Promise.all(
     entries.map(async (entry) => {
       const base64 = await entry.async("base64");
@@ -372,7 +372,7 @@ export async function loadIconsFromDirectory(
       }
 
       return {
-        alias: await file.text(),
+        alias: await readFileAsText(file),
         path: relativePath,
       };
     })

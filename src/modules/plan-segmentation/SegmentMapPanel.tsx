@@ -1,12 +1,6 @@
-import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
 import { useEffect, useRef, useState } from "react";
 import type { PlanData } from "../../types";
 import type { PlanSegmentation } from "./types";
-
-GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
 
 interface SegmentMapPanelProps {
   plan: PlanData | null;
@@ -38,48 +32,29 @@ export function SegmentMapPanel({ plan, segmentation }: SegmentMapPanelProps) {
   }, [segmentation]);
 
   useEffect(() => {
-    let isActive = true;
-
-    async function renderPreview() {
-      if (!plan?.blobUrl) {
-        setBackgroundUrl("");
-        return;
-      }
-
-      const pdf = await getDocument(plan.blobUrl).promise;
-      const page = await pdf.getPage(1);
-      const targetWidth = Math.min(1400, Math.round(plan.width));
-      const scale = targetWidth / plan.width;
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-
-      if (!context) {
-        return;
-      }
-
-      canvas.width = Math.round(viewport.width);
-      canvas.height = Math.round(viewport.height);
-
-      await page.render({
-        canvas,
-        canvasContext: context,
-        viewport
-      }).promise;
-
-      if (isActive) {
-        setBackgroundUrl(canvas.toDataURL("image/png"));
-      }
-
-      await pdf.destroy();
+    if (!plan?.previewUrl) {
+      setBackgroundUrl("");
+      return;
     }
 
-    renderPreview();
+    let isActive = true;
+    const image = new Image();
+    image.onload = () => {
+      if (isActive) {
+        setBackgroundUrl(plan.previewUrl);
+      }
+    };
+    image.onerror = () => {
+      if (isActive) {
+        setBackgroundUrl("");
+      }
+    };
+    image.src = plan.previewUrl;
 
     return () => {
       isActive = false;
     };
-  }, [plan?.blobUrl, plan?.width]);
+  }, [plan?.previewUrl]);
 
   useEffect(() => {
     if (!segmentation || !stageRef.current || !canvasRef.current) {

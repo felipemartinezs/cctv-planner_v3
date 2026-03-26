@@ -17,6 +17,9 @@ export interface PlanData {
   width: number;
   height: number;
   blobUrl: string;
+  previewUrl: string;
+  previewWidth: number;
+  previewHeight: number;
   viewerUrl: string;
   markers: Map<number, PlanMarker>;
   pageCount: number;

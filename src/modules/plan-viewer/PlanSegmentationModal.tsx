@@ -1,15 +1,9 @@
-import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../i18n";
 import type { DeviceRecord, PlanData } from "../../types";
 import { lookupIcon, normalizeIconKey } from "../../lib/icons";
 import { getNamePatternKnowledge, getPartNumberKnowledge } from "../../lib/visual-knowledge";
 import type { PlanSegmentation } from "../plan-segmentation";
-
-GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
 
 const RENDER_SCALE = 2;
 const MAX_SELECTED_PART_NUMBERS = 2;
@@ -135,6 +129,32 @@ function formatVisualChoiceLabel(value: string) {
   return value;
 }
 
+function flattenRecordGroups<T>(groups: Record<string, T[]>): T[] {
+  const flattened: T[] = [];
+  Object.keys(groups).forEach((key) => {
+    const entries = groups[key] ?? [];
+    entries.forEach((entry) => flattened.push(entry));
+  });
+  return flattened;
+}
+
+function collectGroupedEntries<T>(keys: string[], groups: Record<string, T[]>): T[] {
+  const collected: T[] = [];
+  keys.forEach((key) => {
+    const entries = groups[key] ?? [];
+    entries.forEach((entry) => collected.push(entry));
+  });
+  return collected;
+}
+
+function groupedEntryCount<T>(groups: Record<string, T[]>): number {
+  let total = 0;
+  Object.keys(groups).forEach((key) => {
+    total += (groups[key] ?? []).length;
+  });
+  return total;
+}
+
 function getVisualAmbiguityHint(
   partNumber: string,
   visualChoices: VisualChoice[],
@@ -249,6 +269,17 @@ function colorFor(index: number, alpha: number): string {
   return `hsla(${hue} 72% 48% / ${alpha})`;
 }
 
+function detectCompactViewport() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const lowSpace = window.innerWidth <= 720 || window.innerHeight <= 520;
+  const coarsePointer =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches;
+  return lowSpace || coarsePointer;
+}
+
 function drawMarkerPulse(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -295,18 +326,13 @@ export function PlanSegmentationModal({
   const [xform, setXform] = useState<Xform>({ x: 0, y: 0, s: 1 });
   const [selectedLabel, setSelectedLabel] = useState("");
   const [selectedPartNumbers, setSelectedPartNumbers] = useState<string[]>([]);
-  const [isMobileViewport, setIsMobileViewport] = useState(() =>
-    typeof window !== "undefined"
-      ? window.innerWidth <= 720 || window.innerHeight <= 520
-      : false
-  );
-  const [controlsExpanded, setControlsExpanded] = useState(() =>
-    typeof window !== "undefined"
-      ? !(window.innerWidth <= 720 || window.innerHeight <= 520)
-      : true
-  );
+  const [isMobileViewport, setIsMobileViewport] = useState(() => detectCompactViewport());
+  const [controlsExpanded, setControlsExpanded] = useState(() => !detectCompactViewport());
   const [devicePreview, setDevicePreview] = useState<DevicePreviewState | null>(null);
   const dragging = useRef(false);
+  const xformRef = useRef<Xform>({ x: 0, y: 0, s: 1 });
+  const pendingXformRef = useRef<Xform | null>(null);
+  const xformFrameRef = useRef(0);
   const dragOrigin = useRef({ mx: 0, my: 0, tx: 0, ty: 0 });
   const gestureRef = useRef<GestureState>({
     moved: false,
@@ -320,6 +346,28 @@ export function PlanSegmentationModal({
   });
   const pointerMovedRef = useRef(false);
   const [navigating, setNavigating] = useState(false);
+
+  function commitXform(next: Xform) {
+    xformRef.current = next;
+    setXform(next);
+  }
+
+  function scheduleXform(next: Xform) {
+    xformRef.current = next;
+    pendingXformRef.current = next;
+    if (xformFrameRef.current) {
+      return;
+    }
+    xformFrameRef.current = requestAnimationFrame(() => {
+      xformFrameRef.current = 0;
+      const pending = pendingXformRef.current;
+      if (!pending) {
+        return;
+      }
+      pendingXformRef.current = null;
+      setXform(pending);
+    });
+  }
 
   function matchesSelectedSegment(segmentLabel: string) {
     return !selectedLabel || segmentLabel === selectedLabel;
@@ -343,13 +391,11 @@ export function PlanSegmentationModal({
       .filter((point) => matchesSelectedSegment(point.segmentLabel))
       .forEach((point) => bump(point.partNumber));
 
-    Object.values(segmentation.partNumberNoSwitch)
-      .flat()
+    flattenRecordGroups(segmentation.partNumberNoSwitch)
       .filter((device) => matchesSelectedSegment(device.segmentLabel))
       .forEach((device) => bump(device.partNumber));
 
-    Object.values(segmentation.partNumberUnpositioned)
-      .flat()
+    flattenRecordGroups(segmentation.partNumberUnpositioned)
       .filter((device) => matchesSelectedSegment(device.segmentLabel))
       .forEach((device) => bump(device.partNumber));
 
@@ -377,14 +423,18 @@ export function PlanSegmentationModal({
         matchesSelectedSegment(point.segmentLabel)
     );
 
-    const noSwitchDevices = selectedPartNumbers
-      .flatMap((partNumber) => segmentation.partNumberNoSwitch[partNumber] ?? [])
+    const noSwitchDevices = collectGroupedEntries(
+      selectedPartNumbers,
+      segmentation.partNumberNoSwitch
+    )
       .filter((device) => matchesSelectedSegment(device.segmentLabel))
       .slice()
       .sort((a, b) => a.id - b.id);
 
-    const unpositionedDevices = selectedPartNumbers
-      .flatMap((partNumber) => segmentation.partNumberUnpositioned[partNumber] ?? [])
+    const unpositionedDevices = collectGroupedEntries(
+      selectedPartNumbers,
+      segmentation.partNumberUnpositioned
+    )
       .filter((device) => matchesSelectedSegment(device.segmentLabel))
       .slice()
       .sort((a, b) => a.id - b.id);
@@ -411,9 +461,12 @@ export function PlanSegmentationModal({
         recordsInScope.find((record) => record.iconDevice) ??
         recordsInScope[0] ??
         null;
-      const scopedNamePatternChoices = recordsInScope.flatMap((record) => {
+      const scopedNamePatternChoices: string[] = [];
+      recordsInScope.forEach((record) => {
         const knowledge = getNamePatternKnowledge(record.name);
-        return knowledge?.candidateIconDevices ?? [];
+        (knowledge?.candidateIconDevices ?? []).forEach((candidate) => {
+          scopedNamePatternChoices.push(candidate);
+        });
       });
       const iconCandidates = Array.from(
         new Set(
@@ -493,14 +546,8 @@ export function PlanSegmentationModal({
     }
 
     const segmented = segmentation.totals.segmentedPoints;
-    const noSwitch = Object.values(segmentation.partNumberNoSwitch).reduce(
-      (sum, entries) => sum + entries.length,
-      0
-    );
-    const noPos = Object.values(segmentation.partNumberUnpositioned).reduce(
-      (sum, entries) => sum + entries.length,
-      0
-    );
+    const noSwitch = groupedEntryCount(segmentation.partNumberNoSwitch);
+    const noPos = groupedEntryCount(segmentation.partNumberUnpositioned);
     const total = segmented + noSwitch + noPos;
 
     return {
@@ -584,7 +631,7 @@ export function PlanSegmentationModal({
     }
 
     const handleResize = () => {
-      setIsMobileViewport(window.innerWidth <= 720 || window.innerHeight <= 520);
+      setIsMobileViewport(detectCompactViewport());
     };
 
     handleResize();
@@ -604,6 +651,18 @@ export function PlanSegmentationModal({
       setDevicePreview(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    xformRef.current = xform;
+  }, [xform]);
+
+  useEffect(() => {
+    return () => {
+      if (xformFrameRef.current) {
+        cancelAnimationFrame(xformFrameRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setDevicePreview((current) => {
@@ -644,21 +703,28 @@ export function PlanSegmentationModal({
       if (!open || !plan || !pdfCanvasRef.current) {
         return;
       }
-      const pdf = await getDocument(plan.blobUrl).promise;
-      const page = await pdf.getPage(1);
-      const vp = page.getViewport({ scale: RENDER_SCALE });
       const canvas = pdfCanvasRef.current;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         return;
       }
-      canvas.width = Math.round(vp.width);
-      canvas.height = Math.round(vp.height);
-      await page.render({ canvas, canvasContext: ctx, viewport: vp }).promise;
-      await pdf.destroy();
-      if (live) {
+      const image = new Image();
+      image.onload = () => {
+        if (!live) {
+          return;
+        }
+        canvas.width = Math.max(1, plan.previewWidth);
+        canvas.height = Math.max(1, plan.previewHeight);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
         setPdfReady(true);
-      }
+      };
+      image.onerror = () => {
+        if (live) {
+          setPdfReady(false);
+        }
+      };
+      image.src = plan.previewUrl;
     }
 
     render();
@@ -675,7 +741,7 @@ export function PlanSegmentationModal({
     const vw = viewportRef.current.clientWidth;
     const vh = viewportRef.current.clientHeight;
     const s = Math.min(vw / plan.width, vh / plan.height) * 0.97;
-    setXform({
+    commitXform({
       s,
       x: (vw - plan.width * s) / 2,
       y: (vh - plan.height * s) / 2,
@@ -781,6 +847,7 @@ export function PlanSegmentationModal({
     }
     canvas.width = pdfCanvas.width;
     canvas.height = pdfCanvas.height;
+    const allowAnimatedMarkers = !isMobileViewport;
     let frameId = 0;
 
     const draw = (timeMs: number) => {
@@ -809,7 +876,9 @@ export function PlanSegmentationModal({
         .forEach((point) => {
           const x = (point.x / seg.width) * W;
           const y = (point.y / seg.height) * H;
-          drawMarkerPulse(ctx, x, y, R, timeMs);
+          if (allowAnimatedMarkers) {
+            drawMarkerPulse(ctx, x, y, R, timeMs);
+          }
           ctx.beginPath();
           ctx.arc(x, y, R, 0, Math.PI * 2);
           ctx.strokeStyle = PART_MARKER_COLOR;
@@ -823,8 +892,10 @@ export function PlanSegmentationModal({
         });
 
       // Grupo 2: dispositivos posicionados pero sin switch — círculo naranja punteado
-      const noSwitchPoints = selectedPartNumbers
-        .flatMap((partNumber) => seg.partNumberNoSwitch[partNumber] ?? [])
+      const noSwitchPoints = collectGroupedEntries(
+        selectedPartNumbers,
+        seg.partNumberNoSwitch
+      )
         .filter(
           (pt) =>
             matchesSelectedSegment(pt.segmentLabel) &&
@@ -838,7 +909,9 @@ export function PlanSegmentationModal({
         noSwitchPoints.forEach((pt) => {
           const x = ((pt.x as number) / seg.width) * W;
           const y = ((pt.y as number) / seg.height) * H;
-          drawMarkerPulse(ctx, x, y, R, timeMs);
+          if (allowAnimatedMarkers) {
+            drawMarkerPulse(ctx, x, y, R, timeMs);
+          }
           ctx.beginPath();
           ctx.arc(x, y, R, 0, Math.PI * 2);
           ctx.strokeStyle = PART_MARKER_COLOR;
@@ -858,7 +931,9 @@ export function PlanSegmentationModal({
         const x = (devicePreview.device.x / seg.width) * W;
         const y = (devicePreview.device.y / seg.height) * H;
         ctx.setLineDash([]);
-        drawMarkerPulse(ctx, x, y, R + 2 * RENDER_SCALE, timeMs);
+        if (allowAnimatedMarkers) {
+          drawMarkerPulse(ctx, x, y, R + 2 * RENDER_SCALE, timeMs);
+        }
         ctx.beginPath();
         ctx.arc(x, y, R + 4 * RENDER_SCALE, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(255, 198, 92, 0.96)";
@@ -866,15 +941,23 @@ export function PlanSegmentationModal({
         ctx.stroke();
       }
 
-      frameId = requestAnimationFrame(draw);
+      if (allowAnimatedMarkers) {
+        frameId = requestAnimationFrame(draw);
+      }
     };
 
-    frameId = requestAnimationFrame(draw);
+    if (allowAnimatedMarkers) {
+      frameId = requestAnimationFrame(draw);
+    } else {
+      draw(performance.now());
+    }
 
     return () => {
-      cancelAnimationFrame(frameId);
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
     };
-  }, [devicePreview, pdfReady, segmentation, selectedLabel, selectedPartNumberSet, selectedPartNumbers]);
+  }, [devicePreview, isMobileViewport, pdfReady, segmentation, selectedLabel, selectedPartNumberSet, selectedPartNumbers]);
 
   // Wheel zoom toward cursor
   useEffect(() => {
@@ -882,22 +965,24 @@ export function PlanSegmentationModal({
     if (!viewport || !open) {
       return;
     }
-    function onWheel(e: WheelEvent) {
+  function onWheel(e: WheelEvent) {
       e.preventDefault();
       const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const maxScale = isMobileViewport ? 8 : 20;
       const rect = viewport!.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
-      setXform((prev) => {
-        const newS = clamp(prev.s * factor, 0.05, 20);
+      scheduleXform((() => {
+        const prev = xformRef.current;
+        const newS = clamp(prev.s * factor, 0.05, maxScale);
         const stX = (mx - prev.x) / prev.s;
         const stY = (my - prev.y) / prev.s;
         return { s: newS, x: mx - stX * newS, y: my - stY * newS };
-      });
+      })());
     }
     viewport.addEventListener("wheel", onWheel, { passive: false });
     return () => viewport.removeEventListener("wheel", onWheel);
-  }, [open]);
+  }, [isMobileViewport, open]);
 
   // Sync selectedLabel y selectedPartNumber cuando cambia la segmentación
   useEffect(() => {
@@ -920,11 +1005,11 @@ export function PlanSegmentationModal({
     if (!viewport) {
       return;
     }
-    const TARGET_SCALE = 4;
+    const TARGET_SCALE = isMobileViewport ? 3.2 : 4;
     const vw = viewport.clientWidth;
     const vh = viewport.clientHeight;
     setNavigating(true);
-    setXform({
+    commitXform({
       s: TARGET_SCALE,
       x: vw / 2 - stageX * TARGET_SCALE,
       y: vh / 2 - stageY * TARGET_SCALE,
@@ -939,7 +1024,7 @@ export function PlanSegmentationModal({
     e.preventDefault();
     pointerMovedRef.current = false;
     dragging.current = true;
-    dragOrigin.current = { mx: e.clientX, my: e.clientY, tx: xform.x, ty: xform.y };
+    dragOrigin.current = { mx: e.clientX, my: e.clientY, tx: xformRef.current.x, ty: xformRef.current.y };
   }
 
   function handleMouseMove(e: React.MouseEvent) {
@@ -951,11 +1036,11 @@ export function PlanSegmentationModal({
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
       pointerMovedRef.current = true;
     }
-    setXform((prev) => ({
-      s: prev.s,
+    scheduleXform({
+      s: xformRef.current.s,
       x: dragOrigin.current.tx + dx,
       y: dragOrigin.current.ty + dy,
-    }));
+    });
   }
 
   function handleMouseUp(e: React.MouseEvent<HTMLDivElement>) {
@@ -1008,7 +1093,7 @@ export function PlanSegmentationModal({
         startMidpointY: 0,
         startTouchX: touchPoint.x,
         startTouchY: touchPoint.y,
-        startXform: xform,
+        startXform: xformRef.current,
         moved: false,
       };
       return;
@@ -1024,7 +1109,7 @@ export function PlanSegmentationModal({
         startMidpointY: midpoint.y,
         startTouchX: midpoint.x,
         startTouchY: midpoint.y,
-        startXform: xform,
+        startXform: xformRef.current,
         moved: false,
       };
     }
@@ -1043,7 +1128,7 @@ export function PlanSegmentationModal({
       if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
         gestureRef.current.moved = true;
       }
-      setXform({
+      scheduleXform({
         s: gestureRef.current.startXform.s,
         x: gestureRef.current.startXform.x + dx,
         y: gestureRef.current.startXform.y + dy,
@@ -1057,17 +1142,18 @@ export function PlanSegmentationModal({
       const distance = distanceBetweenTouches(touchA, touchB);
       const midpoint = midpointBetweenTouches(touchA, touchB);
       const start = gestureRef.current;
+      const maxScale = isMobileViewport ? 8 : 20;
       if (Math.abs(distance - start.startDistance) > 4) {
         gestureRef.current.moved = true;
       }
       const newS = clamp(
         start.startXform.s * (distance / Math.max(start.startDistance, 1)),
         0.05,
-        20
+        maxScale
       );
       const stageX = (start.startMidpointX - start.startXform.x) / start.startXform.s;
       const stageY = (start.startMidpointY - start.startXform.y) / start.startXform.s;
-      setXform({
+      scheduleXform({
         s: newS,
         x: midpoint.x - stageX * newS,
         y: midpoint.y - stageY * newS,
@@ -1091,7 +1177,7 @@ export function PlanSegmentationModal({
         startMidpointY: 0,
         startTouchX: touchPoint.x,
         startTouchY: touchPoint.y,
-        startXform: xform,
+        startXform: xformRef.current,
         moved: false,
       };
       return;
@@ -1109,13 +1195,13 @@ export function PlanSegmentationModal({
       startMidpointY: 0,
       startTouchX: 0,
       startTouchY: 0,
-      startXform: xform,
+      startXform: xformRef.current,
       moved: false,
     };
   }
 
   function findDeviceNearStagePoint(stageX: number, stageY: number) {
-    const threshold = Math.max(20, 28 / Math.max(xform.s, 0.35));
+    const threshold = Math.max(20, 28 / Math.max(xformRef.current.s, 0.35));
     let best: InteractiveDevice | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
 
@@ -1158,8 +1244,9 @@ export function PlanSegmentationModal({
       return;
     }
 
-    const stageX = (clientX - rect.left - xform.x) / xform.s;
-    const stageY = (clientY - rect.top - xform.y) / xform.s;
+    const currentXform = xformRef.current;
+    const stageX = (clientX - rect.left - currentXform.x) / currentXform.s;
+    const stageY = (clientY - rect.top - currentXform.y) / currentXform.s;
     const device = findDeviceNearStagePoint(stageX, stageY);
 
     if (!device) {
@@ -1469,8 +1556,8 @@ export function PlanSegmentationModal({
                 <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.72rem", fontWeight: 700, flexShrink: 0, letterSpacing: "0.04em", textTransform: "uppercase" }}>{t("segmentation.segment")}</span>
                 {(() => {
                   const segmented = segmentation.totals.segmentedPoints;
-                  const noSwitch = Object.values(segmentation.partNumberNoSwitch).reduce((sum, entries) => sum + entries.length, 0);
-                  const noPos = Object.values(segmentation.partNumberUnpositioned).reduce((sum, entries) => sum + entries.length, 0);
+                  const noSwitch = groupedEntryCount(segmentation.partNumberNoSwitch);
+                  const noPos = groupedEntryCount(segmentation.partNumberUnpositioned);
                   const total = segmented + noSwitch + noPos;
                   return (
                     <span style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.38)", fontWeight: 500, flexShrink: 0, marginLeft: "0.25rem" }}>

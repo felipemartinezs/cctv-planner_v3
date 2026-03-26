@@ -1,7 +1,7 @@
-import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
+import { GlobalWorkerOptions, getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
+  "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
 

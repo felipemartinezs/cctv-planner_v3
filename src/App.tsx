@@ -1,5 +1,6 @@
 import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { attachIcons, buildMetrics, countBy, normalizeRows, parseTabularFile } from "./lib/normalize";
+import { readFileAsArrayBuffer } from "./lib/file-io";
 import { getNamePatternKnowledge } from "./lib/visual-knowledge";
 import { loadIconsFromDirectory, loadIconsFromManifest, loadIconsFromZip, mergeIconMaps } from "./lib/icons";
 import { loadPlan } from "./lib/pdf";
@@ -36,6 +37,18 @@ const STORAGE_KEY = "cctv-field-task-statuses-v1";
 const SHOW_FIELD_TASK_ICONS = false;
 const BUILD_LABEL = __APP_BUILD_ID__.replace("T", " ").replace(/\.\d+Z$/, "Z");
 
+function revokePlanResources(plan: PlanData | null) {
+  if (!plan) {
+    return;
+  }
+  if (plan.blobUrl) {
+    URL.revokeObjectURL(plan.blobUrl);
+  }
+  if (plan.previewUrl && plan.previewUrl.startsWith("blob:") && plan.previewUrl !== plan.blobUrl) {
+    URL.revokeObjectURL(plan.previewUrl);
+  }
+}
+
 function compactSwitchLabel(record: DeviceRecord): string {
   return switchDisplayLabel(record);
 }
@@ -66,7 +79,10 @@ function formatDateTime(value: number): string {
 }
 
 async function fingerprintFile(file: File): Promise<string> {
-  const digest = await window.crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  if (!window.crypto || !window.crypto.subtle) {
+    return "";
+  }
+  const digest = await window.crypto.subtle.digest("SHA-256", await readFileAsArrayBuffer(file));
   return Array.from(new Uint8Array(digest))
     .map((value) => value.toString(16).padStart(2, "0"))
     .join("")
@@ -352,7 +368,8 @@ export default function App() {
       }
       const parsed = JSON.parse(raw) as Record<string, string>;
       const next: Record<string, TaskState> = {};
-      Object.entries(parsed).forEach(([key, value]) => {
+      Object.keys(parsed).forEach((key) => {
+        const value = parsed[key];
         next[key] = normalizeState(value);
       });
       setTaskStates(next);
@@ -399,11 +416,9 @@ export default function App() {
 
   useEffect(() => {
     return () => {
-      if (plan?.blobUrl) {
-        URL.revokeObjectURL(plan.blobUrl);
-      }
+      revokePlanResources(plan);
     };
-  }, [plan?.blobUrl]);
+  }, [plan]);
 
   async function handleProcess() {
     if (!planFile) {
@@ -414,18 +429,28 @@ export default function App() {
     setIsBusy(true);
     setShowPdfViewer(false);
     setStatus({ kind: "translated", key: "status.processing" });
+    let processStep = "init";
 
     try {
-      const nextPlan = await loadPlan(planFile);
+      processStep = "read-plan-file";
+      const planBytes = new Uint8Array(await readFileAsArrayBuffer(planFile));
+      processStep = "load-plan";
+      const nextPlan = await loadPlan(new Uint8Array(planBytes), planFile.name);
       const isExtraPdf = extraDataFile?.type === "application/pdf" ||
         extraDataFile?.name.toLowerCase().endsWith(".pdf");
-
-      const [parsedPdf, primaryRows, parsedExtraPdf, extraRows] = await Promise.all([
-        parsePdfDataRecords(planFile, nextPlan.markers),
-        dataFile ? parseTabularFile(dataFile) : Promise.resolve([]),
-        extraDataFile && isExtraPdf ? parsePdfDataRecords(extraDataFile, nextPlan.markers, 1) : Promise.resolve(null),
-        extraDataFile && !isExtraPdf ? parseTabularFile(extraDataFile) : Promise.resolve([])
-      ]);
+      processStep = "parse-main-pdf";
+      const parsedPdf = await parsePdfDataRecords(new Uint8Array(planBytes), nextPlan.markers);
+      processStep = "parse-primary-tabular";
+      const primaryRows = dataFile ? await parseTabularFile(dataFile) : [];
+      const parsedExtraPdf =
+        extraDataFile && isExtraPdf
+          ? (processStep = "parse-extra-pdf", await parsePdfDataRecords(extraDataFile, nextPlan.markers, 1))
+          : null;
+      processStep = "parse-extra-tabular";
+      const extraRows =
+        extraDataFile && !isExtraPdf
+          ? await parseTabularFile(extraDataFile)
+          : [];
 
       const csvRecords = primaryRows.length
         ? normalizeRows(primaryRows, [], nextPlan.markers).filter((record) => record.category !== "mount")
@@ -504,7 +529,9 @@ export default function App() {
         metrics: buildMetrics(records),
         missingPositions: records.filter((record) => !record.hasPosition).length
       };
+      processStep = "build-segmentation";
       const nextSegmentation = buildPlanSegmentation(records, nextPlan);
+      processStep = "build-insights";
       const nextInsights = buildProjectInsights(records, {
         dataPages: parsedPdf.dataPages,
         rawRows: parsedPdf.rawRows,
@@ -512,10 +539,9 @@ export default function App() {
         template: parsedPdf.template
       }, nextSegmentation);
 
+      processStep = "commit-ui-state";
       startTransition(() => {
-        if (plan?.blobUrl) {
-          URL.revokeObjectURL(plan.blobUrl);
-        }
+        revokePlanResources(plan);
         setPlan(nextPlan);
         setBundle(nextBundle);
         setInsights(nextInsights);
@@ -552,9 +578,16 @@ export default function App() {
         );
       });
     } catch (error) {
+      console.error("[process] Error procesando PDF", {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        name: error instanceof Error ? error.name : typeof error,
+        processStep,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       setStatus(
         error instanceof Error
-          ? { kind: "raw", text: error.message }
+          ? { kind: "raw", text: `${error.message} [step: ${processStep}]` }
           : { kind: "translated", key: "status.processError" }
       );
     } finally {

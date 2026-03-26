@@ -1,14 +1,15 @@
-import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
-import type { TextItem } from "pdfjs-dist/types/src/display/api";
+import { GlobalWorkerOptions, getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import type { PDFPageProxy, TextItem } from "pdfjs-dist/types/src/display/api";
 import type { DeviceCategory, DeviceRecord, PlanMarker } from "../../types";
 import { buildSwitchIdentity } from "../switch-segmentation";
 import type { PdfDataParseResult, PdfDataTemplate } from "./types";
 import { matchDeviceRule } from "../../config/device-rules";
 import { estimateNetworkCables } from "../../lib/cable-planning";
+import { readFileAsArrayBuffer } from "../../lib/file-io";
 import { contextualizeIconDeviceForInstallation, resolveInstallationSpec } from "../../lib/installation-rules";
 
 GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
+  "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
 
@@ -104,7 +105,7 @@ function buildLines(items: TextItem[]): TextLine[] {
   const lines: TextLine[] = [];
 
   fragments.forEach((fragment) => {
-    const current = lines.at(-1);
+    const current = lines.length > 0 ? lines[lines.length - 1] : undefined;
     if (current && Math.abs(current.y - fragment.y) <= LINE_Y_TOLERANCE) {
       current.items.push(fragment);
       return;
@@ -132,6 +133,54 @@ function buildLines(items: TextItem[]): TextLine[] {
       id: detectLineId(nextLine)
     };
   });
+}
+
+async function getPageTextContentCompat(page: PDFPageProxy) {
+  const anyPage = page as PDFPageProxy & {
+    streamTextContent?: (params?: Record<string, unknown>) => ReadableStream<{
+      items: TextItem[];
+      lang?: string | null;
+      styles?: Record<string, unknown>;
+    }>;
+  };
+
+  if (typeof anyPage.streamTextContent === "function" && typeof ReadableStream !== "undefined") {
+    const readableStream = anyPage.streamTextContent({});
+    if (readableStream && typeof readableStream.getReader === "function") {
+      const reader = readableStream.getReader();
+      const textContent = {
+        items: [] as TextItem[],
+        styles: Object.create(null) as Record<string, unknown>,
+        lang: null as string | null,
+      };
+
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) {
+          break;
+        }
+        const value = chunk.value;
+        if (!value) {
+          continue;
+        }
+        if (textContent.lang == null && typeof value.lang === "string") {
+          textContent.lang = value.lang;
+        }
+        if (value.styles && typeof value.styles === "object") {
+          Object.assign(textContent.styles, value.styles);
+        }
+        if (Array.isArray(value.items)) {
+          for (let index = 0; index < value.items.length; index += 1) {
+            textContent.items.push(value.items[index]);
+          }
+        }
+      }
+
+      return textContent;
+    }
+  }
+
+  return page.getTextContent();
 }
 
 function detectTemplate(lines: TextLine[]): PdfDataTemplate {
@@ -446,34 +495,48 @@ function parsePageLines(
     });
 }
 
+async function readPdfSource(source: File | ArrayBuffer | Uint8Array) {
+  if (source instanceof File) {
+    return new Uint8Array(await readFileAsArrayBuffer(source));
+  }
+  if (source instanceof Uint8Array) {
+    return new Uint8Array(source);
+  }
+  return new Uint8Array(source.slice(0));
+}
+
 export async function parsePdfDataRecords(
-  file: File,
+  file: File | ArrayBuffer | Uint8Array,
   markers: Map<number, PlanMarker>,
   startPage = 2
 ): Promise<PdfDataParseResult> {
-  const buffer = await file.arrayBuffer();
+  const buffer = await readPdfSource(file);
   const pdf = await getDocument({ data: buffer }).promise;
-  const effectiveStart = Math.min(startPage, pdf.numPages);
-  const firstDataPage = await pdf.getPage(effectiveStart);
-  const firstDataContent = await firstDataPage.getTextContent();
-  const template = detectTemplate(buildLines(firstDataContent.items as TextItem[]));
+  try {
+    const effectiveStart = Math.min(startPage, pdf.numPages);
+    const firstDataPage = await pdf.getPage(effectiveStart);
+    const firstDataContent = await getPageTextContentCompat(firstDataPage);
+    const template = detectTemplate(buildLines(firstDataContent.items as TextItem[]));
 
-  const records: DeviceRecord[] = [];
-  let rawRows = 0;
+    const records: DeviceRecord[] = [];
+    let rawRows = 0;
 
-  for (let pageNumber = effectiveStart; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const textContent = await page.getTextContent();
-    const lines = buildLines(textContent.items as TextItem[]);
-    const pageRecords = parsePageLines(lines, template, markers, pageNumber);
-    rawRows += pageRecords.length;
-    records.push(...pageRecords);
+    for (let pageNumber = effectiveStart; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const textContent = await getPageTextContentCompat(page);
+      const lines = buildLines(textContent.items as TextItem[]);
+      const pageRecords = parsePageLines(lines, template, markers, pageNumber);
+      rawRows += pageRecords.length;
+      records.push(...pageRecords);
+    }
+
+    return {
+      template,
+      records,
+      dataPages: Math.max(pdf.numPages - 1, 0),
+      rawRows
+    };
+  } finally {
+    await pdf.destroy();
   }
-
-  return {
-    template,
-    records,
-    dataPages: Math.max(pdf.numPages - 1, 0),
-    rawRows
-  };
 }

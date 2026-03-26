@@ -3,6 +3,7 @@ import type { DeviceCategory, DeviceRecord, Metrics, PlanMarker } from "../types
 import { buildSwitchIdentity, switchDisplayLabel } from "../modules/switch-segmentation";
 import { matchDeviceRule } from "../config/device-rules";
 import { estimateNetworkCables } from "./cable-planning";
+import { readFileAsText } from "./file-io";
 import { lookupIcon, normalizeIconKey } from "./icons";
 import { contextualizeIconDeviceForInstallation, resolveInstallationSpec } from "./installation-rules";
 import { getNamePatternKnowledge, resolveRecordVisualKnowledge } from "./visual-knowledge";
@@ -94,15 +95,16 @@ function parseCsvText(rawText: string): Record<string, string>[] {
 
   return parsed.data.map((row) => {
     const normalizedRow: Record<string, string> = {};
-    for (const [key, value] of Object.entries(row)) {
+    Object.keys(row).forEach((key) => {
+      const value = row[key];
       normalizedRow[normalizeHeader(key)] = normalizeToken(value || "");
-    }
+    });
     return normalizedRow;
   });
 }
 
 export async function parseTabularFile(file: File): Promise<Record<string, string>[]> {
-  const text = await file.text();
+  const text = await readFileAsText(file);
   return parseCsvText(text);
 }
 
