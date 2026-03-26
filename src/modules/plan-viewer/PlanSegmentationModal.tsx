@@ -1591,7 +1591,7 @@ export function PlanSegmentationModal({
             smooth={false}
             alignmentAnimation={{ disabled: true }}
             velocityAnimation={{ disabled: true }}
-            pinch={{ disabled: isMobileViewport, step: 0.9 }}
+            pinch={{ disabled: false, step: 0.9 }}
             wheel={{ disabled: false, step: 0.14, touchPadDisabled: false }}
             doubleClick={{ disabled: true }}
             panning={{
