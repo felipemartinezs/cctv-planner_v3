@@ -348,7 +348,6 @@ export function PlanSegmentationModal({
   const { t } = useI18n();
   const viewportRef = useRef<HTMLDivElement>(null);
   const transformRef = useRef<ReactZoomPanPinchContentRef | null>(null);
-  const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const partNumCanvasRef = useRef<HTMLCanvasElement>(null);
   const [pdfReady, setPdfReady] = useState(false);
@@ -837,44 +836,14 @@ export function PlanSegmentationModal({
     setPdfReady(false);
   }, [open, plan]);
 
-  // Render PDF to canvas at the current preview resolution.
+  // PDF is displayed via <img> in JSX so iOS Safari composites at the image's
+  // natural resolution (3840px) rather than CSS_size*DPR — gives sharp zoom.
   useEffect(() => {
-    let live = true;
-
-    async function render() {
-      if (!open || !planRaster || !pdfCanvasRef.current) {
-        return;
-      }
-      const canvas = pdfCanvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        return;
-      }
-      const image = new Image();
-      image.onload = () => {
-        if (!live) {
-          return;
-        }
-        canvas.width = Math.max(1, planRaster.width);
-        canvas.height = Math.max(1, planRaster.height);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-        setPdfReady(true);
-      };
-      image.onerror = () => {
-        if (live) {
-          setPdfReady(false);
-        }
-      };
-      image.src = planRaster.url;
+    if (!open || !planRaster) {
+      setPdfReady(false);
+      return;
     }
-
-    render();
-    return () => {
-      live = false;
-    };
+    setPdfReady(true);
   }, [open, planRaster]);
 
   const getFitScale = useCallback(() => {
@@ -947,18 +916,17 @@ export function PlanSegmentationModal({
 
   // Draw segmentation overlay at the same pixel dimensions as the PDF canvas
   useEffect(() => {
-    if (!pdfReady || !segmentation || !pdfCanvasRef.current || !overlayCanvasRef.current) {
+    if (!pdfReady || !segmentation || !planRaster || !overlayCanvasRef.current) {
       return;
     }
-    const pdfCanvas = pdfCanvasRef.current;
     const overlay = overlayCanvasRef.current;
     const ctx = overlay.getContext("2d");
     if (!ctx) {
       return;
     }
 
-    overlay.width = pdfCanvas.width;
-    overlay.height = pdfCanvas.height;
+    overlay.width = planRaster.width;
+    overlay.height = planRaster.height;
 
     const seg = segmentation;
     const W = overlay.width;
@@ -1027,17 +995,16 @@ export function PlanSegmentationModal({
 
   // Dibujar capa de part numbers — círculos por dispositivo
   useEffect(() => {
-    if (!pdfReady || !pdfCanvasRef.current || !partNumCanvasRef.current) {
+    if (!pdfReady || !planRaster || !partNumCanvasRef.current) {
       return;
     }
-    const pdfCanvas = pdfCanvasRef.current;
     const canvas = partNumCanvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       return;
     }
-    canvas.width = pdfCanvas.width;
-    canvas.height = pdfCanvas.height;
+    canvas.width = planRaster.width;
+    canvas.height = planRaster.height;
     const allowAnimatedMarkers = !isMobileViewport;
     let frameId = 0;
 
@@ -1073,7 +1040,7 @@ export function PlanSegmentationModal({
           ctx.beginPath();
           ctx.arc(x, y, R, 0, Math.PI * 2);
           ctx.strokeStyle = PART_MARKER_COLOR;
-          ctx.lineWidth = 3 * RENDER_SCALE;
+          ctx.lineWidth = 1.5 * RENDER_SCALE;
           ctx.stroke();
           ctx.font = `700 ${FONT_SIZE}px system-ui, sans-serif`;
           ctx.textAlign = "center";
@@ -1096,7 +1063,7 @@ export function PlanSegmentationModal({
         );
       if (noSwitchPoints.length > 0) {
         ctx.setLineDash([5 * RENDER_SCALE, 4 * RENDER_SCALE]);
-        ctx.lineWidth = 3 * RENDER_SCALE;
+        ctx.lineWidth = 1.5 * RENDER_SCALE;
         noSwitchPoints.forEach((pt) => {
           const x = ((pt.x as number) / seg.width) * W;
           const y = ((pt.y as number) / seg.height) * H;
@@ -1128,7 +1095,7 @@ export function PlanSegmentationModal({
         ctx.beginPath();
         ctx.arc(x, y, R + 4 * RENDER_SCALE, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(255, 198, 92, 0.96)";
-        ctx.lineWidth = 3.5 * RENDER_SCALE;
+        ctx.lineWidth = 2 * RENDER_SCALE;
         ctx.stroke();
       }
 
@@ -1648,10 +1615,13 @@ export function PlanSegmentationModal({
                   inspectDeviceAtClientPoint(e.clientX, e.clientY);
                 }}
               >
-                <canvas
-                  ref={pdfCanvasRef}
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-                />
+                {planRaster && (
+                  <img
+                    src={planRaster.url}
+                    alt=""
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
+                  />
+                )}
                 <canvas
                   ref={overlayCanvasRef}
                   style={{
