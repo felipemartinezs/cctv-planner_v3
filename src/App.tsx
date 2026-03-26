@@ -428,6 +428,7 @@ export default function App() {
 
     setIsBusy(true);
     setShowPdfViewer(false);
+    setShowSegmentationModal(false);
     setStatus({ kind: "translated", key: "status.processing" });
     let processStep = "init";
 
@@ -1156,6 +1157,7 @@ export default function App() {
         onClose={() => setShowPdfViewer(false)}
       />
       <PlanSegmentationModal
+        key={plan?.blobUrl ?? "no-plan"}
         open={showSegmentationModal}
         buildLabel={BUILD_LABEL}
         iconDebugLabel={iconDebugLabel}

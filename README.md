@@ -2,11 +2,15 @@
 
 Aplicacion web orientada a tecnicos de campo para convertir PDFs de CCTV en tareas accionables, conteos reales y una vista de segmentacion tactil sobre el plano.
 
+## Produccion
+
+https://cctv-planner-491120.uc.r.appspot.com (Google App Engine)
+
 ## Estado actual
 
-- Pensada primero para smartphone.
+- Pensada primero para iPhone — toda la UX esta optimizada para uso en campo.
 - Selector de idioma `ES / EN` con persistencia local.
-- Procesa el PDF en el navegador.
+- Procesa el PDF en el navegador (100% client-side, sin servidor de datos).
 - Usa la pagina 1 como plano de referencia.
 - Usa las paginas de datos del PDF para construir `DeviceRecord[]`.
 - Incluye una libreria interna de iconos universal en `public/device-icons/Camera Symbols`.
@@ -85,11 +89,21 @@ La vista de segmentacion ya tiene varias ayudas pensadas para trabajo real:
 - prioridad al plano en movil
 - panel de controles compacto / overlay
 - pan con un dedo
-- pinch-to-zoom con dos dedos
+- pinch-to-zoom con dos dedos (iOS nativo, sin crashes)
 - `Ajustar vista` en movil
 - inspeccion por toque sobre el `ID`
 - referencia visual por `part number`
 - UI bilingue `ES / EN`
+
+### Calidad de imagen en iPhone
+
+El plano se renderiza directamente desde el PDF via `pdfjs-dist` con un pipeline de tres niveles:
+
+1. **Thumbnail inicial** — 2000px PNG, calidad maxima, disponible al instante al abrir el modal.
+2. **Hi-res base** — 3840px PNG, se genera en segundo plano al abrir el modal (~2-4s), reemplaza el thumbnail automaticamente.
+3. **Upgrade por zoom** — cuando el usuario hace zoom mas alla del punto donde 3840px no es suficiente (≈3.5× en DPR=3), se dispara un nuevo render hasta 5000px (debounced 500ms).
+
+El plano se despliega como `<img>` (no `<canvas>`) para que iOS Safari composite a la resolucion natural de la imagen en lugar de `CSS_size × DPR`.
 
 ## Ambigüedades ya resueltas visualmente
 
@@ -135,6 +149,6 @@ Se muestran ambos iconos como ayuda visual sin duplicar conteos.
 ## Proximo trabajo recomendado
 
 1. Agregar reglas formales de altura de instalacion.
-2. Preparar despliegue en Google App Engine.
-3. Definir control de acceso con Google IAP.
-4. Evaluar logs funcionales y, mas adelante, consultas AI acotadas.
+2. Definir control de acceso con Google IAP (actualmente sin autenticacion).
+3. Evaluar logs funcionales y, mas adelante, consultas AI acotadas.
+4. Explorar renderizado vectorial SVG desde pdfjs para calidad perfecta a cualquier zoom.
