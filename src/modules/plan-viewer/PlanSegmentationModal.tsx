@@ -884,6 +884,28 @@ export function PlanSegmentationModal({
     setPdfReady(true);
   }, [open, planRaster]);
 
+  // Prevent iOS Safari from intercepting multi-touch gestures when the user
+  // pinches past the app's maxScale — without this the browser attempts a
+  // native page zoom and crashes the view.
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const el = viewportRef.current;
+    if (!el) {
+      return;
+    }
+    const prevent = (e: Event) => e.preventDefault();
+    el.addEventListener("gesturestart", prevent, { passive: false });
+    el.addEventListener("gesturechange", prevent, { passive: false });
+    el.addEventListener("gestureend", prevent, { passive: false });
+    return () => {
+      el.removeEventListener("gesturestart", prevent);
+      el.removeEventListener("gesturechange", prevent);
+      el.removeEventListener("gestureend", prevent);
+    };
+  }, [open]);
+
   const getFitScale = useCallback(() => {
     if (!viewportRef.current || !plan) {
       return 1;
@@ -1529,6 +1551,7 @@ export function PlanSegmentationModal({
             overflow: "hidden",
             position: "relative",
             padding: 0,
+            touchAction: "none",
           }}
         >
           {!pdfReady && (
