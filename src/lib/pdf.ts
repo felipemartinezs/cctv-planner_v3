@@ -234,7 +234,7 @@ async function renderPlanPreviewFromPage(page: PDFPageProxy, baseWidth: number) 
     typeof navigator !== "undefined" &&
     /iPad|iPhone|iPod/i.test(navigator.userAgent);
   const compactPreview = isCoarsePointer || isLikelyIOS;
-  const targetWidth = compactPreview ? 2000 : 1800;
+  const targetWidth = compactPreview ? 1400 : 1800;
   const previewScale = Math.min(
     compactPreview ? 1.25 : 2,
     Math.max(compactPreview ? 0.75 : 1.1, targetWidth / Math.max(baseWidth, 1))

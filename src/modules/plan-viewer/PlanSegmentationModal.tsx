@@ -791,9 +791,9 @@ export function PlanSegmentationModal({
     const deviceScale = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
     const viewportWidth = typeof window !== "undefined" ? window.innerWidth || 0 : 0;
     const requestedWidth = clamp(
-      Math.round(Math.max(900, viewportWidth || 900) * deviceScale * 3.5),
-      1800,
-      3840
+      Math.round(Math.max(900, viewportWidth || 900) * deviceScale * 2.5),
+      1400,
+      2600
     );
 
     if (plan.previewWidth >= requestedWidth - 64) {
@@ -802,8 +802,8 @@ export function PlanSegmentationModal({
 
     let live = true;
     renderPlanPreview(plan.blobUrl, plan.width, {
-      maxWidth: 3840,
-      minWidth: 1800,
+      maxWidth: 2600,
+      minWidth: 1400,
       preferLossless: true,
       targetWidth: requestedWidth,
     })
@@ -828,43 +828,6 @@ export function PlanSegmentationModal({
     };
   }, [open, plan]);
 
-  // Zoom-responsive upgrade: when user zooms in past the point where the
-  // current planRaster isn’t dense enough, re-render at a higher resolution.
-  useEffect(() => {
-    if (!open || !plan || !planRaster) {
-      return;
-    }
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-    const neededWidth = Math.ceil(plan.width * xform.s * dpr);
-    const targetWidth = Math.min(Math.ceil(neededWidth * 1.25), 5000);
-
-    // Only upgrade beyond the base 3840px render, and only when current is insufficient
-    if (targetWidth <= 3840 || planRaster.width >= targetWidth - 200) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      renderPlanPreview(plan.blobUrl, plan.width, {
-        maxWidth: 5000,
-        minWidth: 3840,
-        preferLossless: true,
-        targetWidth,
-      })
-        .then((rendered) => {
-          setPlanRaster((current) => {
-            if (current && current.url !== rendered.url) {
-              revokePlanRaster(current);
-            }
-            return rendered;
-          });
-        })
-        .catch((error) => {
-          console.warn("[segmentation] zoom upgrade failed:", error);
-        });
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [open, plan, planRaster, xform.s]);
 
   useEffect(() => {
     if (!open || !plan) {
