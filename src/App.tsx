@@ -661,9 +661,21 @@ export default function App() {
   const selectedAmbiguity = selectedRecord ? ambiguityFor(selectedRecord) : null;
   const canViewPlan = Boolean(plan?.viewerUrl);
   const reportLinks = [
-    { href: "/reporte/index.html", label: t("reports.technical") },
-    { href: "/reporte/index-cio.html", label: t("reports.executive") },
-    { href: "/reporte/index-cio-bilingual.html", label: t("reports.bilingual") },
+    {
+      href: "/reporte/index.html",
+      label: t("reports.technical"),
+      description: t("reports.technicalDescription"),
+    },
+    {
+      href: "/reporte/index-cio.html",
+      label: t("reports.executive"),
+      description: t("reports.executiveDescription"),
+    },
+    {
+      href: "/reporte/index-cio-bilingual.html",
+      label: t("reports.bilingual"),
+      description: t("reports.bilingualDescription"),
+    },
   ];
 
   return (
@@ -712,6 +724,32 @@ export default function App() {
           {processedAt && <span className="status-note">{t("status.processedAt", { time: processedAt })}</span>}
         </div>
       </header>
+
+      <section className="report-hub-card">
+        <div className="report-hub-card__header">
+          <div>
+            <p className="eyebrow">{t("reports.cardEyebrow")}</p>
+            <h2>{t("reports.cardTitle")}</h2>
+          </div>
+          <p className="report-hub-card__description">{t("reports.cardDescription")}</p>
+        </div>
+        <div className="report-hub-grid">
+          {reportLinks.map((report) => (
+            <a
+              key={report.href}
+              className="report-hub-link"
+              href={report.href}
+              target="_blank"
+              rel="noreferrer"
+              title={t("reports.openInNewTab")}
+            >
+              <strong>{report.label}</strong>
+              <span>{report.description}</span>
+              <small>{t("reports.openInNewTab")}</small>
+            </a>
+          ))}
+        </div>
+      </section>
 
       <section className="ingest-card">
         <div className="ingest-card__header">
