@@ -5,6 +5,20 @@ import react from "@vitejs/plugin-react";
 import legacy from "@vitejs/plugin-legacy";
 import { VitePWA } from "vite-plugin-pwa";
 
+const REPORTS_ROUTE_PREFIX = "/reporte";
+const REPORT_MIME_TYPES: Record<string, string> = {
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".txt": "text/plain; charset=utf-8",
+  ".webp": "image/webp",
+};
+
 function posixRelative(from: string, to: string): string {
   return path.relative(from, to).split(path.sep).join("/");
 }
@@ -96,12 +110,135 @@ function deviceIconManifestPlugin() {
   };
 }
 
+function reportContentType(filePath: string): string {
+  return REPORT_MIME_TYPES[path.extname(filePath).toLowerCase()] || "application/octet-stream";
+}
+
+function resolveReportFile(sourceDir: string, urlPath: string): string | null {
+  const relativePath = urlPath.startsWith(REPORTS_ROUTE_PREFIX)
+    ? urlPath.slice(REPORTS_ROUTE_PREFIX.length)
+    : urlPath;
+  const normalizedRelative = path.posix
+    .normalize(relativePath === "" || relativePath === "/" ? "/index.html" : relativePath)
+    .replace(/^\/+/, "");
+
+  if (normalizedRelative.startsWith("..")) {
+    return null;
+  }
+
+  const absolutePath = path.resolve(sourceDir, normalizedRelative);
+  const relativeCheck = path.relative(sourceDir, absolutePath);
+  if (relativeCheck.startsWith("..") || path.isAbsolute(relativeCheck)) {
+    return null;
+  }
+
+  if (fs.existsSync(absolutePath) && fs.statSync(absolutePath).isDirectory()) {
+    const indexPath = path.join(absolutePath, "index.html");
+    return fs.existsSync(indexPath) ? indexPath : null;
+  }
+
+  return absolutePath;
+}
+
+function createReportMiddleware(sourceDir: string) {
+  return (request: { url?: string }, response: NodeJS.WritableStream & {
+    end: (chunk?: unknown) => void;
+    setHeader: (name: string, value: string) => void;
+    statusCode: number;
+  }, next: () => void) => {
+    if (!request.url) {
+      next();
+      return;
+    }
+
+    const requestPath = request.url.split("?")[0] || "/";
+    if (!requestPath.startsWith(REPORTS_ROUTE_PREFIX)) {
+      next();
+      return;
+    }
+
+    let filePath: string | null = null;
+    try {
+      filePath = resolveReportFile(sourceDir, decodeURIComponent(requestPath));
+    } catch {
+      next();
+      return;
+    }
+
+    if (!filePath || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      next();
+      return;
+    }
+
+    response.statusCode = 200;
+    response.setHeader("Content-Type", reportContentType(filePath));
+    response.setHeader("Cache-Control", filePath.endsWith(".html") ? "no-cache" : "public, max-age=3600");
+
+    const stream = fs.createReadStream(filePath);
+    stream.on("error", () => {
+      response.statusCode = 500;
+      response.end("Failed to read report file.");
+    });
+    stream.pipe(response);
+  };
+}
+
+function copyReportsDirectory(sourceDir: string, outDir: string) {
+  if (!fs.existsSync(sourceDir)) {
+    return;
+  }
+
+  const targetDir = path.resolve(outDir, "reporte");
+  fs.rmSync(targetDir, { force: true, recursive: true });
+  fs.cpSync(sourceDir, targetDir, {
+    filter: (sourcePath) => !path.basename(sourcePath).startsWith("."),
+    recursive: true,
+  });
+}
+
+function reportStaticPlugin() {
+  let projectRoot = process.cwd();
+  let buildOutDir = path.resolve(projectRoot, "dist");
+
+  return {
+    configureServer(server: { middlewares: { use: (middleware: ReturnType<typeof createReportMiddleware>) => void } }) {
+      server.middlewares.use(createReportMiddleware(path.resolve(projectRoot, "reporte")));
+    },
+    configurePreviewServer(server: { middlewares: { use: (middleware: ReturnType<typeof createReportMiddleware>) => void } }) {
+      server.middlewares.use(createReportMiddleware(path.resolve(buildOutDir, "reporte")));
+    },
+    configResolved(config: { build: { outDir: string }; root: string }) {
+      projectRoot = config.root;
+      buildOutDir = path.resolve(projectRoot, config.build.outDir);
+    },
+    name: "report-static-plugin",
+  };
+}
+
+function reportBuildCopyPlugin() {
+  let projectRoot = process.cwd();
+  let buildOutDir = path.resolve(projectRoot, "dist");
+
+  return {
+    closeBundle() {
+      copyReportsDirectory(path.resolve(projectRoot, "reporte"), buildOutDir);
+    },
+    configResolved(config: { build: { outDir: string }; root: string }) {
+      projectRoot = config.root;
+      buildOutDir = path.resolve(projectRoot, config.build.outDir);
+    },
+    name: "report-build-copy-plugin",
+  };
+}
+
 export default defineConfig({
   define: {
     __APP_BUILD_ID__: JSON.stringify(new Date().toISOString()),
   },
   plugins: [
     deviceIconManifestPlugin(),
+    reportStaticPlugin(),
+    reportBuildCopyPlugin(),
     legacy({
       targets: ["defaults", "iOS >= 12", "Safari >= 12"],
       modernPolyfills: [

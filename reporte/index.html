@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCTV Field Planner v3 | Reporte Técnico</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Sora:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #07101d;
+            --bg-soft: #0b1727;
+            --panel: rgba(14, 27, 46, 0.84);
+            --panel-strong: rgba(11, 21, 38, 0.96);
+            --panel-tint: rgba(20, 38, 64, 0.74);
+            --line: rgba(137, 170, 205, 0.18);
+            --line-strong: rgba(137, 170, 205, 0.32);
+            --text: #eef4ff;
+            --muted: #a1b1c8;
+            --brand: #66d2ff;
+            --brand-strong: #319fe0;
+            --accent: #f6c46b;
+            --danger: #ff9a9a;
+            --shadow: 0 28px 72px rgba(0, 0, 0, 0.35);
+            --radius: 28px;
+            --radius-sm: 18px;
+            --content-max: 1220px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: "IBM Plex Sans", sans-serif;
+            background:
+                radial-gradient(circle at 15% 0%, rgba(49, 159, 224, 0.18), transparent 32%),
+                radial-gradient(circle at 100% 15%, rgba(102, 210, 255, 0.12), transparent 30%),
+                linear-gradient(180deg, #07101d 0%, #09111d 30%, #0a1220 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+            background-size: 36px 36px;
+            mask-image: radial-gradient(circle at center, black 50%, transparent 92%);
+            pointer-events: none;
+            opacity: 0.35;
+            z-index: 0;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        .shell {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: sticky;
+            top: 0;
+            align-self: start;
+            height: 100vh;
+            padding: 28px 22px 24px;
+            border-right: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(7, 16, 29, 0.95), rgba(7, 16, 29, 0.78));
+            backdrop-filter: blur(18px);
+        }
+
+        .sidebar-card {
+            padding: 20px;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: rgba(13, 24, 42, 0.72);
+            box-shadow: var(--shadow);
+        }
+
+        .sidebar-card h1 {
+            margin: 0 0 8px;
+            font-family: "Sora", sans-serif;
+            font-size: 1.22rem;
+            line-height: 1.35;
+        }
+
+        .sidebar-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.93rem;
+            line-height: 1.55;
+        }
+
+        .nav {
+            margin-top: 20px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .nav a {
+            display: block;
+            padding: 11px 14px;
+            border-radius: 14px;
+            color: var(--muted);
+            text-decoration: none;
+            border: 1px solid transparent;
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+            font-size: 0.92rem;
+        }
+
+        .nav a:hover,
+        .nav a.is-active {
+            color: var(--text);
+            border-color: rgba(102, 210, 255, 0.28);
+            background: rgba(49, 159, 224, 0.12);
+            transform: translateX(4px);
+        }
+
+        .content {
+            padding: 28px;
+        }
+
+        .content-inner {
+            max-width: var(--content-max);
+            margin: 0 auto;
+            display: grid;
+            gap: 28px;
+        }
+
+        .panel {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: linear-gradient(180deg, rgba(14, 27, 46, 0.88), rgba(11, 21, 38, 0.94));
+            box-shadow: var(--shadow);
+        }
+
+        .panel::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(140deg, rgba(102, 210, 255, 0.08), transparent 30%, transparent 70%, rgba(246, 196, 107, 0.04));
+            pointer-events: none;
+        }
+
+        .panel-body {
+            position: relative;
+            z-index: 1;
+            padding: 32px;
+        }
+
+        .hero {
+            min-height: 82vh;
+            display: grid;
+            grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+            gap: 28px;
+            align-items: center;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            border: 1px solid rgba(102, 210, 255, 0.22);
+            border-radius: 999px;
+            background: rgba(49, 159, 224, 0.08);
+            font-size: 0.85rem;
+            color: var(--brand);
+            margin-bottom: 18px;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--brand);
+            box-shadow: 0 0 18px rgba(102, 210, 255, 0.6);
+        }
+
+        .hero h1,
+        .section-title,
+        .subsection-title,
+        .chapter-title {
+            margin: 0;
+            font-family: "Sora", sans-serif;
+            line-height: 1.16;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.8rem, 5.2vw, 5rem);
+            margin-bottom: 18px;
+        }
+
+        .section-label {
+            margin: 0 0 14px;
+            font-size: 0.9rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .hero p,
+        .copy p,
+        .subpanel p,
+        .chapter p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.78;
+            font-size: 1rem;
+        }
+
+        .hero .lede {
+            max-width: 58ch;
+            font-size: 1.08rem;
+        }
+
+        .section-label,
+        .code-label {
+            color: var(--accent);
+        }
+
+        .eyebrow {
+            color: var(--brand);
+        }
+
+        .image-frame {
+            position: relative;
+            border-radius: calc(var(--radius) - 6px);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 20px 46px rgba(0, 0, 0, 0.38);
+        }
+
+        .image-frame img,
+        .media img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .section {
+            display: grid;
+            gap: 22px;
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+            gap: 28px;
+            align-items: start;
+        }
+
+        .copy {
+            display: grid;
+            gap: 18px;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 3vw, 2.8rem);
+        }
+
+        .chapter-title {
+            font-size: clamp(2.2rem, 3.5vw, 3.2rem);
+            margin-bottom: 8px;
+        }
+
+        .subsection-title {
+            font-size: 1.3rem;
+            margin-bottom: 14px;
+        }
+
+        .bullet-list,
+        .nested-list {
+            margin: 0;
+            padding-left: 1.35rem;
+            color: var(--muted);
+            line-height: 1.78;
+        }
+
+        .bullet-list li,
+        .nested-list li {
+            margin: 8px 0;
+        }
+
+        .nested-list {
+            margin-top: 8px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 680px;
+        }
+
+        th,
+        td {
+            padding: 16px 18px;
+            text-align: left;
+            vertical-align: top;
+            border-bottom: 1px solid var(--line);
+            border-right: 1px solid rgba(137, 170, 205, 0.12);
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        th:last-child,
+        td:last-child {
+            border-right: none;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        th {
+            color: var(--text);
+            background: rgba(102, 210, 255, 0.06);
+            font-weight: 600;
+        }
+
+        .mono,
+        code,
+        pre {
+            font-family: "IBM Plex Mono", monospace;
+        }
+
+        code {
+            padding: 0.14rem 0.38rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #d9ebff;
+            font-size: 0.94em;
+        }
+
+        .code-label {
+            display: inline-block;
+            margin-bottom: 10px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(102, 210, 255, 0.18);
+            background: rgba(102, 210, 255, 0.08);
+            color: var(--brand);
+            font-size: 0.78rem;
+            text-transform: lowercase;
+        }
+
+        pre {
+            margin: 0;
+            padding: 18px 20px;
+            overflow-x: auto;
+            border-radius: 18px;
+            border: 1px solid rgba(137, 170, 205, 0.18);
+            background: #08111d;
+            color: #dbe7fb;
+            line-height: 1.72;
+            font-size: 0.92rem;
+        }
+
+        .stack {
+            display: grid;
+            gap: 22px;
+        }
+
+        .grid-two {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 22px;
+        }
+
+        .grid-three {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 22px;
+        }
+
+        .subpanel {
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(18, 33, 56, 0.62), rgba(11, 21, 38, 0.8));
+            display: grid;
+            gap: 16px;
+        }
+
+        .media {
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .chapter {
+            display: grid;
+            gap: 24px;
+        }
+
+        .chapter-top {
+            display: grid;
+            gap: 14px;
+        }
+
+        .translation {
+            padding: 16px 18px;
+            border-left: 3px solid rgba(246, 196, 107, 0.6);
+            background: rgba(246, 196, 107, 0.06);
+            border-radius: 0 16px 16px 0;
+        }
+
+        .comparison {
+            display: grid;
+            gap: 22px;
+        }
+
+        .soft-note {
+            color: var(--muted);
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+            margin: 4px 0;
+        }
+
+        .status-stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        @media (max-width: 1180px) {
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: sticky;
+                height: auto;
+                padding: 18px 18px 14px;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+                z-index: 10;
+            }
+
+            .sidebar-card {
+                margin-bottom: 14px;
+            }
+
+            .nav {
+                grid-auto-flow: column;
+                grid-auto-columns: max-content;
+                overflow-x: auto;
+                padding-bottom: 4px;
+            }
+
+            .nav a:hover,
+            .nav a.is-active {
+                transform: none;
+            }
+        }
+
+        @media (max-width: 960px) {
+            .content {
+                padding: 18px;
+            }
+
+            .panel-body {
+                padding: 24px;
+            }
+
+            .hero,
+            .split,
+            .grid-two,
+            .grid-three {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                min-width: 640px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .content {
+                padding: 14px;
+            }
+
+            .panel-body,
+            .subpanel {
+                padding: 20px;
+            }
+
+            .hero {
+                min-height: auto;
+            }
+
+            .hero h1 {
+                font-size: 2.3rem;
+            }
+
+            .section-title,
+            .chapter-title {
+                font-size: 1.8rem;
+            }
+
+            table {
+                min-width: 560px;
+            }
+        }
+
+        @media print {
+            body::before,
+            .sidebar {
+                display: none;
+            }
+
+            .shell {
+                display: block;
+            }
+
+            .content {
+                padding: 0;
+            }
+
+            .panel,
+            .subpanel,
+            .image-frame,
+            .media,
+            .table-wrap,
+            pre {
+                box-shadow: none;
+                background: #ffffff;
+                color: #111827;
+                border-color: #cbd5e1;
+            }
+
+            body {
+                background: #ffffff;
+                color: #111827;
+            }
+
+            .hero p,
+            .copy p,
+            .subpanel p,
+            .chapter p,
+            .bullet-list,
+            .nested-list,
+            th,
+            td,
+            .soft-note {
+                color: #334155;
+            }
+
+            .section-label,
+            .eyebrow,
+            .code-label {
+                color: #0f172a;
+                border-color: #94a3b8;
+                background: #f8fafc;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <aside class="sidebar">
+            <div class="sidebar-card">
+                <h1>CCTV Field Planner v3</h1>
+                <p>Reporte Técnico</p>
+            </div>
+            <nav class="nav">
+                <a class="nav-link" href="#que-es">1. Qué es</a>
+                <a class="nav-link" href="#problema">2. El problema que resuelve</a>
+                <a class="nav-link" href="#stack">3. Stack tecnológico</a>
+                <a class="nav-link" href="#arquitectura">4. Arquitectura de módulos</a>
+                <a class="nav-link" href="#flujo">5. Flujo de datos completo</a>
+                <a class="nav-link" href="#interfaces">6. Qué ve el técnico</a>
+                <a class="nav-link" href="#entradas">7. Entradas que acepta la app</a>
+                <a class="nav-link" href="#cliente">8. Por qué corre 100% en el cliente</a>
+                <a class="nav-link" href="#limitaciones">9. Limitaciones actuales</a>
+                <a class="nav-link" href="#motor">10. El Motor de Inteligencia</a>
+            </nav>
+        </aside>
+
+        <main class="content">
+            <div class="content-inner">
+                <header class="panel hero" id="que-es">
+                    <div class="panel-body">
+                        <div class="eyebrow">Reporte Técnico</div>
+                        <h1>CCTV Field Planner v3</h1>
+                        <p class="section-label">1. Qué es</p>
+                        <p class="lede">Una Progressive Web App (PWA) diseñada para iPhone, desplegada en Google App Engine, que convierte un PDF de proyecto CCTV en herramientas operativas para técnicos de campo. Corre 100% en el navegador — no existe servidor de datos, no se envía información a ningún lugar.</p>
+                    </div>
+                    <div class="panel-body">
+                        <div class="image-frame">
+                            <img src="./assets/hero.jpg" alt="Vista de la presentación técnica del CCTV Field Planner v3">
+                        </div>
+                    </div>
+                </header>
+
+                <section class="panel section" id="problema">
+                    <div class="panel-body split">
+                        <div class="copy">
+                            <p class="section-label">2. El problema que resuelve</p>
+                            <h2 class="section-title">El problema que resuelve</h2>
+                            <p>Un técnico llega al sitio de instalación con un PDF que contiene:</p>
+                            <ul class="bullet-list">
+                                <li>Página 1: el plano arquitectónico con los IDs de dispositivos marcados numéricamente</li>
+                                <li>Páginas 2+: tablas con datos de cada dispositivo (part number, switch, área, tipo)</li>
+                            </ul>
+                            <p>Sin la app, el técnico tiene que navegar entre ambas partes del PDF, cruzar datos manualmente y llevar trazabilidad en papel. La app centraliza esto en una sola herramienta táctil.</p>
+                        </div>
+                        <div class="image-frame">
+                            <img src="./assets/problem.jpg" alt="Ilustración del problema operativo que resuelve la app">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel section" id="stack">
+                    <div class="panel-body stack">
+                        <div class="copy">
+                            <p class="section-label">3. Stack tecnológico (del <code>package.json</code>)</p>
+                            <h2 class="section-title">Stack tecnológico</h2>
+                        </div>
+                        <div class="split">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Librería</th>
+                                            <th>Versión</th>
+                                            <th>Rol</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>react</code></td>
+                                            <td>19.1</td>
+                                            <td>Framework de UI</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>pdfjs-dist</code></td>
+                                            <td>5.4</td>
+                                            <td>Lectura y renderizado del PDF</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>papaparse</code></td>
+                                            <td>5.5</td>
+                                            <td>Parseo de archivos CSV</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>jszip</code></td>
+                                            <td>3.10</td>
+                                            <td>Descompresión de ZIPs de iconos</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>pdf-lib</code></td>
+                                            <td>1.17</td>
+                                            <td>Dependencia para manipulación PDF</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>react-zoom-pan-pinch</code></td>
+                                            <td>3.7</td>
+                                            <td>Zoom/pan táctil en iPhone</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>vite-plugin-pwa</code></td>
+                                            <td>1.0</td>
+                                            <td>Service worker + instalación PWA</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>typescript</code></td>
+                                            <td>5.8</td>
+                                            <td>Tipado estático</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="media">
+                                <img src="./assets/stack.jpg" alt="Visual del stack tecnológico del proyecto">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel section" id="arquitectura">
+                    <div class="panel-body stack">
+                        <div class="copy">
+                            <p class="section-label">4. Arquitectura de módulos</p>
+                            <h2 class="section-title">Arquitectura de módulos</h2>
+                        </div>
+                        <div class="split">
+                            <div class="subpanel">
+                                <pre>src/
+├── App.tsx                        ← Orquestador principal: estado, flujo, UI
+├── types.ts                       ← Interfaces centrales: DeviceRecord, PlanData, etc.
+├── lib/
+│   ├── pdf.ts                     ← Carga PDF, extrae marcadores, genera preview
+│   ├── normalize.ts               ← Normaliza datos CSV/PDF → DeviceRecord[]
+│   ├── icons.ts                   ← Carga y búsqueda fuzzy de iconos
+│   ├── installation-rules.ts      ← Reglas de altura y tipo de instalación
+│   ├── cable-planning.ts          ← Estimación de cables CAT5 por dispositivo
+│   └── visual-knowledge.ts        ← Resolución de conocimiento visual semánticamente
+├── modules/
+│   ├── pdf-data-parser/           ← Parseo de páginas de datos del PDF
+│   ├── plan-segmentation/         ← Segmentación espacial por switch (k-NN + grid)
+│   ├── plan-viewer/               ← Modal de plano con zoom/pan/overlay
+│   ├── project-insights/          ← Panel de resumen estadístico del proyecto
+│   ├── field-intelligence/        ← Tareas de campo, clusters, prioridades
+│   ├── switch-segmentation/       ← Identidad y agrupación de switches
+│   └── device-records/            ← Merge de registros desde fuentes múltiples
+└── config/
+   ├── device-rules                ← Reglas de inferencia por nombre de dispositivo
+   ├── visual-knowledge            ← Seeds de conocimiento visual (Manteca)
+   └── manteca-visual-knowledge.json</pre>
+                            </div>
+                            <div class="media">
+                                <img src="./assets/architecture.jpg" alt="Diagrama visual de la arquitectura del sistema">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel section" id="flujo">
+                    <div class="panel-body stack">
+                        <div class="copy">
+                            <p class="section-label">5. Flujo de datos completo (cómo lo hace)</p>
+                            <h2 class="section-title">Flujo de datos completo (cómo lo hace)</h2>
+                        </div>
+                        <div class="media">
+                            <img src="./assets/pipeline.jpg" alt="Infografía del flujo de datos del sistema">
+                        </div>
+                        <div class="grid-two">
+                            <article class="subpanel">
+                                <h3 class="subsection-title">5.1 Carga del PDF (<code>src/lib/pdf.ts</code>)</h3>
+                                <p><strong>Función</strong></p>
+                                <p><code>loadPlan():</code></p>
+                                <ul class="bullet-list">
+                                    <li>Lee el archivo como <code>Uint8Array</code> con <code>readFileAsArrayBuffer</code></li>
+                                    <li>Abre el PDF con <code>pdfjs-dist</code>: <code>getDocument({ data: buffer })</code></li>
+                                    <li>Extrae la Página 1 y llama a <code>extractMarkers(page)</code></li>
+                                </ul>
+                                <p><strong>Extracción de marcadores (<code>extractMarkers</code>):</strong></p>
+                                <ul class="bullet-list">
+                                    <li>Obtiene el <code>textContent</code> de la página (todos los textos con sus posiciones exactas en coordenadas PDF)</li>
+                                    <li>Para cada <code>TextItem</code> con <code>str</code> que coincide con <code>/^\d{1,3}$/</code> (número de 1 a 3 dígitos), captura:</li>
+                                </ul>
+                                <ul class="nested-list">
+                                    <li><code>x, y</code> usando la matriz de transformación <code>Util.transform([1,0,0,-1,0,height], item.transform)</code></li>
+                                    <li>El ID numérico</li>
+                                </ul>
+                                <ul class="bullet-list">
+                                    <li>Maneja también el caso de múltiples IDs en un solo <code>TextItem</code> (ej: <code>"45 46 47"</code>) distribuyendo posiciones proporcionalmente al ancho del texto</li>
+                                    <li>Resultado: <code>Map&lt;number, PlanMarker&gt;</code> con <code>{ id, x, y, label }</code> — posición exacta de cada ID en el plano</li>
+                                </ul>
+                                <p><strong>Preview de imagen (<code>renderPlanPreviewFromPage</code>):</strong></p>
+                                <ul class="bullet-list">
+                                    <li>Detecta iPhone con <code>/iPad|iPhone|iPod/i.test(navigator.userAgent)</code></li>
+                                    <li>En iPhone: renderiza a 1400px PNG, suavizado "high"</li>
+                                    <li>Hace <code>page.render({ canvas, viewport })</code> → <code>canvas.toBlob("image/png")</code></li>
+                                    <li>Devuelve <code>previewUrl</code> (blob URL) + dimensiones</li>
+                                </ul>
+                            </article>
+
+                            <article class="subpanel">
+                                <h3 class="subsection-title">5.2 Parseo de páginas de datos PDF (<code>src/modules/pdf-data-parser/build-pdf-records.ts</code>)</h3>
+                                <ul class="bullet-list">
+                                    <li>Lee las páginas 2+ del PDF con pdfjs</li>
+                                    <li>Reconstruye la tabla line por line usando tolerancias Y: <code>LINE_Y_TOLERANCE = 2</code> (mismo renglón), <code>ROW_Y_TOLERANCE = 15</code> (misma fila de tabla)</li>
+                                    <li>Agrupa fragmentos de texto en columnas (ID, Name, Part Number, Switch, etc.)</li>
+                                    <li>Detecta plantilla de datos automáticamente</li>
+                                    <li>Devuelve <code>Record&lt;string, string&gt;[]</code> — una fila por dispositivo</li>
+                                </ul>
+                            </article>
+
+                            <article class="subpanel">
+                                <h3 class="subsection-title">5.3 Normalización (<code>src/lib/normalize.ts</code>)</h3>
+                                <p><strong>Función</strong></p>
+                                <p><code>normalizeRows(primaryRows, secondaryRows, markers):</code></p>
+                                <p>Para cada fila de datos:</p>
+                                <ul class="bullet-list">
+                                    <li>Extrae campos usando <code>HEADER_ALIASES</code> (maneja variantes: <code>"switch"</code> / <code>"switch_name"</code>, <code>"part_number"</code> / <code>"partnumber"</code>, etc.)</li>
+                                    <li>Asigna posición: si hay <code>x, y</code> en los datos → usa esa; si hay <code>id</code> → busca en <code>markers</code> del PDF; si no → <code>hasPosition = false</code></li>
+                                    <li>Extrae área (extractArea): divide el nombre por <code>_/</code>, filtra prefijos conocidos (<code>PTZ</code>, <code>POS</code>, <code>INT</code>, <code>EXT</code>, etc.) y números puros → queda el área semántica</li>
+                                    <li>Categoriza (categorizeRecord): detecta PTZ, camera, monitor, mount, infrastructure por part number y nombre</li>
+                                    <li>Reglas de instalación (resolveInstallationSpec):</li>
+                                </ul>
+                                <ul class="nested-list">
+                                    <li>monitor interior → 8 ft</li>
+                                    <li>PTZ exterior → 16 ft</li>
+                                    <li>F360 en Receiving → 16 ft</li>
+                                    <li>F360 interior → 12 ft (necesita validación)</li>
+                                    <li>cámara exterior → 12 ft</li>
+                                </ul>
+                                <ul class="bullet-list">
+                                    <li>Contextualiza icono (contextualizeIconDeviceForInstallation): PTZ outdoor → cambia a <code>"CIP-QNP6250H Outdoor"</code> automáticamente</li>
+                                    <li>Estima cables (estimateNetworkCables):</li>
+                                </ul>
+                                <ul class="nested-list">
+                                    <li>mount/infrastructure → 0</li>
+                                    <li>PVM compartida (Cosmetics, Sporting Goods, Baby Formula) → 0</li>
+                                    <li>Patrones especiales (<code>CM-</code>, <code>HW-</code>, <code>NDA-</code>, etc.) → 0</li>
+                                    <li>Regla por nombre → 1 o 2</li>
+                                    <li>Default → 1</li>
+                                </ul>
+                                <ul class="bullet-list">
+                                    <li>Merge de duplicados: si el mismo ID aparece en fuente primaria y secundaria, fusiona los campos preservando el valor no vacío</li>
+                                </ul>
+                                <p><strong>Función</strong></p>
+                                <p><code>attachIcons(records, iconMap):</code></p>
+                                <ul class="bullet-list">
+                                    <li>Consulta resolveRecordVisualKnowledge para seeds explícitos</li>
+                                    <li>Busca icono con lookupIcon (fuzzy match por part number → iconDevice → deviceTaskType)</li>
+                                    <li>Resolución final: exact match → score ≥ 5000 → vacío</li>
+                                </ul>
+                            </article>
+
+                            <article class="subpanel">
+                                <h3 class="subsection-title">5.4 Sistema de iconos (<code>src/lib/icons.ts</code>)</h3>
+                                <p>Tres fuentes de iconos (mergeadas):</p>
+                                <ul class="bullet-list">
+                                    <li>Librería interna: cargada desde <code>/device-icons/index.json</code> (manifiesto pre-generado)</li>
+                                    <li>ZIP extra: descomprimido con JSZip, los PNG/SVG se codifican en base64 como data URLs</li>
+                                    <li>Folder extra: archivos via <code>webkitRelativePath</code></li>
+                                </ul>
+                                <p><strong>Motor de búsqueda fuzzy (<code>lookupIcon</code>):</strong></p>
+                                <pre>Score sistema (de mayor a menor):
+- exact match          → 10000 + length
+- query ⊂ candidate    → 8000 + ...
+- candidate ⊂ query    → 7000 + ...
+- common prefix ≥ 8    → 6000 + ...
+- partial prefix       → 5000 + ...
+MIN_FUZZY_ICON_SCORE = 5000</pre>
+                                <p>SVG tiene prioridad sobre PNG (<code>iconPriority</code>). El icono se descarta si no supera el umbral mínimo.</p>
+                            </article>
+
+                            <article class="subpanel">
+                                <h3 class="subsection-title">5.5 Segmentación espacial (<code>src/modules/plan-segmentation/build-plan-segmentation.ts</code>)</h3>
+                                <p><strong>Función</strong></p>
+                                <p><code>buildPlanSegmentation(records, plan, gridWidth=170, kNeighbors=5):</code></p>
+                                <ul class="bullet-list">
+                                    <li>Construye <code>SegmentationPoint[]</code>: solo dispositivos con <code>id</code>, posición y switch asignado</li>
+                                    <li>Crea una grilla de <code>170 × H</code> celdas sobre el plano</li>
+                                    <li>Para cada celda, hace votación k-NN (k=5): busca los 5 puntos más cercanos y la etiqueta de switch más frecuente gana</li>
+                                    <li>Aplica suavizado de grilla (smoothGrid): cada celda toma el valor mayoritario de sus 8 vecinos (varios passes) → elimina ruido y produce zonas continuas</li>
+                                    <li>Produce PlanSegmentation con:</li>
+                                </ul>
+                                <ul class="nested-list">
+                                    <li><code>grid: Uint16Array</code> — mapa de etiquetas por celda</li>
+                                    <li><code>segments[]</code> — bounds, conteo de dispositivos, total cables por switch</li>
+                                    <li><code>partNumberTotals</code> — conteo por part number</li>
+                                    <li><code>partNumberUnpositioned</code> — dispositivos sin posición agrupados por part number</li>
+                                    <li><code>partNumberNoSwitch</code> — dispositivos sin switch asignado</li>
+                                </ul>
+                            </article>
+
+                            <article class="subpanel">
+                                <h3 class="subsection-title">5.6 Vista de segmentación (<code>src/modules/plan-viewer/PlanSegmentationModal.tsx</code>)</h3>
+                                <p>Tres capas sobre el plano (stacked absolutamente):</p>
+                                <ul class="bullet-list">
+                                    <li><code>&lt;img&gt;</code> (no canvas) — la imagen PNG del plan renderizada desde pdfjs</li>
+                                    <li><code>overlayCanvasRef</code> — pinta la segmentación coloreada por switch usando el <code>Uint16Array</code> de la grilla</li>
+                                    <li><code>partNumCanvasRef</code> — dibuja círculos con IDs de dispositivos, marcadores pulsantes para el seleccionado</li>
+                                </ul>
+                                <p>Pipeline de imagen en iPhone (3 fases):</p>
+                                <ul class="bullet-list">
+                                    <li>Fase 1: <code>plan.previewUrl</code> (1400px PNG, disponible inmediato)</li>
+                                    <li>Fase 2: <code>renderPlanPreview</code> re-renderiza desde el PDF a 2600px PNG en background (async ~2-4s)</li>
+                                    <li>El <code>&lt;img&gt;</code> se actualiza cuando llega la fase 2</li>
+                                </ul>
+                                <p>Zoom/pan:</p>
+                                <ul class="bullet-list">
+                                    <li><code>react-zoom-pan-pinch</code> con <code>maxScale=8</code>, <code>minScale</code> calculado al fit</li>
+                                    <li><code>gesturestart/change/end</code> interceptados con <code>preventDefault</code> para bloquear el zoom nativo de Safari</li>
+                                    <li><code>touchAction: "none"</code> en el contenedor del viewport</li>
+                                </ul>
+                            </article>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel section" id="interfaces">
+                    <div class="panel-body stack">
+                        <div class="copy">
+                            <p class="section-label">6. Qué ve el técnico (interfaces)</p>
+                            <h2 class="section-title">Qué ve el técnico (interfaces)</h2>
+                        </div>
+                        <div class="split">
+                            <div class="stack">
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Vista</th>
+                                                <th>Qué muestra</th>
+                                                <th>De dónde vienen los datos</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Project Insights</td>
+                                                <td>Totales: cámaras, PTZ, F360, monitores, switches, áreas, cables estimados</td>
+                                                <td><code>buildProjectInsights()</code> sobre <code>DeviceRecord[]</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Field Tasks</td>
+                                                <td>Lista de tareas por dispositivo: qué instalar, a qué altura, cuántos cables, switch, advertencias</td>
+                                                <td><code>DeviceRecord[]</code> + reglas de instalación</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Ver plano (Página 1)</td>
+                                                <td>El PDF original navegable</td>
+                                                <td><code>plan.viewerUrl</code> — blob URL del PDF</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Segmentación</td>
+                                                <td>Plano coloreado por zona de switch + IDs navegables + inspección por toque</td>
+                                                <td><code>PlanSegmentation</code> + <code>planRaster</code></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="status-stack">
+                                    <div class="subpanel">
+                                        <h3 class="subsection-title">Estado de tareas</h3>
+                                        <ul class="bullet-list">
+                                            <li><code>"pending"</code> / <code>"active"</code> / <code>"done"</code> — guardados en <code>localStorage</code> con clave <code>cctv-field-task-statuses-v1</code></li>
+                                            <li>Persisten entre sesiones en el mismo dispositivo</li>
+                                        </ul>
+                                    </div>
+                                    <div class="subpanel">
+                                        <h3 class="subsection-title">Filtros disponibles</h3>
+                                        <ul class="bullet-list">
+                                            <li>Por estado de tarea (<code>all</code> / <code>pending</code> / <code>active</code> / <code>done</code>)</li>
+                                            <li>Por categoría (<code>all</code> / <code>camera</code> / <code>ptz</code> / <code>monitor</code> / <code>mount</code> / <code>infrastructure</code>)</li>
+                                            <li>Búsqueda de texto (debounced con <code>useDeferredValue</code>)</li>
+                                            <li>Por switch (color de segmentación)</li>
+                                            <li>Por part number (multi-selección en el panel de segmentación)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="media">
+                                <img src="./assets/mobile-ui.jpg" alt="Mockup de la interfaz móvil de la app">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel section" id="entradas">
+                    <div class="panel-body stack">
+                        <div class="copy">
+                            <p class="section-label">7. Entradas que acepta la app</p>
+                            <h2 class="section-title">Entradas que acepta la app</h2>
+                        </div>
+                        <div class="split">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Entrada</th>
+                                            <th>Obligatoria</th>
+                                            <th>Qué hace</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>PDF del plano</td>
+                                            <td>Sí</td>
+                                            <td>Extrae posiciones de IDs (Page 1) + parsea tablas de datos (Pages 2+)</td>
+                                        </tr>
+                                        <tr>
+                                            <td>CSV base</td>
+                                            <td>No</td>
+                                            <td>Datos de dispositivos en formato tabular</td>
+                                        </tr>
+                                        <tr>
+                                            <td>PDF/CSV adicional</td>
+                                            <td>No</td>
+                                            <td>Segunda fuente de datos, se mergea con la primera</td>
+                                        </tr>
+                                        <tr>
+                                            <td>CSV de partes/iconos</td>
+                                            <td>No</td>
+                                            <td>Mapeo adicional de part numbers a iconos</td>
+                                        </tr>
+                                        <tr>
+                                            <td>ZIP de iconos</td>
+                                            <td>No</td>
+                                            <td>Librería de iconos adicional (suplemento a la interna)</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Folder de iconos</td>
+                                            <td>No</td>
+                                            <td>Igual que ZIP, vía folder local</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="media">
+                                <img src="./assets/inputs.jpg" alt="Visual de las entradas soportadas por la aplicación">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel section" id="cliente">
+                    <div class="panel-body split">
+                        <div class="copy">
+                            <p class="section-label">8. Por qué corre 100% en el cliente</p>
+                            <h2 class="section-title">Por qué corre 100% en el cliente</h2>
+                            <ul class="bullet-list">
+                                <li><code>pdfjs-dist</code> tiene su propio Web Worker (<code>pdf.worker.min.mjs</code>) que se descarga una vez y corre localmente</li>
+                                <li>Los blobs del PDF se crean con <code>URL.createObjectURL</code> — la memoria es del navegador</li>
+                                <li><code>localStorage</code> guarda los estados de tarea</li>
+                                <li>El service worker (PWA, <code>vite-plugin-pwa</code>) cachea todos los assets — funciona offline después de la primera carga</li>
+                                <li>No hay ninguna llamada a una API externa en el código de procesamiento</li>
+                            </ul>
+                        </div>
+                        <div class="media">
+                            <img src="./assets/security.jpg" alt="Visual de operación 100% en navegador">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel section" id="limitaciones">
+                    <div class="panel-body split">
+                        <div class="copy">
+                            <p class="section-label">9. Limitaciones actuales que el código refleja</p>
+                            <h2 class="section-title">Limitaciones actuales que el código refleja</h2>
+                            <ul class="bullet-list">
+                                <li><code>plan.width</code> = página 1 del PDF en user units (72 DPI). Si el PDF tiene una geometría no estándar, los marcadores pueden quedar fuera de bounds (se descartan en extractMarkers con <code>y &lt; 0 || y &gt; viewportHeight</code>)</li>
+                                <li>La segmentación solo actúa sobre dispositivos con id numérico + posición + switch asignado — los que faltan quedan en <code>partNumberUnpositioned</code> o <code>partNumberNoSwitch</code></li>
+                                <li>Los estados de tarea (<code>pending/active/done</code>) se guardan en <code>localStorage</code> del dispositivo — si el técnico cambia de iPhone o limpia el caché, se pierden</li>
+                                <li>La app no tiene autenticación (ningún código de auth en el repo)</li>
+                            </ul>
+                        </div>
+                        <div class="media">
+                            <img src="./assets/limitations.jpg" alt="Visual de consideraciones técnicas y limitaciones">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel chapter" id="motor">
+                    <div class="panel-body chapter">
+                        <div class="chapter-top">
+                            <p class="section-label">Sección 10</p>
+                            <h2 class="chapter-title">El Motor de Inteligencia: Por qué lo hace y cómo lo hace</h2>
+                        </div>
+
+                        <article class="subpanel">
+                            <h3 class="subsection-title">10.1 El problema raíz que resuelve esta pieza</h3>
+                            <p>Los PDFs de proyectos CCTV de Walmart tienen un problema estructural: los datos de dispositivos vienen incompletos o ambiguos. Un mismo dispositivo puede aparecer como:</p>
+                            <ul class="bullet-list">
+                                <li><code>"PTZ_APPAREL_WOMENS_47"</code> — sin part number</li>
+                                <li><code>"POS_COSMETICS_12"</code> — nombre que no revela si es cámara domo o PTZ</li>
+                                <li><code>"SAL_LIQUOR_PVM_8"</code> — puede ser un monitor 32" o 43" back-to-back</li>
+                            </ul>
+                            <p>Sin contexto de campo, el algoritmo no puede resolver esto solo con el texto del PDF. Aquí entra el sistema de conocimiento.</p>
+                        </article>
+
+                        <article class="subpanel">
+                            <h3 class="subsection-title">10.2 Arquitectura de tres capas</h3>
+                            <p>El motor de decisión está compuesto por tres capas que se aplican en orden de especificidad:</p>
+
+                            <div class="divider"></div>
+
+                            <div class="stack">
+                                <div>
+                                    <h4 class="subsection-title">Capa A — <code>namePatternRules</code> (conocimiento por nombre de dispositivo)</h4>
+                                    <p><strong>Archivo:</strong></p>
+                                    <p><code>src/config/manteca-visual-knowledge.json</code> → <code>namePatternRules</code></p>
+                                    <p>Qué hace: Mapea un patrón de nombre directamente a un part number específico y un icono específico, con un nivel de confianza.</p>
+                                    <p>Ejemplo real en el JSON:</p>
+                                    <div class="code-label">json</div>
+                                    <pre>{
+  "namePattern": "PTZ EXT GRC",
+  "suggestedPartNumber": "CIP-QNP6250H",
+  "partConfidence": 1,
+  "suggestedIconDevice": "CIP-QNP6250H Outdoor",
+  "iconConfidence": 1
+}</pre>
+                                    <p class="translation"><em>"Si el nombre del dispositivo es PTZ EXT GRC, el part number es con certeza absoluta (1.0) CIP-QNP6250H, y el icono correcto es el modelo Outdoor, no Ceiling ni Pendant."</em></p>
+                                    <p>Hay 70 patrones de nombre registrados — todos derivados del entrenamiento en campo del sitio Manteca.</p>
+                                    <p>Caso ambiguo registrado:</p>
+                                    <div class="code-label">json</div>
+                                    <pre>{
+  "namePattern": "POS",
+  "suggestedPartNumber": "BNB-SCB-1KIT",
+  "partConfidence": 0.778,
+  "candidatePartNumbers": ["BNB-SCB-1KIT", "PSA-W4-BAXFA51"],
+  "iconConfidence": 0.556
+}</pre>
+                                    <p class="translation"><em>"POS puede ser BNB-SCB-1KIT (77.8% de las veces) o PSA-W4-BAXFA51 (22.2%). El técnico debe validar en campo."</em> → La app genera una advertencia visible para ese dispositivo.</p>
+                                </div>
+
+                                <div>
+                                    <h4 class="subsection-title">Capa B — <code>partNumberProfiles</code> (conocimiento por part number)</h4>
+                                    <p><strong>Archivo:</strong></p>
+                                    <p><code>src/config/manteca-visual-knowledge.json</code> → <code>partNumberProfiles</code></p>
+                                    <p>Qué hace: Cuando el part number sí viene en el PDF, define qué variantes de icono son posibles para ese part number.</p>
+                                    <p>Ejemplo:</p>
+                                    <div class="code-label">json</div>
+                                    <pre>{
+  "partNumber": "CIP-QNP6250H",
+  "iconDevices": [
+    "CIP-QNP6250H Ceiling",
+    "CIP-QNP6250H Outdoor",
+    "CIP-QNP6250H Pendant"
+  ]
+}</pre>
+                                    <p>Si el PDF dice <code>CIP-QNP6250H</code> y hay 1 sola variante posible → el icono se asigna automáticamente. Si hay múltiples → la Capa A (nombre) desempata, o si no puede → se genera advertencia.</p>
+                                    <p>Hay 14 part numbers perfilados actualmente.</p>
+                                </div>
+
+                                <div>
+                                    <h4 class="subsection-title">Capa C — <code>device-rules.ts</code> (reglas de instalación con cables)</h4>
+                                    <p><strong>Archivo:</strong></p>
+                                    <p><code>src/config/device-rules.ts</code></p>
+                                    <p>Qué hace: Agrega información que va más allá del icono — específicamente cuántos cables físicos requiere el dispositivo y qué nota debe ver el técnico.</p>
+                                    <p>Ejemplo:</p>
+                                    <div class="code-label">device-rules.ts:45-54</div>
+                                    <pre>{
+  id: "liquor-pvm-43",
+  description: "Monitor VPM 43\" en área Liquor (back-to-back, dual feed)",
+  namePattern: "SAL_LIQUOR_PVM",
+  inferredIconDevice: "MCLV-BAXFA51 43 LED Monitor 43 Back to Back",
+  inferredPartNumber: "MCLB-BAXFA51",
+  cablesCAT5: 2,
+  cablesPower: 1,
+  installerNote: "Monitor dual 43\" back-to-back — correr 2 CAT5 (uno por pantalla) + 1 cable 12/2 power"
+}</pre>
+                                    <p>Esto es conocimiento que no existe en ningún PDF — viene 100% del entrenamiento de campo.</p>
+                                    <p>Hay 6 reglas de instalación especializadas actualmente.</p>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="subpanel">
+                            <h3 class="subsection-title">10.3 Cómo el algoritmo toma la decisión — flujo exacto</h3>
+                            <p>Para cada dispositivo,</p>
+                            <p><code>resolveRecordVisualKnowledge</code> en <code>src/lib/visual-knowledge.ts</code> sigue este árbol:</p>
+                            <pre>NOMBRE del dispositivo
+       ↓
+¿Hay namePatternRule con confidence = 1.0 y 1 solo candidato?
+  → SÍ: part number + icono asignados con certeza total. FIN.
+  → SÍ pero confidence &lt; 1 o múltiples candidatos:
+        Usa el sugerido + marca advertencia "validar en campo"
+       ↓
+¿El PART NUMBER del PDF está en partNumberProfiles?
+  → El iconDevice del PDF ya coincide con uno en la lista:
+        Confirmar — "existing-icon-device"
+  → Solo hay 1 iconDevice posible para ese part:
+        Asignar automáticamente — "part-number"
+  → Múltiples opciones: ambigüedad → advertencia
+       ↓
+Fuzzy match final (src/lib/icons.ts)
+  → Score mínimo 5000 para aceptar
+  → SVG tiene prioridad sobre PNG
+  → Si no supera el umbral: icono vacío</pre>
+                        </article>
+
+                        <article class="subpanel comparison">
+                            <h3 class="subsection-title">10.4 Por qué Manteca es la base y por qué importa</h3>
+                            <p>El archivo se llama <code>manteca-part-number-04</code> porque fue construido a partir del proyecto Manteca — un sitio Walmart real donde se validaron en campo los 70 patrones de nombre contra los part numbers y las variantes de instalación reales.</p>
+                            <p>Esto es la diferencia entre un algoritmo genérico y uno específico para Walmart:</p>
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Sin conocimiento Manteca</th>
+                                            <th>Con conocimiento Manteca</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>PTZ_APPAREL_WOMENS</code> → part number vacío, icono genérico</td>
+                                            <td><code>PTZ_APPAREL_WOMENS</code> → <code>CIP-QNP6250H</code> + icono <code>Ceiling</code> automático</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>SAL_LIQUOR_PVM</code> → 1 cable estimado</td>
+                                            <td><code>SAL_LIQUOR_PVM</code> → 2 CAT5 + 1 power + nota instalador</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>POS_COSMETICS</code> → ambiguo</td>
+                                            <td><code>POS_COSMETICS</code> → <code>CIP-QND8011</code> con certeza 1.0</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </article>
+
+                        <article class="subpanel">
+                            <h3 class="subsection-title">10.5 Cómo escala hacia SiteOwl</h3>
+                            <p>La arquitectura está diseñada para recibir múltiples seeds:</p>
+                            <div class="code-label">visual-knowledge.ts:24-26</div>
+                            <pre>export const VISUAL_KNOWLEDGE_SEEDS: VisualKnowledgeSeed[] = [
+  mantecaVisualKnowledgeSeed as VisualKnowledgeSeed,
+];</pre>
+                            <p>Para agregar SiteOwl como fuente de conocimiento, solo se necesita:</p>
+                            <ul class="bullet-list">
+                                <li>Crear <code>siteowl-visual-knowledge.json</code> con el mismo esquema (<code>seedName</code>, <code>partNumberProfiles</code>, <code>namePatternRules</code>)</li>
+                                <li>Agregarlo al array: <code>VISUAL_KNOWLEDGE_SEEDS = [mantecaKnowledge, siteowlKnowledge]</code></li>
+                            </ul>
+                            <p>El motor en <code>buildNamePatternRules()</code> y <code>buildPartNumberProfiles()</code> mergea automáticamente los dos seeds, dando prioridad al de mayor <code>partConfidence</code> cuando hay conflicto.</p>
+                            <p>SiteOwl tiene la información que elimina el 100% de las ambigüedades actuales (patrones ambiguos como <code>POS</code> con confianza 0.556) porque contiene la tabla completa de <code>device_name → part_number → install_spec</code> para todos los proyectos Walmart en su base de datos.</p>
+                        </article>
+
+                        <article class="subpanel">
+                            <h3 class="subsection-title">10.6 Estado actual del conocimiento</h3>
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Métrica</th>
+                                            <th>Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Seed activo</td>
+                                            <td><code>manteca-part-number-04</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Part numbers perfilados</td>
+                                            <td>14</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Patrones de nombre registrados</td>
+                                            <td>70</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Reglas de instalación con cables</td>
+                                            <td>6</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Patrones con confianza = 1.0</td>
+                                            <td>~65 de 70</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Patrones ambiguos (confianza &lt; 1)</td>
+                                            <td>~5 (ej: <code>POS</code> genérico)</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Seeds adicionales soportados</td>
+                                            <td>∞ (array extensible)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const sections = Array.from(document.querySelectorAll("[id]"));
+        const navLinks = Array.from(document.querySelectorAll(".nav-link"));
+
+        const setActiveLink = (id) => {
+            navLinks.forEach((link) => {
+                link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+            });
+        };
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const visible = entries
+                    .filter((entry) => entry.isIntersecting)
+                    .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+                if (visible) {
+                    setActiveLink(visible.target.id);
+                }
+            },
+            {
+                rootMargin: "-35% 0px -45% 0px",
+                threshold: [0.1, 0.2, 0.4, 0.6],
+            }
+        );
+
+        sections.forEach((section) => observer.observe(section));
+        setActiveLink("que-es");
+    </script>
+</body>
+</html>

@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCTV Field Planner v3 | Executive Presentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=Sora:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #07111f;
+            --panel: rgba(11, 24, 40, 0.82);
+            --panel-strong: rgba(9, 19, 32, 0.96);
+            --line: rgba(144, 170, 198, 0.16);
+            --line-strong: rgba(144, 170, 198, 0.28);
+            --text: #eef5ff;
+            --muted: #a5b5ca;
+            --brand: #79d9ff;
+            --brand-strong: #2c95cf;
+            --accent: #f1c46c;
+            --success: #79d5b0;
+            --radius: 30px;
+            --radius-sm: 22px;
+            --shadow: 0 28px 72px rgba(0, 0, 0, 0.34);
+            --max: 1240px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Instrument Sans", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(44, 149, 207, 0.22), transparent 30%),
+                radial-gradient(circle at top right, rgba(121, 217, 255, 0.12), transparent 28%),
+                linear-gradient(180deg, #07111f 0%, #091320 48%, #0a1523 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: radial-gradient(circle at center, black 55%, transparent 96%);
+            opacity: 0.44;
+            pointer-events: none;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            backdrop-filter: blur(18px);
+            background: rgba(7, 17, 31, 0.78);
+            border-bottom: 1px solid rgba(144, 170, 198, 0.12);
+        }
+
+        .topbar-inner {
+            max-width: var(--max);
+            margin: 0 auto;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, var(--brand), var(--brand-strong));
+            box-shadow: 0 0 24px rgba(121, 217, 255, 0.7);
+        }
+
+        .brand-copy {
+            display: grid;
+            gap: 2px;
+        }
+
+        .brand-copy strong {
+            font-size: 0.98rem;
+            font-weight: 700;
+        }
+
+        .brand-copy span {
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .nav a {
+            padding: 9px 13px;
+            border-radius: 999px;
+            color: var(--muted);
+            font-size: 0.92rem;
+            border: 1px solid transparent;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .nav a:hover,
+        .nav a.is-active {
+            color: var(--text);
+            border-color: rgba(121, 217, 255, 0.22);
+            background: rgba(44, 149, 207, 0.12);
+        }
+
+        .lang-switch {
+            display: inline-flex;
+            gap: 6px;
+            padding: 5px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .lang-btn {
+            border: 0;
+            background: transparent;
+            color: var(--muted);
+            font: inherit;
+            padding: 8px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .lang-btn.is-active {
+            background: rgba(44, 149, 207, 0.18);
+            color: var(--text);
+        }
+
+        main {
+            position: relative;
+            z-index: 1;
+        }
+
+        .wrap {
+            max-width: var(--max);
+            margin: 0 auto;
+            padding: 30px 24px 44px;
+            display: grid;
+            gap: 28px;
+        }
+
+        .frame {
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: linear-gradient(180deg, rgba(12, 25, 42, 0.84), rgba(9, 19, 32, 0.95));
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .frame::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(135deg, rgba(121, 217, 255, 0.08), transparent 30%, transparent 70%, rgba(241, 196, 108, 0.04)),
+                radial-gradient(circle at top right, rgba(121, 217, 255, 0.08), transparent 28%);
+        }
+
+        .frame-body {
+            position: relative;
+            z-index: 1;
+            padding: 34px;
+        }
+
+        .hero {
+            min-height: 82vh;
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+            gap: 28px;
+            align-items: center;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(121, 217, 255, 0.22);
+            background: rgba(44, 149, 207, 0.1);
+            color: var(--brand);
+            font-size: 0.86rem;
+            margin-bottom: 18px;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--brand);
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin: 0;
+            font-family: "Sora", sans-serif;
+            line-height: 1.1;
+        }
+
+        h1 {
+            font-size: clamp(2.8rem, 5.2vw, 5.1rem);
+            margin-bottom: 16px;
+        }
+
+        h2 {
+            font-size: clamp(1.95rem, 3vw, 3rem);
+            margin-bottom: 12px;
+        }
+
+        h3 {
+            font-size: 1.24rem;
+            margin-bottom: 12px;
+        }
+
+        p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.72;
+            font-size: 1rem;
+        }
+
+        .lead {
+            font-size: 1.1rem;
+            max-width: 60ch;
+        }
+
+        .section-tag {
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 0.82rem;
+            margin-bottom: 14px;
+        }
+
+        .hero-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font-size: 0.92rem;
+        }
+
+        .chip strong {
+            color: var(--brand);
+        }
+
+        .image-shell,
+        .media {
+            border-radius: calc(var(--radius) - 6px);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.38);
+        }
+
+        .image-shell img,
+        .media img {
+            width: 100%;
+            display: block;
+            height: auto;
+        }
+
+        .stack {
+            display: grid;
+            gap: 22px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 22px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 22px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+            gap: 28px;
+            align-items: center;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            padding: 24px;
+            background: linear-gradient(180deg, rgba(18, 33, 56, 0.58), rgba(10, 20, 34, 0.86));
+            display: grid;
+            gap: 14px;
+        }
+
+        .card.kicker {
+            background: linear-gradient(180deg, rgba(15, 33, 56, 0.84), rgba(11, 21, 36, 0.96));
+        }
+
+        .metric {
+            font-family: "Sora", sans-serif;
+            font-size: 1.25rem;
+            color: var(--text);
+        }
+
+        .compare {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        table {
+            width: 100%;
+            min-width: 680px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 16px 18px;
+            text-align: left;
+            vertical-align: top;
+            color: var(--muted);
+            border-bottom: 1px solid var(--line);
+            border-right: 1px solid rgba(144, 170, 198, 0.11);
+            line-height: 1.6;
+        }
+
+        th {
+            color: var(--text);
+            background: rgba(121, 217, 255, 0.05);
+            font-weight: 600;
+        }
+
+        th:last-child,
+        td:last-child {
+            border-right: none;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .step {
+            position: relative;
+            padding-top: 58px;
+        }
+
+        .step-number {
+            position: absolute;
+            top: 0;
+            left: 0;
+            font-family: "Sora", sans-serif;
+            font-size: 2.6rem;
+            color: rgba(121, 217, 255, 0.18);
+        }
+
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .pill {
+            padding: 9px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .banner {
+            display: grid;
+            gap: 10px;
+            padding: 22px 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(121, 213, 176, 0.22);
+            background: rgba(121, 213, 176, 0.08);
+        }
+
+        .banner strong {
+            color: var(--success);
+            font-size: 0.95rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .footer-note {
+            text-align: center;
+            padding-top: 8px;
+            color: rgba(165, 181, 202, 0.86);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1080px) {
+            .hero,
+            .split,
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+
+            .grid-3 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 860px) {
+            .topbar-inner {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .topbar-right,
+            .nav {
+                justify-content: flex-start;
+            }
+
+            .wrap {
+                padding: 20px 16px 34px;
+            }
+
+            .frame-body {
+                padding: 24px;
+            }
+
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                min-width: 600px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            h1 {
+                font-size: 2.35rem;
+            }
+
+            h2 {
+                font-size: 1.8rem;
+            }
+
+            .frame-body,
+            .card {
+                padding: 20px;
+            }
+
+            .chip {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <div class="brand">
+                <span class="brand-mark"></span>
+                <div class="brand-copy">
+                    <strong>CCTV Field Planner v3</strong>
+                    <span id="brand-subtitle"></span>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <nav class="nav">
+                    <a class="nav-link" href="#summary" data-nav="summary"></a>
+                    <a class="nav-link" href="#problem" data-nav="problem"></a>
+                    <a class="nav-link" href="#solution" data-nav="solution"></a>
+                    <a class="nav-link" href="#value" data-nav="value"></a>
+                    <a class="nav-link" href="#security" data-nav="security"></a>
+                    <a class="nav-link" href="#scale" data-nav="scale"></a>
+                    <a class="nav-link" href="#next" data-nav="next"></a>
+                </nav>
+                <div class="lang-switch" aria-label="Language switch">
+                    <button class="lang-btn" data-lang="es">ES</button>
+                    <button class="lang-btn" data-lang="en">EN</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="wrap">
+            <section class="frame hero" id="summary">
+                <div class="frame-body">
+                    <div class="eyebrow" id="hero-eyebrow"></div>
+                    <h1 id="hero-title"></h1>
+                    <p class="lead" id="hero-lead"></p>
+                    <div class="hero-actions" id="hero-chips"></div>
+                </div>
+                <div class="frame-body">
+                    <div class="image-shell">
+                        <img id="hero-image" src="./assets/hero.jpg" alt="">
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame">
+                <div class="frame-body stack" id="summary-content"></div>
+            </section>
+
+            <section class="frame" id="problem">
+                <div class="frame-body stack" id="problem-content"></div>
+            </section>
+
+            <section class="frame" id="solution">
+                <div class="frame-body stack" id="solution-content"></div>
+            </section>
+
+            <section class="frame" id="value">
+                <div class="frame-body stack" id="value-content"></div>
+            </section>
+
+            <section class="frame" id="security">
+                <div class="frame-body stack" id="security-content"></div>
+            </section>
+
+            <section class="frame" id="scale">
+                <div class="frame-body stack" id="scale-content"></div>
+            </section>
+
+            <section class="frame" id="next">
+                <div class="frame-body stack" id="next-content"></div>
+            </section>
+
+            <p class="footer-note" id="footer-note"></p>
+        </div>
+    </main>
+
+    <script>
+        const content = {
+            es: {
+                metaTitle: "CCTV Field Planner v3 | Presentación Ejecutiva Bilingüe",
+                brandSubtitle: "Presentación ejecutiva bilingüe",
+                nav: {
+                    summary: "Resumen",
+                    problem: "Problema",
+                    solution: "Solución",
+                    value: "Valor",
+                    security: "Seguridad",
+                    scale: "Escala",
+                    next: "Siguiente paso",
+                },
+                hero: {
+                    eyebrow: "Versión para CIO y liderazgo operativo",
+                    title: "Del PDF a la ejecución en campo",
+                    lead: "CCTV Field Planner v3 transforma documentación de proyecto en una herramienta operativa para técnicos en iPhone, reduciendo fricción en campo sin mover datos sensibles fuera del navegador.",
+                    chips: [
+                        { label: "Qué es", text: "una PWA operativa para técnicos de campo" },
+                        { label: "Qué cambia", text: "centraliza plano, datos y avance en una sola experiencia" },
+                    ],
+                    imageAlt: "Vista general del producto CCTV Field Planner v3",
+                },
+                summary: {
+                    tag: "Resumen ejecutivo",
+                    title: "Qué conviene retener",
+                    cards: [
+                        {
+                            title: "1. Problema real",
+                            body: "Hoy el técnico cruza plano y tablas manualmente, con una experiencia fragmentada y dependiente de interpretación individual.",
+                        },
+                        {
+                            title: "2. Solución directa",
+                            body: "La app reúne el plano, los dispositivos, las tareas y el estado de avance dentro de una sola herramienta táctil.",
+                        },
+                        {
+                            title: "3. Valor operativo",
+                            body: "Reduce fricción, mejora trazabilidad y hace más consistente la ejecución de instalación en campo.",
+                        },
+                        {
+                            title: "4. Seguridad",
+                            body: "Corre 100% en el navegador, sin servidor de datos para procesar planos y sin enviar información a terceros.",
+                        },
+                    ],
+                },
+                problem: {
+                    tag: "Problema actual",
+                    title: "La fricción operativa no está en el plano, está en el proceso",
+                    intro: "El insumo actual ya existe: un PDF del proyecto. El problema es que ese PDF obliga al técnico a alternar entre la Página 1 con los IDs marcados y las páginas siguientes con las tablas de datos. Esa ruptura de contexto genera una experiencia lenta, propensa a errores y difícil de seguir en tiempo real.",
+                    cards: [
+                        {
+                            title: "Interpretación manual",
+                            body: "El técnico debe relacionar visualmente cada ID del plano con información distribuida en otras páginas del documento.",
+                        },
+                        {
+                            title: "Trazabilidad limitada",
+                            body: "El avance suele depender de notas, memoria operativa o seguimiento en papel, sin una vista integrada del trabajo.",
+                        },
+                        {
+                            title: "Menor consistencia",
+                            body: "Cuando el flujo depende de habilidad individual, la calidad de ejecución puede variar entre sitios, técnicos y turnos.",
+                        },
+                    ],
+                    compareTag: "Antes y después",
+                    compareTitle: "Cómo cambia la conversación operativa",
+                    compareHeaders: ["Hoy", "Con CCTV Field Planner v3"],
+                    compareRows: [
+                        ["Plano y datos están separados dentro del PDF", "Plano, dispositivos y seguimiento conviven en una sola experiencia táctil"],
+                        ["El avance depende de revisión manual y memoria operativa", "El trabajo puede registrarse y seguirse desde el mismo flujo de ejecución"],
+                        ["La validación de instalación toma más contexto y más tiempo", "La app da una lectura más inmediata del sitio, del dispositivo y de su prioridad"],
+                        ["El PDF es un documento de consulta", "El PDF se convierte en una herramienta operativa móvil"],
+                    ],
+                    imageAlt: "Representación visual del problema actual con PDFs fragmentados",
+                },
+                solution: {
+                    tag: "La solución",
+                    title: "Una capa operativa sobre el flujo que el equipo ya usa",
+                    steps: [
+                        {
+                            title: "Ingesta del proyecto",
+                            body: "El punto de partida sigue siendo el PDF del proyecto. La app aprovecha ese documento existente y lo convierte en una vista utilizable en campo.",
+                        },
+                        {
+                            title: "Centralización operativa",
+                            body: "El técnico deja de ir y venir entre plano y tablas. La información relevante aparece organizada dentro de una sola herramienta móvil.",
+                        },
+                        {
+                            title: "Ejecución y seguimiento",
+                            body: "La experiencia permite navegar el plano, consultar tareas, identificar zonas y registrar el estado del trabajo desde el dispositivo.",
+                        },
+                    ],
+                    resultLabel: "Resultado",
+                    resultText: "La solución no reemplaza el proceso de generación de planos; lo vuelve más utilizable y más accionable en el último tramo de la operación: el campo.",
+                    pills: ["iPhone-first", "Progressive Web App", "Operación táctil", "Uso en campo"],
+                    fieldTag: "Experiencia de campo",
+                    fieldTitle: "Lo que ve el equipo, explicado en lenguaje no técnico",
+                    fieldCards: [
+                        {
+                            title: "Resumen del proyecto",
+                            body: "Una vista de totales y contexto general para entender rápidamente el alcance del sitio.",
+                        },
+                        {
+                            title: "Tareas por dispositivo",
+                            body: "Una forma directa de saber qué instalar, dónde enfocarse y qué revisar durante la ejecución.",
+                        },
+                        {
+                            title: "Plano navegable",
+                            body: "Una lectura más útil del plano para moverse en el sitio sin depender exclusivamente del PDF tradicional.",
+                        },
+                        {
+                            title: "Seguimiento de avance",
+                            body: "Un mecanismo simple para distinguir trabajo pendiente, en curso o terminado desde el mismo dispositivo.",
+                        },
+                    ],
+                    imageAlt: "Vista móvil de la experiencia operativa para técnicos",
+                },
+                value: {
+                    tag: "Valor para la compañía",
+                    title: "Por qué esta solución merece atención ejecutiva",
+                    cards: [
+                        {
+                            title: "Menor fricción en ejecución",
+                            body: "Con menos navegación manual entre páginas y menos dependencia de interpretación, el técnico puede enfocarse en instalar y validar.",
+                        },
+                        {
+                            title: "Mayor consistencia operativa",
+                            body: "La herramienta ayuda a estandarizar el modo en que se consulta información, se interpreta el plano y se da seguimiento al trabajo.",
+                        },
+                        {
+                            title: "Mejor trazabilidad",
+                            body: "El avance deja de vivir fuera del flujo principal y puede observarse desde la misma experiencia de trabajo.",
+                        },
+                        {
+                            title: "Más claridad para liderazgo",
+                            body: "El producto convierte un documento técnico en una experiencia más fácil de explicar, revisar y promover internamente.",
+                        },
+                        {
+                            title: "Adopción práctica",
+                            body: "El formato PWA para iPhone favorece despliegue simple y cercanía con el dispositivo que el técnico ya usa en sitio.",
+                        },
+                        {
+                            title: "Base para escalar",
+                            body: "No es solo una mejora visual. Es una base operativa que puede crecer con nuevos sitios, reglas y capas de inteligencia.",
+                        },
+                    ],
+                },
+                security: {
+                    tag: "Seguridad y despliegue",
+                    title: "Valor operativo fuerte sin abrir una superficie innecesaria de riesgo",
+                    intro: "Uno de los puntos más sólidos de la solución es que logra valor práctico sin depender de una arquitectura de datos central para procesar la operación del técnico.",
+                    cards: [
+                        {
+                            title: "Procesamiento en navegador",
+                            body: "La experiencia corre del lado del cliente. El plano y la lógica de uso viven en el dispositivo del usuario.",
+                        },
+                        {
+                            title: "Datos sensibles bajo control",
+                            body: "No hay envío de información del proyecto a una API externa como parte del flujo principal de trabajo.",
+                        },
+                        {
+                            title: "Operación local",
+                            body: "La herramienta mantiene el valor cerca del técnico, reduciendo dependencia de conectividad para el uso operativo.",
+                        },
+                        {
+                            title: "Despliegue ligero",
+                            body: "El modelo PWA simplifica distribución y evita parte de la fricción típica de apps móviles tradicionales.",
+                        },
+                    ],
+                    imageAlt: "Concepto visual de seguridad y operación en navegador",
+                },
+                scale: {
+                    tag: "Escalabilidad",
+                    title: "No es un entregable aislado, es una plataforma operativa en evolución",
+                    cards: [
+                        {
+                            title: "Puede absorber más conocimiento",
+                            body: "La solución está posicionada para crecer con nuevas reglas, nuevos patrones y nuevas fuentes de conocimiento de instalación.",
+                        },
+                        {
+                            title: "Puede extenderse a más sitios",
+                            body: "El enfoque no depende de un solo proyecto. El valor aumenta cuando el mismo modelo operativo se replica en más implementaciones.",
+                        },
+                        {
+                            title: "Abre conversación con sistemas existentes",
+                            body: "Hacia adelante, puede conectarse con fuentes como SiteOwl para cerrar más ambigüedades y fortalecer la precisión operativa.",
+                        },
+                    ],
+                },
+                next: {
+                    tag: "Siguiente paso sugerido",
+                    title: "Propuesta de avance interno",
+                    steps: [
+                        {
+                            title: "Piloto controlado",
+                            body: "Seleccionar un sitio o flujo representativo donde la herramienta pueda usarse con acompañamiento y observación directa.",
+                        },
+                        {
+                            title: "Validación operativa",
+                            body: "Confirmar qué tanto reduce fricción, qué tan clara resulta para técnicos y qué ajustes aumentan su valor para liderazgo.",
+                        },
+                        {
+                            title: "Escalamiento",
+                            body: "Formalizar la herramienta como capa operativa repetible para futuros proyectos, sitios y equipos de instalación.",
+                        },
+                    ],
+                    finalLabel: "Mensaje final",
+                    finalText: "CCTV Field Planner v3 no solo presenta mejor la información. La convierte en una experiencia ejecutable, móvil y segura para el momento que más importa: la instalación en campo.",
+                },
+                footer: "Archivo sugerido: <strong>reporte/index-cio-bilingual.html</strong>",
+            },
+            en: {
+                metaTitle: "CCTV Field Planner v3 | Bilingual Executive Presentation",
+                brandSubtitle: "Bilingual executive presentation",
+                nav: {
+                    summary: "Summary",
+                    problem: "Problem",
+                    solution: "Solution",
+                    value: "Value",
+                    security: "Security",
+                    scale: "Scale",
+                    next: "Next step",
+                },
+                hero: {
+                    eyebrow: "Version for CIO and operations leadership",
+                    title: "From PDF to Field Execution",
+                    lead: "CCTV Field Planner v3 turns project documentation into an operational iPhone tool for field technicians, reducing on-site friction without moving sensitive data outside the browser.",
+                    chips: [
+                        { label: "What it is", text: "an operational PWA for field technicians" },
+                        { label: "What it changes", text: "it centralizes the plan, the data, and progress in one experience" },
+                    ],
+                    imageAlt: "Overview of the CCTV Field Planner v3 product",
+                },
+                summary: {
+                    tag: "Executive summary",
+                    title: "What matters most",
+                    cards: [
+                        {
+                            title: "1. Real problem",
+                            body: "Today the technician cross-references the plan and the data tables manually, through a fragmented workflow that depends on individual interpretation.",
+                        },
+                        {
+                            title: "2. Direct solution",
+                            body: "The app brings the plan, the devices, the tasks, and progress status into a single touch-friendly tool.",
+                        },
+                        {
+                            title: "3. Operational value",
+                            body: "It reduces friction, improves traceability, and makes field installation execution more consistent.",
+                        },
+                        {
+                            title: "4. Security",
+                            body: "It runs fully in the browser, with no data server for plan processing and no project data sent to third parties.",
+                        },
+                    ],
+                },
+                problem: {
+                    tag: "Current problem",
+                    title: "The operational friction is not in the plan, it is in the process",
+                    intro: "The current input already exists: a project PDF. The problem is that the PDF forces the technician to jump between Page 1 with the marked IDs and the following pages with the device tables. That broken context creates a slower experience, more room for error, and less real-time clarity.",
+                    cards: [
+                        {
+                            title: "Manual interpretation",
+                            body: "The technician has to visually relate each plan ID to information spread across different pages of the document.",
+                        },
+                        {
+                            title: "Limited traceability",
+                            body: "Progress often depends on notes, operator memory, or paper-based tracking, without a unified work view.",
+                        },
+                        {
+                            title: "Lower consistency",
+                            body: "When the workflow depends on individual skill, execution quality can vary across sites, technicians, and shifts.",
+                        },
+                    ],
+                    compareTag: "Before and after",
+                    compareTitle: "How the operational conversation changes",
+                    compareHeaders: ["Today", "With CCTV Field Planner v3"],
+                    compareRows: [
+                        ["The plan and the data are separated inside the PDF", "The plan, the devices, and progress tracking live inside a single touch workflow"],
+                        ["Progress depends on manual review and operator memory", "Work can be tracked from the same execution flow"],
+                        ["Installation validation takes more context and more time", "The app gives a faster reading of the site, the device, and its priority"],
+                        ["The PDF is a reference document", "The PDF becomes a mobile operational tool"],
+                    ],
+                    imageAlt: "Visual representation of the current fragmented PDF workflow",
+                },
+                solution: {
+                    tag: "The solution",
+                    title: "An operational layer on top of the workflow the team already uses",
+                    steps: [
+                        {
+                            title: "Project intake",
+                            body: "The starting point is still the project PDF. The app uses that existing document and turns it into a field-usable view.",
+                        },
+                        {
+                            title: "Operational centralization",
+                            body: "The technician no longer jumps back and forth between the plan and the data tables. Relevant information appears inside one mobile experience.",
+                        },
+                        {
+                            title: "Execution and tracking",
+                            body: "The experience allows the team to navigate the plan, review tasks, identify zones, and track work status from the same device.",
+                        },
+                    ],
+                    resultLabel: "Outcome",
+                    resultText: "The solution does not replace the plan-generation process; it makes that process more usable and more actionable in the last mile of operations: the field.",
+                    pills: ["iPhone-first", "Progressive Web App", "Touch workflow", "Field use"],
+                    fieldTag: "Field experience",
+                    fieldTitle: "What the team sees, explained without technical language",
+                    fieldCards: [
+                        {
+                            title: "Project summary",
+                            body: "A high-level view of totals and context to quickly understand the scope of the site.",
+                        },
+                        {
+                            title: "Tasks by device",
+                            body: "A direct way to know what to install, where to focus, and what to review during execution.",
+                        },
+                        {
+                            title: "Navigable plan",
+                            body: "A more useful reading of the plan for moving through the site without depending only on the traditional PDF.",
+                        },
+                        {
+                            title: "Progress tracking",
+                            body: "A simple mechanism to distinguish pending, active, and completed work from the same device.",
+                        },
+                    ],
+                    imageAlt: "Mobile view of the operational experience for technicians",
+                },
+                value: {
+                    tag: "Value for the company",
+                    title: "Why this solution deserves executive attention",
+                    cards: [
+                        {
+                            title: "Less execution friction",
+                            body: "With less manual navigation across pages and less dependence on interpretation, technicians can stay focused on installation and validation.",
+                        },
+                        {
+                            title: "Higher operational consistency",
+                            body: "The tool helps standardize how information is consumed, how the plan is interpreted, and how work is tracked.",
+                        },
+                        {
+                            title: "Better traceability",
+                            body: "Progress no longer lives outside the main workflow and can be observed from the same work experience.",
+                        },
+                        {
+                            title: "More clarity for leadership",
+                            body: "The product turns a technical document into an experience that is easier to explain, review, and sponsor internally.",
+                        },
+                        {
+                            title: "Practical adoption",
+                            body: "The iPhone PWA format supports simple deployment and stays close to the device technicians already use on site.",
+                        },
+                        {
+                            title: "A base to scale",
+                            body: "This is not only a visual improvement. It is an operational base that can grow with new sites, rules, and intelligence layers.",
+                        },
+                    ],
+                },
+                security: {
+                    tag: "Security and deployment",
+                    title: "Strong operational value without opening an unnecessary risk surface",
+                    intro: "One of the strongest points of the solution is that it delivers practical value without depending on a centralized data architecture to process technician operations.",
+                    cards: [
+                        {
+                            title: "Browser-side processing",
+                            body: "The experience runs on the client side. The plan and the usage logic stay on the user's device.",
+                        },
+                        {
+                            title: "Sensitive data under control",
+                            body: "There is no project-data upload to an external API as part of the primary workflow.",
+                        },
+                        {
+                            title: "Local operation",
+                            body: "The tool keeps value close to the technician, reducing the operational dependency on connectivity.",
+                        },
+                        {
+                            title: "Lightweight deployment",
+                            body: "The PWA model simplifies distribution and avoids part of the friction associated with traditional mobile apps.",
+                        },
+                    ],
+                    imageAlt: "Visual concept for browser-based security and operation",
+                },
+                scale: {
+                    tag: "Scalability",
+                    title: "This is not an isolated deliverable, it is an evolving operational platform",
+                    cards: [
+                        {
+                            title: "It can absorb more knowledge",
+                            body: "The solution is positioned to grow with new rules, new patterns, and new installation knowledge sources.",
+                        },
+                        {
+                            title: "It can extend across more sites",
+                            body: "The approach does not depend on a single project. Its value increases when the same operating model is repeated across more implementations.",
+                        },
+                        {
+                            title: "It opens a path to existing systems",
+                            body: "Over time, it can connect with sources such as SiteOwl to close more ambiguities and improve operational precision.",
+                        },
+                    ],
+                },
+                next: {
+                    tag: "Suggested next step",
+                    title: "Recommended internal path forward",
+                    steps: [
+                        {
+                            title: "Controlled pilot",
+                            body: "Select a representative site or workflow where the tool can be used with direct observation and guided rollout.",
+                        },
+                        {
+                            title: "Operational validation",
+                            body: "Confirm how much friction it removes, how clear it feels to technicians, and which adjustments increase its value for leadership.",
+                        },
+                        {
+                            title: "Scale-up",
+                            body: "Formalize the tool as a repeatable operational layer for future projects, sites, and installation teams.",
+                        },
+                    ],
+                    finalLabel: "Closing message",
+                    finalText: "CCTV Field Planner v3 does not only present information better. It turns that information into an executable, mobile, and secure field experience.",
+                },
+                footer: "Suggested file: <strong>reporte/index-cio-bilingual.html</strong>",
+            },
+        };
+
+        const navKeys = ["summary", "problem", "solution", "value", "security", "scale", "next"];
+        const state = {
+            lang: localStorage.getItem("cio-bilingual-lang") || "es",
+            observer: null,
+        };
+
+        const el = {
+            brandSubtitle: document.getElementById("brand-subtitle"),
+            heroEyebrow: document.getElementById("hero-eyebrow"),
+            heroTitle: document.getElementById("hero-title"),
+            heroLead: document.getElementById("hero-lead"),
+            heroChips: document.getElementById("hero-chips"),
+            heroImage: document.getElementById("hero-image"),
+            summary: document.getElementById("summary-content"),
+            problem: document.getElementById("problem-content"),
+            solution: document.getElementById("solution-content"),
+            value: document.getElementById("value-content"),
+            security: document.getElementById("security-content"),
+            scale: document.getElementById("scale-content"),
+            next: document.getElementById("next-content"),
+            footer: document.getElementById("footer-note"),
+            navLinks: Array.from(document.querySelectorAll(".nav-link")),
+            langButtons: Array.from(document.querySelectorAll(".lang-btn")),
+        };
+
+        const renderCards = (items, extraClass = "") =>
+            items
+                .map(
+                    (item) => `
+                        <article class="card ${extraClass}">
+                            <h3>${item.title}</h3>
+                            <p>${item.body}</p>
+                        </article>
+                    `
+                )
+                .join("");
+
+        const renderStepCards = (items) =>
+            items
+                .map(
+                    (item, index) => `
+                        <article class="card step">
+                            <span class="step-number">${String(index + 1).padStart(2, "0")}</span>
+                            <h3>${item.title}</h3>
+                            <p>${item.body}</p>
+                        </article>
+                    `
+                )
+                .join("");
+
+        const renderPills = (items) => items.map((item) => `<span class="pill">${item}</span>`).join("");
+
+        const setActiveLink = (id) => {
+            el.navLinks.forEach((link) => {
+                link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+            });
+        };
+
+        const setupObserver = () => {
+            if (state.observer) {
+                state.observer.disconnect();
+            }
+
+            const sections = navKeys.map((key) => document.getElementById(key)).filter(Boolean);
+
+            state.observer = new IntersectionObserver(
+                (entries) => {
+                    const visible = entries
+                        .filter((entry) => entry.isIntersecting)
+                        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+                    if (visible) {
+                        setActiveLink(visible.target.id);
+                    }
+                },
+                {
+                    rootMargin: "-35% 0px -45% 0px",
+                    threshold: [0.12, 0.24, 0.4, 0.6],
+                }
+            );
+
+            sections.forEach((section) => state.observer.observe(section));
+            setActiveLink("summary");
+        };
+
+        const render = (lang) => {
+            const t = content[lang];
+            state.lang = lang;
+            document.documentElement.lang = lang;
+            document.title = t.metaTitle;
+            localStorage.setItem("cio-bilingual-lang", lang);
+
+            el.brandSubtitle.textContent = t.brandSubtitle;
+            el.heroEyebrow.textContent = t.hero.eyebrow;
+            el.heroTitle.textContent = t.hero.title;
+            el.heroLead.textContent = t.hero.lead;
+            el.heroImage.alt = t.hero.imageAlt;
+            el.heroChips.innerHTML = t.hero.chips
+                .map((chip) => `<div class="chip"><strong>${chip.label}:</strong> ${chip.text}</div>`)
+                .join("");
+
+            el.navLinks.forEach((link) => {
+                const key = link.dataset.nav;
+                link.textContent = t.nav[key];
+            });
+
+            el.summary.innerHTML = `
+                <div>
+                    <p class="section-tag">${t.summary.tag}</p>
+                    <h2>${t.summary.title}</h2>
+                </div>
+                <div class="grid-4">
+                    ${renderCards(t.summary.cards, "kicker")}
+                </div>
+            `;
+
+            el.problem.innerHTML = `
+                <div class="split">
+                    <div class="stack">
+                        <div>
+                            <p class="section-tag">${t.problem.tag}</p>
+                            <h2>${t.problem.title}</h2>
+                        </div>
+                        <p>${t.problem.intro}</p>
+                        <div class="grid-3">
+                            ${renderCards(t.problem.cards)}
+                        </div>
+                    </div>
+                    <div class="media">
+                        <img src="./assets/problem.jpg" alt="${t.problem.imageAlt}">
+                    </div>
+                </div>
+                <div class="stack">
+                    <div>
+                        <p class="section-tag">${t.problem.compareTag}</p>
+                        <h2>${t.problem.compareTitle}</h2>
+                    </div>
+                    <div class="compare">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>${t.problem.compareHeaders[0]}</th>
+                                    <th>${t.problem.compareHeaders[1]}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${t.problem.compareRows
+                                    .map(
+                                        (row) => `
+                                            <tr>
+                                                <td>${row[0]}</td>
+                                                <td>${row[1]}</td>
+                                            </tr>
+                                        `
+                                    )
+                                    .join("")}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            el.solution.innerHTML = `
+                <div>
+                    <p class="section-tag">${t.solution.tag}</p>
+                    <h2>${t.solution.title}</h2>
+                </div>
+                <div class="grid-3">
+                    ${renderStepCards(t.solution.steps)}
+                </div>
+                <div class="split">
+                    <div class="stack">
+                        <div class="banner">
+                            <strong>${t.solution.resultLabel}</strong>
+                            <p>${t.solution.resultText}</p>
+                        </div>
+                        <div class="pill-row">
+                            ${renderPills(t.solution.pills)}
+                        </div>
+                    </div>
+                    <div class="media">
+                        <img src="./assets/mobile-ui.jpg" alt="${t.solution.imageAlt}">
+                    </div>
+                </div>
+                <div class="stack">
+                    <div>
+                        <p class="section-tag">${t.solution.fieldTag}</p>
+                        <h2>${t.solution.fieldTitle}</h2>
+                    </div>
+                    <div class="grid-4">
+                        ${renderCards(t.solution.fieldCards)}
+                    </div>
+                </div>
+            `;
+
+            el.value.innerHTML = `
+                <div>
+                    <p class="section-tag">${t.value.tag}</p>
+                    <h2>${t.value.title}</h2>
+                </div>
+                <div class="grid-3">
+                    ${renderCards(t.value.cards)}
+                </div>
+            `;
+
+            el.security.innerHTML = `
+                <div class="split">
+                    <div class="stack">
+                        <div>
+                            <p class="section-tag">${t.security.tag}</p>
+                            <h2>${t.security.title}</h2>
+                        </div>
+                        <p>${t.security.intro}</p>
+                        <div class="grid-2">
+                            ${renderCards(t.security.cards)}
+                        </div>
+                    </div>
+                    <div class="media">
+                        <img src="./assets/security.jpg" alt="${t.security.imageAlt}">
+                    </div>
+                </div>
+            `;
+
+            el.scale.innerHTML = `
+                <div>
+                    <p class="section-tag">${t.scale.tag}</p>
+                    <h2>${t.scale.title}</h2>
+                </div>
+                <div class="grid-3">
+                    ${renderCards(t.scale.cards)}
+                </div>
+            `;
+
+            el.next.innerHTML = `
+                <div>
+                    <p class="section-tag">${t.next.tag}</p>
+                    <h2>${t.next.title}</h2>
+                </div>
+                <div class="grid-3">
+                    ${renderStepCards(t.next.steps)}
+                </div>
+                <div class="banner">
+                    <strong>${t.next.finalLabel}</strong>
+                    <p>${t.next.finalText}</p>
+                </div>
+            `;
+
+            el.footer.innerHTML = t.footer;
+
+            el.langButtons.forEach((button) => {
+                button.classList.toggle("is-active", button.dataset.lang === lang);
+            });
+        };
+
+        el.langButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                render(button.dataset.lang);
+                setupObserver();
+            });
+        });
+
+        render(state.lang);
+        setupObserver();
+    </script>
+</body>
+</html>

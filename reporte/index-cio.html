@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCTV Field Planner v3 | Presentación Ejecutiva</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=Sora:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #06111f;
+            --bg-soft: #0b1828;
+            --panel: rgba(12, 25, 42, 0.8);
+            --panel-strong: rgba(10, 20, 34, 0.94);
+            --line: rgba(147, 173, 203, 0.16);
+            --line-strong: rgba(147, 173, 203, 0.26);
+            --text: #edf5ff;
+            --muted: #a3b3c8;
+            --brand: #77d7ff;
+            --brand-strong: #2f98d5;
+            --accent: #f1c56e;
+            --success: #79d6b1;
+            --shadow: 0 28px 72px rgba(0, 0, 0, 0.34);
+            --radius: 30px;
+            --radius-sm: 22px;
+            --max: 1240px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Instrument Sans", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(47, 152, 213, 0.22), transparent 30%),
+                radial-gradient(circle at top right, rgba(119, 215, 255, 0.12), transparent 28%),
+                linear-gradient(180deg, #06111f 0%, #08121e 45%, #091523 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: radial-gradient(circle at center, black 55%, transparent 96%);
+            pointer-events: none;
+            opacity: 0.45;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            backdrop-filter: blur(18px);
+            background: rgba(6, 17, 31, 0.78);
+            border-bottom: 1px solid rgba(147, 173, 203, 0.12);
+        }
+
+        .topbar-inner {
+            max-width: var(--max);
+            margin: 0 auto;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, var(--brand), var(--brand-strong));
+            box-shadow: 0 0 24px rgba(119, 215, 255, 0.75);
+        }
+
+        .brand-copy {
+            display: grid;
+            gap: 2px;
+        }
+
+        .brand-copy strong {
+            font-size: 0.98rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        .brand-copy span {
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .nav a {
+            padding: 9px 13px;
+            border-radius: 999px;
+            color: var(--muted);
+            font-size: 0.92rem;
+            border: 1px solid transparent;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .nav a:hover,
+        .nav a.is-active {
+            color: var(--text);
+            border-color: rgba(119, 215, 255, 0.22);
+            background: rgba(47, 152, 213, 0.12);
+        }
+
+        main {
+            position: relative;
+            z-index: 1;
+        }
+
+        .wrap {
+            max-width: var(--max);
+            margin: 0 auto;
+            padding: 30px 24px 44px;
+            display: grid;
+            gap: 28px;
+        }
+
+        .frame {
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: linear-gradient(180deg, rgba(13, 25, 43, 0.84), rgba(10, 20, 34, 0.95));
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .frame::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(135deg, rgba(119, 215, 255, 0.08), transparent 30%, transparent 70%, rgba(241, 197, 110, 0.04)),
+                radial-gradient(circle at top right, rgba(119, 215, 255, 0.08), transparent 28%);
+        }
+
+        .frame-body {
+            position: relative;
+            z-index: 1;
+            padding: 34px;
+        }
+
+        .hero {
+            min-height: 82vh;
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+            gap: 28px;
+            align-items: center;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(119, 215, 255, 0.22);
+            background: rgba(47, 152, 213, 0.1);
+            color: var(--brand);
+            font-size: 0.86rem;
+            margin-bottom: 18px;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--brand);
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            margin: 0;
+            font-family: "Sora", sans-serif;
+            line-height: 1.1;
+        }
+
+        h1 {
+            font-size: clamp(2.9rem, 5.5vw, 5.3rem);
+            margin-bottom: 16px;
+        }
+
+        h2 {
+            font-size: clamp(2rem, 3vw, 3rem);
+            margin-bottom: 12px;
+        }
+
+        h3 {
+            font-size: 1.28rem;
+            margin-bottom: 12px;
+        }
+
+        p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.72;
+            font-size: 1rem;
+        }
+
+        .lead {
+            font-size: 1.1rem;
+            max-width: 60ch;
+        }
+
+        .section-tag {
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 0.82rem;
+            margin-bottom: 14px;
+        }
+
+        .hero-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font-size: 0.92rem;
+        }
+
+        .chip strong {
+            color: var(--brand);
+        }
+
+        .image-shell {
+            border-radius: calc(var(--radius) - 6px);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.38);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .image-shell img,
+        .media img {
+            width: 100%;
+            display: block;
+            height: auto;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 22px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 22px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .stack {
+            display: grid;
+            gap: 22px;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            padding: 24px;
+            background: linear-gradient(180deg, rgba(18, 33, 56, 0.58), rgba(10, 20, 34, 0.86));
+            display: grid;
+            gap: 14px;
+        }
+
+        .card.kicker {
+            background: linear-gradient(180deg, rgba(15, 33, 56, 0.84), rgba(11, 21, 36, 0.96));
+        }
+
+        .metric {
+            font-family: "Sora", sans-serif;
+            font-size: 1.3rem;
+            color: var(--text);
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+            gap: 28px;
+            align-items: center;
+        }
+
+        .bullet-list {
+            margin: 0;
+            padding-left: 1.2rem;
+            color: var(--muted);
+            line-height: 1.72;
+        }
+
+        .bullet-list li {
+            margin: 8px 0;
+        }
+
+        .compare {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        table {
+            width: 100%;
+            min-width: 680px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 16px 18px;
+            text-align: left;
+            vertical-align: top;
+            color: var(--muted);
+            border-bottom: 1px solid var(--line);
+            border-right: 1px solid rgba(147, 173, 203, 0.11);
+            line-height: 1.6;
+        }
+
+        th {
+            color: var(--text);
+            background: rgba(119, 215, 255, 0.05);
+            font-weight: 600;
+        }
+
+        th:last-child,
+        td:last-child {
+            border-right: none;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .step {
+            position: relative;
+            padding-top: 58px;
+        }
+
+        .step-number {
+            position: absolute;
+            top: 0;
+            left: 0;
+            font-family: "Sora", sans-serif;
+            font-size: 2.6rem;
+            color: rgba(119, 215, 255, 0.18);
+        }
+
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .pill {
+            padding: 9px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .banner {
+            display: grid;
+            gap: 10px;
+            padding: 22px 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(121, 214, 177, 0.22);
+            background: rgba(121, 214, 177, 0.08);
+        }
+
+        .banner strong {
+            color: var(--success);
+            font-size: 0.95rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .media {
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .footer-note {
+            text-align: center;
+            padding-top: 8px;
+            color: rgba(163, 179, 200, 0.86);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1080px) {
+            .hero,
+            .split,
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+
+            .grid-3 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 860px) {
+            .topbar-inner {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .nav {
+                justify-content: flex-start;
+            }
+
+            .wrap {
+                padding: 20px 16px 34px;
+            }
+
+            .frame-body {
+                padding: 24px;
+            }
+
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                min-width: 600px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            h1 {
+                font-size: 2.45rem;
+            }
+
+            h2 {
+                font-size: 1.8rem;
+            }
+
+            .frame-body,
+            .card {
+                padding: 20px;
+            }
+
+            .chip {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media print {
+            .topbar {
+                position: static;
+            }
+
+            body::before {
+                display: none;
+            }
+
+            body {
+                background: #ffffff;
+                color: #0f172a;
+            }
+
+            .frame,
+            .card,
+            .compare,
+            .image-shell,
+            .media,
+            .banner {
+                box-shadow: none;
+                background: #ffffff;
+                border-color: #cbd5e1;
+            }
+
+            p,
+            th,
+            td,
+            .bullet-list,
+            .pill,
+            .footer-note,
+            .brand-copy span {
+                color: #334155;
+            }
+
+            .nav a,
+            .section-tag {
+                color: #0f172a;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <div class="brand">
+                <span class="brand-mark"></span>
+                <div class="brand-copy">
+                    <strong>CCTV Field Planner v3</strong>
+                    <span>Presentación Ejecutiva</span>
+                </div>
+            </div>
+            <nav class="nav">
+                <a class="nav-link" href="#resumen">Resumen</a>
+                <a class="nav-link" href="#problema">Problema</a>
+                <a class="nav-link" href="#solucion">Solución</a>
+                <a class="nav-link" href="#valor">Valor</a>
+                <a class="nav-link" href="#seguridad">Seguridad</a>
+                <a class="nav-link" href="#escala">Escala</a>
+                <a class="nav-link" href="#siguiente">Siguiente paso</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="wrap">
+            <section class="frame hero" id="resumen">
+                <div class="frame-body">
+                    <div class="eyebrow">Versión para CIO y liderazgo operativo</div>
+                    <h1>De un PDF estático a una ejecución de campo más clara, móvil y segura</h1>
+                    <p class="lead">CCTV Field Planner v3 transforma documentación de proyecto en una herramienta operativa para técnicos en iPhone, reduciendo fricción en campo sin mover datos sensibles fuera del navegador.</p>
+                    <div class="hero-actions">
+                        <div class="chip"><strong>Qué es:</strong> una PWA operativa para técnicos de campo</div>
+                        <div class="chip"><strong>Qué cambia:</strong> centraliza plano, datos y avance en una sola experiencia</div>
+                    </div>
+                </div>
+                <div class="frame-body">
+                    <div class="image-shell">
+                        <img src="./assets/hero.jpg" alt="Vista general del producto CCTV Field Planner v3">
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame" aria-labelledby="summary-title">
+                <div class="frame-body stack">
+                    <div>
+                        <p class="section-tag">Resumen ejecutivo</p>
+                        <h2 id="summary-title">Qué conviene retener en cinco ideas</h2>
+                    </div>
+                    <div class="grid-4">
+                        <article class="card kicker">
+                            <span class="metric">1. Problema real</span>
+                            <p>Hoy el técnico cruza plano y tablas manualmente, con una experiencia fragmentada y dependiente de interpretación individual.</p>
+                        </article>
+                        <article class="card kicker">
+                            <span class="metric">2. Solución directa</span>
+                            <p>La app reúne el plano, los dispositivos, las tareas y el estado de avance dentro de una sola herramienta táctil.</p>
+                        </article>
+                        <article class="card kicker">
+                            <span class="metric">3. Valor operativo</span>
+                            <p>Reduce fricción, mejora trazabilidad y hace más consistente la ejecución de instalación en campo.</p>
+                        </article>
+                        <article class="card kicker">
+                            <span class="metric">4. Seguridad</span>
+                            <p>Corre 100% en el navegador, sin servidor de datos para el procesamiento de planos y sin enviar información a terceros.</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame" id="problema">
+                <div class="frame-body split">
+                    <div class="stack">
+                        <div>
+                            <p class="section-tag">Problema actual</p>
+                            <h2>La fricción operativa no está en el plano, está en el proceso</h2>
+                        </div>
+                        <p>El insumo actual ya existe: un PDF del proyecto. El problema es que ese PDF obliga al técnico a alternar entre la Página 1 con los IDs marcados y las páginas siguientes con las tablas de datos. Esa ruptura de contexto genera una experiencia lenta, propensa a errores y difícil de seguir en tiempo real.</p>
+                        <div class="grid-3">
+                            <article class="card">
+                                <h3>Interpretación manual</h3>
+                                <p>El técnico debe relacionar visualmente cada ID del plano con información distribuida en otras páginas del documento.</p>
+                            </article>
+                            <article class="card">
+                                <h3>Trazabilidad limitada</h3>
+                                <p>El avance suele depender de notas, memoria operativa o seguimiento en papel, sin una vista integrada del trabajo.</p>
+                            </article>
+                            <article class="card">
+                                <h3>Menor consistencia</h3>
+                                <p>Cuando el flujo depende de habilidad individual, la calidad de ejecución puede variar entre sitios, técnicos y turnos.</p>
+                            </article>
+                        </div>
+                    </div>
+                    <div class="media">
+                        <img src="./assets/problem.jpg" alt="Representación visual del problema actual con PDFs fragmentados">
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame" aria-labelledby="compare-title">
+                <div class="frame-body stack">
+                    <div>
+                        <p class="section-tag">Antes y después</p>
+                        <h2 id="compare-title">Cómo cambia la conversación operativa</h2>
+                    </div>
+                    <div class="compare">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Hoy</th>
+                                    <th>Con CCTV Field Planner v3</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Plano y datos están separados dentro del PDF</td>
+                                    <td>Plano, dispositivos y seguimiento conviven en una sola experiencia táctil</td>
+                                </tr>
+                                <tr>
+                                    <td>El avance depende de revisión manual y memoria operativa</td>
+                                    <td>El trabajo puede registrarse y seguirse desde el mismo flujo de ejecución</td>
+                                </tr>
+                                <tr>
+                                    <td>La validación de instalación toma más contexto y más tiempo</td>
+                                    <td>La app da una lectura más inmediata del sitio, del dispositivo y de su prioridad</td>
+                                </tr>
+                                <tr>
+                                    <td>El PDF es un documento de consulta</td>
+                                    <td>El PDF se convierte en una herramienta operativa móvil</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame" id="solucion">
+                <div class="frame-body stack">
+                    <div>
+                        <p class="section-tag">La solución</p>
+                        <h2>Una capa operativa sobre el flujo que el equipo ya usa</h2>
+                    </div>
+                    <div class="grid-3">
+                        <article class="card step">
+                            <span class="step-number">01</span>
+                            <h3>Ingesta del proyecto</h3>
+                            <p>El punto de partida sigue siendo el PDF del proyecto. La app aprovecha ese documento existente y lo convierte en una vista utilizable en campo.</p>
+                        </article>
+                        <article class="card step">
+                            <span class="step-number">02</span>
+                            <h3>Centralización operativa</h3>
+                            <p>El técnico deja de ir y venir entre plano y tablas. La información relevante aparece organizada dentro de una sola herramienta móvil.</p>
+                        </article>
+                        <article class="card step">
+                            <span class="step-number">03</span>
+                            <h3>Ejecución y seguimiento</h3>
+                            <p>La experiencia permite navegar el plano, consultar tareas, identificar zonas y registrar el estado del trabajo desde el dispositivo.</p>
+                        </article>
+                    </div>
+                    <div class="split">
+                        <div class="stack">
+                            <div class="banner">
+                                <strong>Resultado</strong>
+                                <p>La solución no reemplaza el proceso de generación de planos; lo vuelve más utilizable y más accionable en el último tramo de la operación: el campo.</p>
+                            </div>
+                            <div class="pill-row">
+                                <span class="pill">iPhone-first</span>
+                                <span class="pill">Progressive Web App</span>
+                                <span class="pill">Operación táctil</span>
+                                <span class="pill">Uso en campo</span>
+                            </div>
+                        </div>
+                        <div class="media">
+                            <img src="./assets/mobile-ui.jpg" alt="Vista móvil de la experiencia operativa para técnicos">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame" id="valor">
+                <div class="frame-body stack">
+                    <div>
+                        <p class="section-tag">Valor para la compañía</p>
+                        <h2>Por qué esta solución merece atención ejecutiva</h2>
+                    </div>
+                    <div class="grid-3">
+                        <article class="card">
+                            <h3>Menor fricción en ejecución</h3>
+                            <p>Con menos navegación manual entre páginas y menos dependencia de interpretación, el técnico puede enfocarse en instalar y validar.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Mayor consistencia operativa</h3>
+                            <p>La herramienta ayuda a estandarizar el modo en que se consulta información, se interpreta el plano y se da seguimiento al trabajo.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Mejor trazabilidad</h3>
+                            <p>El avance deja de vivir fuera del flujo principal y puede observarse desde la misma experiencia de trabajo.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Más claridad para liderazgo</h3>
+                            <p>El producto convierte un documento técnico en una experiencia más fácil de explicar, revisar y promover internamente.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Adopción práctica</h3>
+                            <p>El formato PWA para iPhone favorece despliegue simple y cercanía con el dispositivo que el técnico ya usa en sitio.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Base para escalar</h3>
+                            <p>No es solo una mejora visual. Es una base operativa que puede crecer con nuevos sitios, reglas y capas de inteligencia.</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame" aria-labelledby="campo-title">
+                <div class="frame-body stack">
+                    <div>
+                        <p class="section-tag">Experiencia de campo</p>
+                        <h2 id="campo-title">Lo que ve el equipo, explicado en lenguaje no técnico</h2>
+                    </div>
+                    <div class="grid-4">
+                        <article class="card">
+                            <h3>Resumen del proyecto</h3>
+                            <p>Una vista de totales y contexto general para entender rápidamente el alcance del sitio.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Tareas por dispositivo</h3>
+                            <p>Una forma directa de saber qué instalar, dónde enfocarse y qué revisar durante la ejecución.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Plano navegable</h3>
+                            <p>Una lectura más útil del plano para moverse en el sitio sin depender exclusivamente del PDF tradicional.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Seguimiento de avance</h3>
+                            <p>Un mecanismo simple para distinguir trabajo pendiente, en curso o terminado desde el mismo dispositivo.</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame" id="seguridad">
+                <div class="frame-body split">
+                    <div class="stack">
+                        <div>
+                            <p class="section-tag">Seguridad y despliegue</p>
+                            <h2>Fuerte valor operativo sin abrir una superficie innecesaria de riesgo</h2>
+                        </div>
+                        <p>Uno de los puntos más sólidos de la solución es que logra valor práctico sin depender de una arquitectura de datos central para procesar la operación del técnico.</p>
+                        <div class="grid-2">
+                            <article class="card">
+                                <h3>Procesamiento en navegador</h3>
+                                <p>La experiencia corre del lado del cliente. El plano y la lógica de uso viven en el dispositivo del usuario.</p>
+                            </article>
+                            <article class="card">
+                                <h3>Datos sensibles bajo control</h3>
+                                <p>No hay envío de información del proyecto a una API externa como parte del flujo principal de trabajo.</p>
+                            </article>
+                            <article class="card">
+                                <h3>Operación local</h3>
+                                <p>La herramienta mantiene el valor cerca del técnico, reduciendo dependencia de conectividad para el uso operativo.</p>
+                            </article>
+                            <article class="card">
+                                <h3>Despliegue ligero</h3>
+                                <p>El modelo PWA simplifica distribución y evita parte de la fricción típica de apps móviles tradicionales.</p>
+                            </article>
+                        </div>
+                    </div>
+                    <div class="media">
+                        <img src="./assets/security.jpg" alt="Concepto visual de seguridad y operación en navegador">
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame" id="escala">
+                <div class="frame-body stack">
+                    <div>
+                        <p class="section-tag">Escalabilidad</p>
+                        <h2>No es un entregable aislado, es una plataforma operativa en evolución</h2>
+                    </div>
+                    <div class="grid-3">
+                        <article class="card">
+                            <h3>Puede absorber más conocimiento</h3>
+                            <p>La solución está posicionada para crecer con nuevas reglas, nuevos patrones y nuevas fuentes de conocimiento de instalación.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Puede extenderse a más sitios</h3>
+                            <p>El enfoque no depende de un solo proyecto. El valor aumenta cuando el mismo modelo operativo se replica en más implementaciones.</p>
+                        </article>
+                        <article class="card">
+                            <h3>Abre conversación con sistemas existentes</h3>
+                            <p>Hacia adelante, puede conectarse con fuentes como SiteOwl para cerrar más ambigüedades y fortalecer la precisión operativa.</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="frame" id="siguiente">
+                <div class="frame-body stack">
+                    <div>
+                        <p class="section-tag">Siguiente paso sugerido</p>
+                        <h2>Propuesta de presentación ejecutiva y avance interno</h2>
+                    </div>
+                    <div class="grid-3">
+                        <article class="card step">
+                            <span class="step-number">01</span>
+                            <h3>Piloto controlado</h3>
+                            <p>Seleccionar un sitio o flujo representativo donde la herramienta pueda usarse con acompañamiento y observación directa.</p>
+                        </article>
+                        <article class="card step">
+                            <span class="step-number">02</span>
+                            <h3>Validación operativa</h3>
+                            <p>Confirmar qué tanto reduce fricción, qué tan clara resulta para técnicos y qué ajustes aumentan su valor para liderazgo.</p>
+                        </article>
+                        <article class="card step">
+                            <span class="step-number">03</span>
+                            <h3>Escalamiento</h3>
+                            <p>Formalizar la herramienta como capa operativa repetible para futuros proyectos, sitios y equipos de instalación.</p>
+                        </article>
+                    </div>
+                    <div class="banner">
+                        <strong>Mensaje final</strong>
+                        <p>CCTV Field Planner v3 no solo presenta mejor la información. La convierte en una experiencia ejecutable, móvil y segura para el momento que más importa: la instalación en campo.</p>
+                    </div>
+                </div>
+            </section>
+
+            <p class="footer-note">Archivo sugerido para uso ejecutivo: <strong>reporte/index-cio.html</strong></p>
+        </div>
+    </main>
+
+    <script>
+        const sections = Array.from(document.querySelectorAll("[id]"));
+        const links = Array.from(document.querySelectorAll(".nav-link"));
+
+        const activate = (id) => {
+            links.forEach((link) => {
+                link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+            });
+        };
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const candidate = entries
+                    .filter((entry) => entry.isIntersecting)
+                    .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+                if (candidate) {
+                    activate(candidate.target.id);
+                }
+            },
+            {
+                rootMargin: "-35% 0px -45% 0px",
+                threshold: [0.12, 0.24, 0.4, 0.6],
+            }
+        );
+
+        sections.forEach((section) => observer.observe(section));
+        activate("resumen");
+    </script>
+</body>
+</html>

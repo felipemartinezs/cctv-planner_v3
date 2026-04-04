@@ -660,6 +660,11 @@ export default function App() {
   const selectedWarnings = selectedRecord ? taskWarnings(selectedRecord, t) : [];
   const selectedAmbiguity = selectedRecord ? ambiguityFor(selectedRecord) : null;
   const canViewPlan = Boolean(plan?.viewerUrl);
+  const reportLinks = [
+    { href: "/reporte/index.html", label: t("reports.technical") },
+    { href: "/reporte/index-cio.html", label: t("reports.executive") },
+    { href: "/reporte/index-cio-bilingual.html", label: t("reports.bilingual") },
+  ];
 
   return (
     <div className="app-shell">
@@ -669,6 +674,23 @@ export default function App() {
         </div>
         <div className="status-block">
           <div className="topbar__utility-row">
+            <div className="report-menu" aria-label={t("reports.aria")}>
+              <span className="report-menu__label">{t("reports.label")}</span>
+              <div className="report-menu__links">
+                {reportLinks.map((report) => (
+                  <a
+                    key={report.href}
+                    className="report-link"
+                    href={report.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={t("reports.openInNewTab")}
+                  >
+                    {report.label}
+                  </a>
+                ))}
+              </div>
+            </div>
             <div className="language-toggle" role="group" aria-label="Language selector">
               <button
                 type="button"
