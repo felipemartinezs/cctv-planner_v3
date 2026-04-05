@@ -43,6 +43,7 @@
                 radial-gradient(circle at top left, rgba(47, 152, 213, 0.22), transparent 30%),
                 radial-gradient(circle at top right, rgba(119, 215, 255, 0.12), transparent 28%),
                 linear-gradient(180deg, #06111f 0%, #08121e 45%, #091523 100%);
+            overflow-x: hidden;
         }
 
         body::before {
@@ -356,6 +357,7 @@
             border: 1px solid var(--line);
             border-radius: 24px;
             background: rgba(255, 255, 255, 0.02);
+            -webkit-overflow-scrolling: touch;
         }
 
         table {
@@ -469,6 +471,15 @@
 
             .nav {
                 justify-content: flex-start;
+                width: 100%;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .nav a {
+                flex: 0 0 auto;
             }
 
             .wrap {
@@ -477,6 +488,10 @@
 
             .frame-body {
                 padding: 24px;
+            }
+
+            .hero {
+                min-height: auto;
             }
 
             .grid-2,
@@ -490,22 +505,111 @@
         }
 
         @media (max-width: 560px) {
+            .topbar {
+                position: static;
+            }
+
+            .topbar-inner {
+                padding: 12px 14px;
+                gap: 14px;
+            }
+
+            .brand-copy strong {
+                font-size: 0.92rem;
+            }
+
+            .nav a {
+                padding: 8px 11px;
+                font-size: 0.88rem;
+            }
+
+            .wrap {
+                padding: 14px 12px 28px;
+            }
+
             h1 {
-                font-size: 2.45rem;
+                font-size: 2.2rem;
             }
 
             h2 {
-                font-size: 1.8rem;
+                font-size: 1.68rem;
             }
 
             .frame-body,
             .card {
-                padding: 20px;
+                padding: 18px;
+            }
+
+            .hero {
+                gap: 20px;
+            }
+
+            .lead,
+            p {
+                font-size: 0.98rem;
             }
 
             .chip {
                 width: 100%;
                 justify-content: center;
+            }
+
+            .compare {
+                overflow: visible;
+                border: none;
+                border-radius: 0;
+                background: transparent;
+            }
+
+            table {
+                min-width: 0;
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tbody,
+            tr,
+            td {
+                display: block;
+                width: 100%;
+            }
+
+            tr {
+                margin-bottom: 14px;
+                border: 1px solid var(--line);
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.03);
+                overflow: hidden;
+            }
+
+            tr:last-child {
+                margin-bottom: 0;
+            }
+
+            td {
+                padding: 12px 14px 14px;
+                border-right: none;
+                border-bottom: 1px solid rgba(147, 173, 203, 0.11);
+                display: grid;
+                gap: 6px;
+            }
+
+            td:last-child {
+                border-bottom: none;
+            }
+
+            td::before {
+                content: attr(data-label);
+                color: var(--text);
+                font-size: 0.76rem;
+                font-weight: 600;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
             }
         }
 
@@ -578,7 +682,7 @@
             <section class="frame hero" id="resumen">
                 <div class="frame-body">
                     <div class="eyebrow">Versión para CIO y liderazgo operativo</div>
-                    <h1>De un PDF estático a una ejecución de campo más clara, móvil y segura</h1>
+                    <h1>CCTV Field Operations Planner</h1>
                     <p class="lead">CCTV Field Operations Planner transforma documentación de proyecto en una herramienta operativa para técnicos en iPhone, reduciendo fricción en campo sin mover datos sensibles fuera del navegador.</p>
                     <div class="hero-actions">
                         <div class="chip"><strong>Qué es:</strong> una PWA operativa para técnicos de campo</div>
@@ -881,7 +985,21 @@
     </main>
 
     <script>
-        const sections = Array.from(document.querySelectorAll("[id]"));
+        const hydrateResponsiveTables = () => {
+            document.querySelectorAll("table").forEach((table) => {
+                const headers = Array.from(table.querySelectorAll("thead th")).map((cell) => cell.textContent.trim());
+
+                table.querySelectorAll("tbody tr").forEach((row) => {
+                    Array.from(row.children).forEach((cell, index) => {
+                        if (cell instanceof HTMLTableCellElement && cell.tagName === "TD") {
+                            cell.dataset.label = headers[index] || `Columna ${index + 1}`;
+                        }
+                    });
+                });
+            });
+        };
+
+        const sections = Array.from(document.querySelectorAll("main section[id]"));
         const links = Array.from(document.querySelectorAll(".nav-link"));
 
         const activate = (id) => {
@@ -906,6 +1024,7 @@
             }
         );
 
+        hydrateResponsiveTables();
         sections.forEach((section) => observer.observe(section));
         activate("resumen");
     </script>

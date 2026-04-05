@@ -45,6 +45,7 @@
                 linear-gradient(180deg, #07101d 0%, #09111d 30%, #0a1220 100%);
             color: var(--text);
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
         body::before {
@@ -310,6 +311,7 @@
             border: 1px solid var(--line);
             border-radius: 22px;
             background: rgba(255, 255, 255, 0.02);
+            -webkit-overflow-scrolling: touch;
         }
 
         table {
@@ -475,6 +477,7 @@
                 grid-auto-columns: max-content;
                 overflow-x: auto;
                 padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
             }
 
             .nav a:hover,
@@ -505,17 +508,37 @@
         }
 
         @media (max-width: 640px) {
+            .sidebar {
+                position: static;
+                padding: 14px 14px 10px;
+            }
+
+            .sidebar-card {
+                padding: 16px;
+                margin-bottom: 12px;
+            }
+
+            .nav {
+                gap: 6px;
+            }
+
+            .nav a {
+                padding: 10px 12px;
+                font-size: 0.88rem;
+            }
+
             .content {
-                padding: 14px;
+                padding: 12px;
             }
 
             .panel-body,
             .subpanel {
-                padding: 20px;
+                padding: 18px;
             }
 
             .hero {
                 min-height: auto;
+                gap: 18px;
             }
 
             .hero h1 {
@@ -527,8 +550,79 @@
                 font-size: 1.8rem;
             }
 
+            .hero .lede,
+            .hero p,
+            .copy p,
+            .subpanel p,
+            .chapter p {
+                font-size: 0.98rem;
+            }
+
+            .translation {
+                padding: 14px 16px;
+            }
+
+            pre {
+                padding: 14px 16px;
+                font-size: 0.82rem;
+            }
+
+            .table-wrap {
+                overflow: visible;
+                border: none;
+                border-radius: 0;
+                background: transparent;
+            }
+
             table {
-                min-width: 560px;
+                min-width: 0;
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tbody,
+            tr,
+            td {
+                display: block;
+                width: 100%;
+            }
+
+            tr {
+                margin-bottom: 14px;
+                border: 1px solid var(--line);
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.03);
+                overflow: hidden;
+            }
+
+            tr:last-child {
+                margin-bottom: 0;
+            }
+
+            td {
+                padding: 12px 14px 14px;
+                border-right: none;
+                border-bottom: 1px solid rgba(137, 170, 205, 0.12);
+                display: grid;
+                gap: 6px;
+            }
+
+            td:last-child {
+                border-bottom: none;
+            }
+
+            td::before {
+                content: attr(data-label);
+                color: var(--text);
+                font-size: 0.76rem;
+                font-weight: 600;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
             }
         }
 
@@ -1280,7 +1374,21 @@ Fuzzy match final (src/lib/icons.ts)
     </div>
 
     <script>
-        const sections = Array.from(document.querySelectorAll("[id]"));
+        const hydrateResponsiveTables = () => {
+            document.querySelectorAll("table").forEach((table) => {
+                const headers = Array.from(table.querySelectorAll("thead th")).map((cell) => cell.textContent.trim());
+
+                table.querySelectorAll("tbody tr").forEach((row) => {
+                    Array.from(row.children).forEach((cell, index) => {
+                        if (cell instanceof HTMLTableCellElement && cell.tagName === "TD") {
+                            cell.dataset.label = headers[index] || `Columna ${index + 1}`;
+                        }
+                    });
+                });
+            });
+        };
+
+        const sections = Array.from(document.querySelectorAll("main header[id], main section[id]"));
         const navLinks = Array.from(document.querySelectorAll(".nav-link"));
 
         const setActiveLink = (id) => {
@@ -1305,6 +1413,7 @@ Fuzzy match final (src/lib/icons.ts)
             }
         );
 
+        hydrateResponsiveTables();
         sections.forEach((section) => observer.observe(section));
         setActiveLink("que-es");
     </script>

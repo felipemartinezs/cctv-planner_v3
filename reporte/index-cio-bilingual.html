@@ -42,6 +42,7 @@
                 radial-gradient(circle at top left, rgba(44, 149, 207, 0.22), transparent 30%),
                 radial-gradient(circle at top right, rgba(121, 217, 255, 0.12), transparent 28%),
                 linear-gradient(180deg, #07111f 0%, #091320 48%, #0a1523 100%);
+            overflow-x: hidden;
         }
 
         body::before {
@@ -372,6 +373,7 @@
             border: 1px solid var(--line);
             border-radius: 24px;
             background: rgba(255, 255, 255, 0.02);
+            -webkit-overflow-scrolling: touch;
         }
 
         table {
@@ -481,12 +483,32 @@
                 justify-content: flex-start;
             }
 
+            .topbar-right {
+                width: 100%;
+            }
+
+            .nav {
+                width: 100%;
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .nav a {
+                flex: 0 0 auto;
+            }
+
             .wrap {
                 padding: 20px 16px 34px;
             }
 
             .frame-body {
                 padding: 24px;
+            }
+
+            .hero {
+                min-height: auto;
             }
 
             .grid-2,
@@ -500,22 +522,119 @@
         }
 
         @media (max-width: 560px) {
+            .topbar {
+                position: static;
+            }
+
+            .topbar-inner {
+                padding: 12px 14px;
+                gap: 14px;
+            }
+
+            .topbar-right {
+                gap: 10px;
+            }
+
+            .brand-copy strong {
+                font-size: 0.92rem;
+            }
+
+            .nav a,
+            .lang-btn {
+                font-size: 0.88rem;
+            }
+
+            .nav a {
+                padding: 8px 11px;
+            }
+
+            .wrap {
+                padding: 14px 12px 28px;
+            }
+
             h1 {
-                font-size: 2.35rem;
+                font-size: 2.2rem;
             }
 
             h2 {
-                font-size: 1.8rem;
+                font-size: 1.68rem;
             }
 
             .frame-body,
             .card {
-                padding: 20px;
+                padding: 18px;
+            }
+
+            .hero {
+                gap: 20px;
+            }
+
+            .lead,
+            p {
+                font-size: 0.98rem;
             }
 
             .chip {
                 width: 100%;
                 justify-content: center;
+            }
+
+            .compare {
+                overflow: visible;
+                border: none;
+                border-radius: 0;
+                background: transparent;
+            }
+
+            table {
+                min-width: 0;
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tbody,
+            tr,
+            td {
+                display: block;
+                width: 100%;
+            }
+
+            tr {
+                margin-bottom: 14px;
+                border: 1px solid var(--line);
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.03);
+                overflow: hidden;
+            }
+
+            tr:last-child {
+                margin-bottom: 0;
+            }
+
+            td {
+                padding: 12px 14px 14px;
+                border-right: none;
+                border-bottom: 1px solid rgba(144, 170, 198, 0.11);
+                display: grid;
+                gap: 6px;
+            }
+
+            td:last-child {
+                border-bottom: none;
+            }
+
+            td::before {
+                content: attr(data-label);
+                color: var(--text);
+                font-size: 0.76rem;
+                font-weight: 600;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
             }
         }
     </style>
@@ -1070,6 +1189,20 @@
 
         const renderPills = (items) => items.map((item) => `<span class="pill">${item}</span>`).join("");
 
+        const hydrateResponsiveTables = () => {
+            document.querySelectorAll("table").forEach((table) => {
+                const headers = Array.from(table.querySelectorAll("thead th")).map((cell) => cell.textContent.trim());
+
+                table.querySelectorAll("tbody tr").forEach((row) => {
+                    Array.from(row.children).forEach((cell, index) => {
+                        if (cell instanceof HTMLTableCellElement && cell.tagName === "TD") {
+                            cell.dataset.label = headers[index] || `Column ${index + 1}`;
+                        }
+                    });
+                });
+            });
+        };
+
         const setActiveLink = (id) => {
             el.navLinks.forEach((link) => {
                 link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
@@ -1270,6 +1403,8 @@
             el.langButtons.forEach((button) => {
                 button.classList.toggle("is-active", button.dataset.lang === lang);
             });
+
+            hydrateResponsiveTables();
         };
 
         el.langButtons.forEach((button) => {
