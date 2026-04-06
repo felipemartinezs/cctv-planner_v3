@@ -20,6 +20,7 @@ import {
 import { mergeDeviceRecords } from "./modules/device-records";
 import {
   KnowledgeStudioPanel,
+  type NameRepairFinding,
   type PendingKnowledgePattern,
   type VisualDecisionIssue,
 } from "./modules/knowledge-studio";
@@ -32,6 +33,7 @@ import {
 import { buildPlanSegmentation, type PlanSegmentation } from "./modules/plan-segmentation";
 import { PlanViewerModal, PlanSegmentationModal } from "./modules/plan-viewer";
 import { hasSwitchAssignment, switchDisplayLabel } from "./modules/switch-segmentation";
+import { wasDeviceNameRepaired } from "./lib/device-name-repair";
 
 type TaskState = "pending" | "active" | "done";
 
@@ -389,6 +391,20 @@ function buildVisualDecisionIssues(records: DeviceRecord[]): VisualDecisionIssue
     });
 }
 
+function buildNameRepairFindings(records: DeviceRecord[]): NameRepairFinding[] {
+  return records
+    .filter(
+      (record): record is DeviceRecord & { id: number } =>
+        record.id !== null && wasDeviceNameRepaired(record.rawName, record.name)
+    )
+    .map((record) => ({
+      id: record.id,
+      rawName: record.rawName,
+      repairedName: record.name,
+    }))
+    .sort((left, right) => left.id - right.id);
+}
+
 export default function App() {
   const { lang, setLang, t } = useI18n();
   const showKnowledgeStudio = import.meta.env.DEV;
@@ -514,6 +530,10 @@ export default function App() {
   const effectiveVisualDecisionIssues = useMemo(
     () => buildVisualDecisionIssues(resolvedRecords),
     [resolvedRecords]
+  );
+  const nameRepairFindings = useMemo(
+    () => buildNameRepairFindings(sourceRecords),
+    [sourceRecords]
   );
   const pendingKnowledgePatterns = useMemo<PendingKnowledgePattern[]>(() => {
     const grouped = new Map<string, { count: number; deviceIds: number[]; sampleNames: string[] }>();
@@ -1148,6 +1168,7 @@ export default function App() {
           effectiveIssues={effectiveVisualDecisionIssues}
           enabled={manualKnowledgeEnabled}
           manualSeed={manualKnowledgeSeed}
+          nameRepairs={nameRepairFindings}
           pendingPatterns={pendingKnowledgePatterns}
           onClearRules={handleClearManualRules}
           onDeleteRule={handleDeleteManualRule}

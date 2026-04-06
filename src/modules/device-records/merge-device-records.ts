@@ -33,6 +33,7 @@ export function mergeDeviceRecords(
     const area = pickText(current.area, record.area);
     const category = record.category === "unknown" ? current.category : record.category;
     const name = pickText(current.name, record.name);
+    const rawName = pickText(current.rawName, record.rawName);
     const installationSpec = resolveInstallationSpec({
       area,
       category,
@@ -59,6 +60,7 @@ export function mergeDeviceRecords(
     merged.set(record.key, {
       ...current,
       name,
+      rawName,
       abbreviatedName: pickText(current.abbreviatedName, record.abbreviatedName),
       partNumber,
       hub: pickText(current.hub, record.hub),

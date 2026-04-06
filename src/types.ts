@@ -66,6 +66,7 @@ export interface DeviceRecord {
   key: string;
   id: number | null;
   name: string;
+  rawName: string;
   abbreviatedName: string;
   partNumber: string;
   hub: string;

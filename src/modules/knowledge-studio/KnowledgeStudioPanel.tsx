@@ -35,6 +35,12 @@ export interface VisualDecisionIssue {
   suppressed: boolean;
 }
 
+export interface NameRepairFinding {
+  id: number;
+  rawName: string;
+  repairedName: string;
+}
+
 interface KnowledgeStudioPanelProps {
   baseCoverage: VisualKnowledgeCoverage | null;
   baseIssues: VisualDecisionIssue[];
@@ -42,6 +48,7 @@ interface KnowledgeStudioPanelProps {
   effectiveIssues: VisualDecisionIssue[];
   enabled: boolean;
   manualSeed: VisualKnowledgeSeed;
+  nameRepairs: NameRepairFinding[];
   pendingPatterns: PendingKnowledgePattern[];
   onClearRules: () => void;
   onDeleteRule: (normalizedPattern: string) => void;
@@ -103,6 +110,7 @@ export function KnowledgeStudioPanel({
   effectiveIssues,
   enabled,
   manualSeed,
+  nameRepairs,
   pendingPatterns,
   onClearRules,
   onDeleteRule,
@@ -139,6 +147,7 @@ export function KnowledgeStudioPanel({
   const afterKnownIcons = effectiveCoverage?.recordsWithKnownIconDevice ?? 0;
   const beforeRiskyIcons = baseIssues.length;
   const afterRiskyIcons = effectiveIssues.length;
+  const repairedNamesCount = nameRepairs.length;
 
   function getRiskLabel(risk: VisualDecisionRisk) {
     if (risk === "abstain") {
@@ -323,6 +332,10 @@ export function KnowledgeStudioPanel({
           <span>{t("knowledge.afterRiskyIcons")}</span>
           <strong>{afterRiskyIcons}</strong>
         </article>
+        <article className="snapshot-card">
+          <span>{t("knowledge.repairedNamesCount")}</span>
+          <strong>{repairedNamesCount}</strong>
+        </article>
       </div>
 
       <div className="knowledge-studio__actions">
@@ -343,6 +356,34 @@ export function KnowledgeStudioPanel({
           {t("knowledge.clearRules")}
         </button>
       </div>
+
+      <section className="insight-list-card knowledge-studio__card">
+        <h3>{t("knowledge.nameRepairTitle")}</h3>
+        {nameRepairs.length > 0 ? (
+          <div className="knowledge-issue-list">
+            {nameRepairs.map((item) => (
+              <article key={item.id} className="knowledge-issue-card">
+                <div className="knowledge-issue-card__top">
+                  <div className="knowledge-issue-card__headline">
+                    <strong>{t("knowledge.issueId", { id: item.id })}</strong>
+                    <span>{t("knowledge.nameRepairChanged")}</span>
+                  </div>
+                </div>
+                <div className="knowledge-issue-card__notes">
+                  <p>
+                    <strong>{t("knowledge.nameRepairRaw")}:</strong> {item.rawName}
+                  </p>
+                  <p>
+                    <strong>{t("knowledge.nameRepairFixed")}:</strong> {item.repairedName}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="knowledge-studio__empty">{t("knowledge.noNameRepairs")}</p>
+        )}
+      </section>
 
       <section className="insight-list-card knowledge-studio__card">
         <h3>{t("knowledge.issueListTitle")}</h3>

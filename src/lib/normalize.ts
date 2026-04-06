@@ -22,6 +22,7 @@ import {
   resolveRecordVisualKnowledge,
   type VisualKnowledgeIndex,
 } from "./visual-knowledge";
+import { repairExtractedDeviceName } from "./device-name-repair";
 
 const HEADER_ALIASES: Record<string, string[]> = {
   id: ["id", "index"],
@@ -484,7 +485,8 @@ export function normalizeRows(
     const key = buildRecordKey(id, name, rowIndex);
 
     const marker = (x !== null && y !== null) ? null : fillPositionFromPdf(id, markers);
-    const resolvedName = name || abbreviatedName;
+    const resolvedRawName = name || abbreviatedName;
+    const resolvedName = repairExtractedDeviceName(resolvedRawName);
     const deviceRule = matchDeviceRule(resolvedName);
     const resolvedPartNumber = partNumber || deviceRule?.inferredPartNumber || "";
     const resolvedIconDevice = iconDevice || deviceRule?.inferredIconDevice || "";
@@ -516,6 +518,7 @@ export function normalizeRows(
       key,
       id,
       name: resolvedName,
+      rawName: resolvedRawName,
       abbreviatedName,
       partNumber: resolvedPartNumber,
       hub,
@@ -547,6 +550,7 @@ export function normalizeRows(
     const nextCategory =
       existing.category === "unknown" ? resolvedCategory : existing.category;
     const nextName = mergeValue(existing.name, baseRecord.name);
+    const nextRawName = mergeValue(existing.rawName, baseRecord.rawName);
     const nextPart = mergeValue(existing.partNumber, baseRecord.partNumber);
     const nextIconDevice = mergeValue(existing.iconDevice, baseRecord.iconDevice);
     const nextArea = existing.area === "SIN AREA" ? baseRecord.area : existing.area;
@@ -576,6 +580,7 @@ export function normalizeRows(
     merged.set(key, {
       ...existing,
       name: nextName,
+      rawName: nextRawName,
       abbreviatedName: mergeValue(existing.abbreviatedName, baseRecord.abbreviatedName),
       partNumber: nextPart,
       hub: mergeValue(existing.hub, baseRecord.hub),

@@ -4,6 +4,7 @@ import {
   type PartNumberKnowledgeProfile,
   type VisualKnowledgeSeed,
 } from "../config/visual-knowledge";
+import { repairExtractedDeviceName } from "./device-name-repair";
 import type { DeviceRecord } from "../types";
 
 export interface KnowledgeCoverageGroup {
@@ -65,7 +66,7 @@ function includesNormalizedValue(values: string[], expected: string): boolean {
 }
 
 export function normalizeKnowledgeNamePattern(value: string): string {
-  const normalized = value
+  const normalized = repairExtractedDeviceName(value)
     .toUpperCase()
     .replace(/\u00a0/g, " ")
     .replace(/\//g, " ")

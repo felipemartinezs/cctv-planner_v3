@@ -1,3 +1,5 @@
+import { repairExtractedDeviceName } from "../lib/device-name-repair";
+
 /**
  * DEVICE KNOWLEDGE BASE
  * ---------------------
@@ -106,7 +108,7 @@ export const DEVICE_RULES: DeviceRule[] = [
 
 /** Returns the first matching rule for a given device name, or null. */
 export function matchDeviceRule(name: string): DeviceRule | null {
-  const upper = name.toUpperCase();
+  const upper = repairExtractedDeviceName(name).toUpperCase();
   return (
     DEVICE_RULES.find((rule) => new RegExp(rule.namePattern, "i").test(upper)) ?? null
   );

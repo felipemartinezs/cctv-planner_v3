@@ -5,6 +5,7 @@ import { buildSwitchIdentity } from "../switch-segmentation";
 import type { PdfDataParseResult, PdfDataTemplate } from "./types";
 import { matchDeviceRule } from "../../config/device-rules";
 import { estimateNetworkCables } from "../../lib/cable-planning";
+import { repairExtractedDeviceName } from "../../lib/device-name-repair";
 import { readFileAsArrayBuffer } from "../../lib/file-io";
 import { contextualizeIconDeviceForInstallation, resolveInstallationSpec } from "../../lib/installation-rules";
 
@@ -365,7 +366,8 @@ function buildRecord(
   }
 
   const marker = markers.get(id) || null;
-  const resolvedName = name || abbreviatedName || `ID ${id}`;
+  const resolvedRawName = name || abbreviatedName || `ID ${id}`;
+  const resolvedName = repairExtractedDeviceName(resolvedRawName);
   const deviceRule = matchDeviceRule(resolvedName);
   const resolvedPartNumber = partNumber || deviceRule?.inferredPartNumber || "";
   const category = categorizeRecord(resolvedPartNumber, deviceTaskType, resolvedName);
@@ -399,6 +401,7 @@ function buildRecord(
     key: `id:${id}`,
     id,
     name: resolvedName,
+    rawName: resolvedRawName,
     abbreviatedName,
     partNumber: resolvedPartNumber,
     hub,
