@@ -18,7 +18,11 @@ import {
   type VisualKnowledgeSeed,
 } from "./config/visual-knowledge";
 import { mergeDeviceRecords } from "./modules/device-records";
-import { KnowledgeStudioPanel, type PendingKnowledgePattern } from "./modules/knowledge-studio";
+import {
+  KnowledgeStudioPanel,
+  type PendingKnowledgePattern,
+  type VisualDecisionIssue,
+} from "./modules/knowledge-studio";
 import { parsePdfDataRecords } from "./modules/pdf-data-parser";
 import {
   buildProjectInsights,
@@ -348,6 +352,43 @@ function sanitizeManualSeed(raw: unknown): VisualKnowledgeSeed {
   };
 }
 
+function buildVisualDecisionIssues(records: DeviceRecord[]): VisualDecisionIssue[] {
+  return records
+    .filter(
+      (record): record is DeviceRecord & {
+        id: number;
+        visualDecision: NonNullable<DeviceRecord["visualDecision"]>;
+      } => record.id !== null && Boolean(record.visualDecision) && record.visualDecision!.risk !== "safe"
+    )
+    .map((record) => ({
+      contextualizedFrom: record.visualDecision.contextualizedFrom,
+      deviceRuleDescription: record.visualDecision.deviceRuleDescription,
+      deviceRuleId: record.visualDecision.deviceRuleId,
+      displayedIconDevice: record.iconDevice,
+      hasAmbiguousNameKnowledge: record.visualDecision.hasAmbiguousNameKnowledge,
+      hasNameKnowledge: record.visualDecision.hasNameKnowledge,
+      hasPartKnowledge: record.visualDecision.hasPartKnowledge,
+      id: record.id,
+      lookupMode: record.visualDecision.iconLookupMode,
+      name: record.name,
+      normalizedPattern: record.visualDecision.namePattern,
+      partKnowledgeIconChoices: record.visualDecision.partKnowledgeIconChoices,
+      partNumber: record.partNumber,
+      proposedIconDevice: record.visualDecision.proposedIconDevice,
+      rawIconDeviceProvided: record.visualDecision.rawIconDeviceProvided,
+      risk: record.visualDecision.risk,
+      source: record.visualDecision.source,
+      suppressed: record.visualDecision.suppressed,
+    }))
+    .sort((left, right) => {
+      const riskRank = { abstain: 2, review: 1, safe: 0 } as const;
+      if (riskRank[right.risk] !== riskRank[left.risk]) {
+        return riskRank[right.risk] - riskRank[left.risk];
+      }
+      return left.id - right.id;
+    });
+}
+
 export default function App() {
   const { lang, setLang, t } = useI18n();
   const showKnowledgeStudio = import.meta.env.DEV;
@@ -466,8 +507,16 @@ export default function App() {
     () => buildVisualKnowledgeCoverage(baseResolvedRecords, baseVisualKnowledgeIndex),
     [baseResolvedRecords, baseVisualKnowledgeIndex]
   );
+  const baseVisualDecisionIssues = useMemo(
+    () => buildVisualDecisionIssues(baseResolvedRecords),
+    [baseResolvedRecords]
+  );
+  const effectiveVisualDecisionIssues = useMemo(
+    () => buildVisualDecisionIssues(resolvedRecords),
+    [resolvedRecords]
+  );
   const pendingKnowledgePatterns = useMemo<PendingKnowledgePattern[]>(() => {
-    const grouped = new Map<string, { count: number; sampleNames: string[] }>();
+    const grouped = new Map<string, { count: number; deviceIds: number[]; sampleNames: string[] }>();
 
     sourceRecords.forEach((record) => {
       const normalized = normalizeKnowledgeNamePattern(record.name);
@@ -478,8 +527,11 @@ export default function App() {
         return;
       }
 
-      const current = grouped.get(normalized) ?? { count: 0, sampleNames: [] };
+      const current = grouped.get(normalized) ?? { count: 0, deviceIds: [], sampleNames: [] };
       current.count += 1;
+      if (record.id !== null && !current.deviceIds.includes(record.id)) {
+        current.deviceIds.push(record.id);
+      }
       if (current.sampleNames.length < 3 && !current.sampleNames.includes(record.name)) {
         current.sampleNames.push(record.name);
       }
@@ -489,6 +541,7 @@ export default function App() {
     return Array.from(grouped.entries())
       .map(([normalizedPattern, value]) => ({
         count: value.count,
+        deviceIds: value.deviceIds.slice().sort((left, right) => left - right),
         normalizedPattern,
         sampleNames: value.sampleNames,
       }))
@@ -1090,7 +1143,9 @@ export default function App() {
       {showKnowledgeStudio && (
         <KnowledgeStudioPanel
           baseCoverage={baseKnowledgeCoverage}
+          baseIssues={baseVisualDecisionIssues}
           effectiveCoverage={insights?.knowledge ?? baseKnowledgeCoverage}
+          effectiveIssues={effectiveVisualDecisionIssues}
           enabled={manualKnowledgeEnabled}
           manualSeed={manualKnowledgeSeed}
           pendingPatterns={pendingKnowledgePatterns}

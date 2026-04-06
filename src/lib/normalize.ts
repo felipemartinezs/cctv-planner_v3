@@ -1,5 +1,13 @@
 import Papa from "papaparse";
-import type { DeviceCategory, DeviceRecord, Metrics, PlanMarker } from "../types";
+import type {
+  DeviceCategory,
+  DeviceRecord,
+  Metrics,
+  PlanMarker,
+  VisualDecisionAudit,
+  VisualDecisionRisk,
+  VisualDecisionSource,
+} from "../types";
 import { buildSwitchIdentity, switchDisplayLabel } from "../modules/switch-segmentation";
 import { matchDeviceRule } from "../config/device-rules";
 import { estimateNetworkCables } from "./cable-planning";
@@ -9,6 +17,8 @@ import { contextualizeIconDeviceForInstallation, resolveInstallationSpec } from 
 import {
   DEFAULT_VISUAL_KNOWLEDGE_INDEX,
   getNamePatternKnowledge,
+  getPartNumberKnowledge,
+  normalizeKnowledgeNamePattern,
   resolveRecordVisualKnowledge,
   type VisualKnowledgeIndex,
 } from "./visual-knowledge";
@@ -218,6 +228,237 @@ function lookupExactIcon(iconMap: Map<string, string>, value: string): string {
   return iconMap.get(normalizeIconKey(value)) ?? "";
 }
 
+type LookupField = "preferred-ambiguous" | "icon-device" | "part-number" | "device-task-type";
+
+interface OrderedLookupCandidate {
+  exact: boolean;
+  field: LookupField;
+  value: string;
+}
+
+interface OrderedLookupResult {
+  candidate: string;
+  field: LookupField | "none";
+  mode: "exact" | "flexible" | "none";
+  url: string;
+}
+
+interface VisualDecisionComputation {
+  audit: VisualDecisionAudit;
+  iconDevice: string;
+  iconUrl: string;
+  installationSpec: ReturnType<typeof resolveInstallationSpec>;
+  partNumber: string;
+}
+
+function promoteRisk(
+  current: VisualDecisionRisk,
+  next: VisualDecisionRisk
+): VisualDecisionRisk {
+  const rank: Record<VisualDecisionRisk, number> = {
+    safe: 0,
+    review: 1,
+    abstain: 2,
+  };
+
+  return rank[next] > rank[current] ? next : current;
+}
+
+function pickOrderedLookup(
+  iconMap: Map<string, string>,
+  candidates: OrderedLookupCandidate[]
+): OrderedLookupResult {
+  for (const candidate of candidates) {
+    const value = candidate.value.trim();
+    if (!value) {
+      continue;
+    }
+    const url = candidate.exact ? lookupExactIcon(iconMap, value) : lookupIcon(iconMap, value);
+    if (url) {
+      return {
+        candidate: value,
+        field: candidate.field,
+        mode: candidate.exact ? "exact" : "flexible",
+        url,
+      };
+    }
+  }
+
+  return {
+    candidate: "",
+    field: "none",
+    mode: "none",
+    url: "",
+  };
+}
+
+function sameNormalizedValue(left: string, right: string) {
+  if (!left || !right) {
+    return false;
+  }
+  return normalizeIconKey(left) === normalizeIconKey(right);
+}
+
+function computeVisualDecision(
+  record: DeviceRecord,
+  iconMap: Map<string, string>,
+  knowledgeIndex: VisualKnowledgeIndex
+): VisualDecisionComputation {
+  const rawIconDevice = findCell(record.raw, HEADER_ALIASES.iconDevice);
+  const rawPartNumber = findCell(record.raw, HEADER_ALIASES.partNumber);
+  const rawIconDeviceProvided = Boolean(rawIconDevice);
+  const rawPartNumberProvided = Boolean(rawPartNumber);
+  const deviceRule = matchDeviceRule(record.name);
+  const knowledge = resolveRecordVisualKnowledge(record, knowledgeIndex);
+  const resolvedPartNumber = knowledge?.partNumber || record.partNumber;
+  const nameKnowledge = getNamePatternKnowledge(record.name, knowledgeIndex);
+  const partKnowledge = getPartNumberKnowledge(resolvedPartNumber, knowledgeIndex);
+  const baseResolvedIconDevice = knowledge?.iconDevice || record.iconDevice;
+  const installationSpec = resolveInstallationSpec({
+    area: record.area,
+    category: record.category,
+    iconDevice: baseResolvedIconDevice,
+    name: record.name,
+    partNumber: resolvedPartNumber,
+  });
+  const contextualIconDevice = contextualizeIconDeviceForInstallation({
+    iconDevice: baseResolvedIconDevice,
+    installationSpec,
+    partNumber: resolvedPartNumber,
+  });
+  const finalInstallationSpec =
+    contextualIconDevice === baseResolvedIconDevice
+      ? installationSpec
+      : resolveInstallationSpec({
+          area: record.area,
+          category: record.category,
+          iconDevice: contextualIconDevice,
+          name: record.name,
+          partNumber: resolvedPartNumber,
+        });
+  const preferredAmbiguousIcon =
+    !knowledge &&
+    nameKnowledge &&
+    (nameKnowledge.candidatePartNumbers.length > 1 ||
+      nameKnowledge.candidateIconDevices.length > 1)
+      ? nameKnowledge.suggestedIconDevice
+      : "";
+
+  const lookup = knowledge
+    ? pickOrderedLookup(iconMap, [
+        { exact: true, field: "icon-device", value: contextualIconDevice },
+        { exact: true, field: "part-number", value: resolvedPartNumber },
+        { exact: false, field: "icon-device", value: contextualIconDevice },
+        { exact: false, field: "part-number", value: resolvedPartNumber },
+        { exact: false, field: "device-task-type", value: record.deviceTaskType },
+      ])
+    : pickOrderedLookup(iconMap, [
+        { exact: true, field: "preferred-ambiguous", value: preferredAmbiguousIcon },
+        { exact: false, field: "preferred-ambiguous", value: preferredAmbiguousIcon },
+        { exact: true, field: "icon-device", value: contextualIconDevice },
+        { exact: true, field: "part-number", value: resolvedPartNumber },
+        { exact: false, field: "icon-device", value: contextualIconDevice },
+        { exact: false, field: "part-number", value: resolvedPartNumber },
+        { exact: false, field: "device-task-type", value: record.deviceTaskType },
+      ]);
+
+  const deviceRuleIconMatches =
+    !rawIconDeviceProvided &&
+    Boolean(deviceRule?.inferredIconDevice) &&
+    sameNormalizedValue(contextualIconDevice, deviceRule?.inferredIconDevice ?? "");
+
+  let source: VisualDecisionSource = "none";
+  if (knowledge?.matchedBy === "name-pattern") {
+    source = "name-pattern";
+  } else if (knowledge?.matchedBy === "part-number") {
+    source = "part-number";
+  } else if (knowledge?.matchedBy === "existing-icon-device") {
+    if (rawIconDeviceProvided) {
+      source = "existing-icon-device";
+    } else if (deviceRuleIconMatches) {
+      source = "device-rule";
+    } else {
+      source = "fallback-icon-device";
+    }
+  } else if (lookup.field === "preferred-ambiguous") {
+    source = "ambiguous-name-suggestion";
+  } else if (lookup.field === "device-task-type") {
+    source = "fallback-device-task-type";
+  } else if (lookup.field === "part-number") {
+    source = "fallback-part-number";
+  } else if (lookup.field === "icon-device") {
+    source = deviceRuleIconMatches ? "device-rule" : "fallback-icon-device";
+  }
+
+  const hasAmbiguousNameKnowledge = Boolean(
+    nameKnowledge &&
+      (nameKnowledge.candidatePartNumbers.length > 1 ||
+        nameKnowledge.candidateIconDevices.length > 1)
+  );
+  const partKnowledgeIconChoices = partKnowledge?.iconDevices.length ?? 0;
+
+  let risk: VisualDecisionRisk = "safe";
+  if (source === "device-rule" && partKnowledgeIconChoices > 1 && knowledge?.matchedBy !== "name-pattern") {
+    risk = "abstain";
+  } else if (source === "ambiguous-name-suggestion") {
+    risk = "abstain";
+  } else if (source === "fallback-part-number" && partKnowledgeIconChoices > 1) {
+    risk = "abstain";
+  } else if (source === "fallback-device-task-type") {
+    risk = "abstain";
+  } else if (
+    source === "fallback-icon-device" &&
+    !rawIconDeviceProvided &&
+    partKnowledgeIconChoices > 1
+  ) {
+    risk = "abstain";
+  }
+
+  if (source === "device-rule" && !nameKnowledge && partKnowledgeIconChoices <= 1) {
+    risk = promoteRisk(risk, "review");
+  }
+  if (source !== "name-pattern" && hasAmbiguousNameKnowledge) {
+    risk = promoteRisk(risk, "review");
+  }
+  if (source === "none" && (contextualIconDevice || resolvedPartNumber || record.deviceTaskType)) {
+    risk = promoteRisk(risk, "review");
+  }
+
+  const suppressed = risk === "abstain";
+  const finalIconDevice = suppressed ? "" : contextualIconDevice;
+  const finalIconUrl = suppressed ? "" : lookup.url;
+
+  return {
+    audit: {
+      contextualizedFrom:
+        contextualIconDevice !== baseResolvedIconDevice ? baseResolvedIconDevice : "",
+      deviceRuleDescription: deviceRule?.description ?? "",
+      deviceRuleId: deviceRule?.id ?? "",
+      finalIconDevice,
+      finalIconUrl,
+      hasAmbiguousNameKnowledge,
+      hasNameKnowledge: Boolean(nameKnowledge),
+      hasPartKnowledge: Boolean(partKnowledge),
+      iconLookupMode: lookup.mode,
+      knowledgeMatchedBy: knowledge?.matchedBy ?? "",
+      namePattern: normalizeKnowledgeNamePattern(record.name),
+      partKnowledgeIconChoices,
+      proposedIconDevice: contextualIconDevice,
+      proposedIconUrl: lookup.url,
+      rawIconDeviceProvided,
+      rawPartNumberProvided,
+      resolvedPartNumber,
+      risk,
+      source,
+      suppressed,
+    },
+    iconDevice: finalIconDevice,
+    iconUrl: finalIconUrl,
+    installationSpec: finalInstallationSpec,
+    partNumber: resolvedPartNumber,
+  };
+}
+
 export function normalizeRows(
   primaryRows: Record<string, string>[],
   secondaryRows: Record<string, string>[],
@@ -382,62 +623,18 @@ export function attachIcons(
   knowledgeIndex: VisualKnowledgeIndex = DEFAULT_VISUAL_KNOWLEDGE_INDEX
 ): DeviceRecord[] {
   return records.map((record) => {
-    const knowledge = resolveRecordVisualKnowledge(record, knowledgeIndex);
-    const nameKnowledge = getNamePatternKnowledge(record.name, knowledgeIndex);
-    const resolvedPartNumber = knowledge?.partNumber || record.partNumber;
-    const resolvedIconDevice = knowledge?.iconDevice || record.iconDevice;
-    const installationSpec = resolveInstallationSpec({
-      area: record.area,
-      category: record.category,
-      iconDevice: resolvedIconDevice,
-      name: record.name,
-      partNumber: resolvedPartNumber,
-    });
-    const contextualIconDevice = contextualizeIconDeviceForInstallation({
-      iconDevice: resolvedIconDevice,
-      installationSpec,
-      partNumber: resolvedPartNumber,
-    });
-    const finalInstallationSpec =
-      contextualIconDevice === resolvedIconDevice
-        ? installationSpec
-        : resolveInstallationSpec({
-            area: record.area,
-            category: record.category,
-            iconDevice: contextualIconDevice,
-            name: record.name,
-            partNumber: resolvedPartNumber,
-          });
-    const preferredAmbiguousIcon =
-      !knowledge &&
-      nameKnowledge &&
-      (nameKnowledge.candidatePartNumbers.length > 1 ||
-        nameKnowledge.candidateIconDevices.length > 1)
-        ? nameKnowledge.suggestedIconDevice
-        : "";
-    const iconUrl = knowledge
-      ? lookupExactIcon(iconMap, contextualIconDevice) ||
-        lookupExactIcon(iconMap, resolvedPartNumber) ||
-        lookupIcon(iconMap, contextualIconDevice) ||
-        lookupIcon(iconMap, resolvedPartNumber) ||
-        lookupIcon(iconMap, record.deviceTaskType)
-      : lookupExactIcon(iconMap, preferredAmbiguousIcon) ||
-        lookupIcon(iconMap, preferredAmbiguousIcon) ||
-        lookupExactIcon(iconMap, contextualIconDevice) ||
-        lookupExactIcon(iconMap, resolvedPartNumber) ||
-        lookupIcon(iconMap, contextualIconDevice) ||
-        lookupIcon(iconMap, resolvedPartNumber) ||
-        lookupIcon(iconMap, record.deviceTaskType);
+    const decision = computeVisualDecision(record, iconMap, knowledgeIndex);
 
     return {
       ...record,
-      cables: estimateNetworkCables(record.name, resolvedPartNumber, record.category),
-      iconDevice: contextualIconDevice,
-      mountHeightFt: finalInstallationSpec.mountHeightFt,
-      mountHeightNeedsFieldValidation: finalInstallationSpec.mountHeightNeedsFieldValidation,
-      mountHeightRuleKey: finalInstallationSpec.mountHeightRuleKey,
-      partNumber: resolvedPartNumber,
-      iconUrl
+      cables: estimateNetworkCables(record.name, decision.partNumber, record.category),
+      iconDevice: decision.iconDevice,
+      iconUrl: decision.iconUrl,
+      mountHeightFt: decision.installationSpec.mountHeightFt,
+      mountHeightNeedsFieldValidation: decision.installationSpec.mountHeightNeedsFieldValidation,
+      mountHeightRuleKey: decision.installationSpec.mountHeightRuleKey,
+      partNumber: decision.partNumber,
+      visualDecision: decision.audit,
     };
   });
 }

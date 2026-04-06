@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "../../i18n";
+import type { VisualDecisionRisk, VisualDecisionSource } from "../../types";
 import {
   normalizeKnowledgeNamePattern,
   type VisualKnowledgeCoverage,
@@ -8,13 +9,37 @@ import type { NamePatternKnowledgeRule, VisualKnowledgeSeed } from "../../config
 
 export interface PendingKnowledgePattern {
   count: number;
+  deviceIds: number[];
   normalizedPattern: string;
   sampleNames: string[];
 }
 
+export interface VisualDecisionIssue {
+  contextualizedFrom: string;
+  deviceRuleDescription: string;
+  deviceRuleId: string;
+  displayedIconDevice: string;
+  hasAmbiguousNameKnowledge: boolean;
+  hasNameKnowledge: boolean;
+  hasPartKnowledge: boolean;
+  id: number;
+  lookupMode: "exact" | "flexible" | "none";
+  name: string;
+  normalizedPattern: string;
+  partKnowledgeIconChoices: number;
+  partNumber: string;
+  proposedIconDevice: string;
+  rawIconDeviceProvided: boolean;
+  risk: VisualDecisionRisk;
+  source: VisualDecisionSource;
+  suppressed: boolean;
+}
+
 interface KnowledgeStudioPanelProps {
   baseCoverage: VisualKnowledgeCoverage | null;
+  baseIssues: VisualDecisionIssue[];
   effectiveCoverage: VisualKnowledgeCoverage | null;
+  effectiveIssues: VisualDecisionIssue[];
   enabled: boolean;
   manualSeed: VisualKnowledgeSeed;
   pendingPatterns: PendingKnowledgePattern[];
@@ -73,7 +98,9 @@ function downloadSeed(seed: VisualKnowledgeSeed) {
 
 export function KnowledgeStudioPanel({
   baseCoverage,
+  baseIssues,
   effectiveCoverage,
+  effectiveIssues,
   enabled,
   manualSeed,
   pendingPatterns,
@@ -110,6 +137,79 @@ export function KnowledgeStudioPanel({
     effectiveCoverage?.unknownNamePatterns.reduce((sum, item) => sum + item.count, 0) ?? 0;
   const beforeKnownIcons = baseCoverage?.recordsWithKnownIconDevice ?? 0;
   const afterKnownIcons = effectiveCoverage?.recordsWithKnownIconDevice ?? 0;
+  const beforeRiskyIcons = baseIssues.length;
+  const afterRiskyIcons = effectiveIssues.length;
+
+  function getRiskLabel(risk: VisualDecisionRisk) {
+    if (risk === "abstain") {
+      return t("knowledge.riskAbstain");
+    }
+    if (risk === "review") {
+      return t("knowledge.riskReview");
+    }
+    return t("knowledge.riskSafe");
+  }
+
+  function getSourceLabel(source: VisualDecisionSource) {
+    const mapping: Record<VisualDecisionSource, string> = {
+      "ambiguous-name-suggestion": t("knowledge.sourceAmbiguousName"),
+      "device-rule": t("knowledge.sourceDeviceRule"),
+      "existing-icon-device": t("knowledge.sourceExistingIcon"),
+      "fallback-device-task-type": t("knowledge.sourceTaskType"),
+      "fallback-icon-device": t("knowledge.sourceFallbackIcon"),
+      "fallback-part-number": t("knowledge.sourceFallbackPart"),
+      "name-pattern": t("knowledge.sourceNamePattern"),
+      none: t("knowledge.sourceNone"),
+      "part-number": t("knowledge.sourcePartNumber"),
+    };
+
+    return mapping[source];
+  }
+
+  function describeIssue(issue: VisualDecisionIssue): string[] {
+    const notes: string[] = [];
+    if (issue.deviceRuleId) {
+      notes.push(
+        issue.deviceRuleDescription
+          ? t("knowledge.noteDeviceRuleDetailed", {
+              id: issue.deviceRuleId,
+              value: issue.deviceRuleDescription,
+            })
+          : t("knowledge.noteDeviceRule", { id: issue.deviceRuleId })
+      );
+    }
+    if (!issue.hasNameKnowledge && issue.normalizedPattern) {
+      notes.push(t("knowledge.noteMissingNameKnowledge"));
+    }
+    if (issue.hasAmbiguousNameKnowledge) {
+      notes.push(t("knowledge.noteAmbiguousNameKnowledge"));
+    }
+    if (issue.partKnowledgeIconChoices > 1) {
+      notes.push(
+        t("knowledge.noteVariantPartKnowledge", {
+          count: issue.partKnowledgeIconChoices,
+          value: issue.partNumber || t("common.noData"),
+        })
+      );
+    } else if (!issue.hasPartKnowledge && issue.partNumber) {
+      notes.push(t("knowledge.noteMissingPartKnowledge", { value: issue.partNumber }));
+    }
+    if (issue.contextualizedFrom) {
+      notes.push(
+        t("knowledge.noteContextualized", {
+          from: issue.contextualizedFrom,
+          to: issue.proposedIconDevice || t("common.noData"),
+        })
+      );
+    }
+    if (!issue.rawIconDeviceProvided && issue.proposedIconDevice) {
+      notes.push(t("knowledge.noteSystemInferredIcon"));
+    }
+    if (issue.suppressed) {
+      notes.push(t("knowledge.noteHiddenForSafety"));
+    }
+    return notes;
+  }
 
   function resetDraft() {
     setDraft(EMPTY_DRAFT);
@@ -176,6 +276,20 @@ export function KnowledgeStudioPanel({
         <p>{t("knowledge.description")}</p>
       </div>
 
+      <div className="knowledge-toggle-card">
+        <div className="knowledge-toggle-card__copy">
+          <strong>{t("knowledge.overrideControlTitle")}</strong>
+          <span>{t("knowledge.overrideControlHelp", { value: enabled ? t("common.yes") : t("common.no") })}</span>
+        </div>
+        <button
+          type="button"
+          className={`secondary-action${enabled ? " secondary-action--active" : ""}`}
+          onClick={onToggleEnabled}
+        >
+          {enabled ? t("knowledge.disableOverrides") : t("knowledge.enableOverrides")}
+        </button>
+      </div>
+
       <div className="snapshot-grid snapshot-grid--insights">
         <article className="snapshot-card">
           <span>{t("knowledge.beforeKnownNames")}</span>
@@ -201,16 +315,17 @@ export function KnowledgeStudioPanel({
           <span>{t("knowledge.afterKnownIcons")}</span>
           <strong>{afterKnownIcons}</strong>
         </article>
+        <article className="snapshot-card">
+          <span>{t("knowledge.beforeRiskyIcons")}</span>
+          <strong>{beforeRiskyIcons}</strong>
+        </article>
+        <article className="snapshot-card">
+          <span>{t("knowledge.afterRiskyIcons")}</span>
+          <strong>{afterRiskyIcons}</strong>
+        </article>
       </div>
 
       <div className="knowledge-studio__actions">
-        <button
-          type="button"
-          className={`secondary-action${enabled ? " secondary-action--active" : ""}`}
-          onClick={onToggleEnabled}
-        >
-          {enabled ? t("knowledge.disableOverrides") : t("knowledge.enableOverrides")}
-        </button>
         <button
           type="button"
           className="secondary-action"
@@ -229,6 +344,62 @@ export function KnowledgeStudioPanel({
         </button>
       </div>
 
+      <section className="insight-list-card knowledge-studio__card">
+        <h3>{t("knowledge.issueListTitle")}</h3>
+        {effectiveIssues.length > 0 ? (
+          <div className="knowledge-issue-list">
+            {effectiveIssues.map((issue) => (
+              <article key={issue.id} className="knowledge-issue-card">
+                <div className="knowledge-issue-card__top">
+                  <div className="knowledge-issue-card__headline">
+                    <strong>{t("knowledge.issueId", { id: issue.id })}</strong>
+                    <span>{issue.name}</span>
+                  </div>
+                  <span className={`state-pill state-pill--${issue.risk === "abstain" ? "pending" : "active"}`}>
+                    {getRiskLabel(issue.risk)}
+                  </span>
+                </div>
+                <div className="knowledge-issue-card__meta">
+                  <span>
+                    <strong>{t("knowledge.issueSource")}:</strong> {getSourceLabel(issue.source)}
+                  </span>
+                  <span>
+                    <strong>{t("knowledge.issuePart")}:</strong> {issue.partNumber || t("common.noData")}
+                  </span>
+                  <span>
+                    <strong>{t("knowledge.issueProposedIcon")}:</strong>{" "}
+                    {issue.proposedIconDevice || t("common.noData")}
+                  </span>
+                  <span>
+                    <strong>{t("knowledge.issueDisplayedIcon")}:</strong>{" "}
+                    {issue.displayedIconDevice || t("common.noIcon")}
+                  </span>
+                </div>
+                <div className="knowledge-issue-card__notes">
+                  {describeIssue(issue).map((note) => (
+                    <p key={`${issue.id}-${note}`}>{note}</p>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      namePattern: issue.name,
+                    }))
+                  }
+                >
+                  {t("knowledge.useInForm")}
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="knowledge-studio__empty">{t("knowledge.noIssues")}</p>
+        )}
+      </section>
+
       <div className="insights-lists">
         <section className="insight-list-card knowledge-studio__card">
           <h3>{t("knowledge.pendingPatterns")}</h3>
@@ -244,6 +415,14 @@ export function KnowledgeStudioPanel({
                     {pattern.sampleNames.slice(0, 2).map((sample) => (
                       <code key={sample}>{sample}</code>
                     ))}
+                  </div>
+                  <div className="knowledge-pattern-card__ids">
+                    <span>{t("knowledge.deviceIds")}</span>
+                    <code>
+                      {pattern.deviceIds.length > 0
+                        ? pattern.deviceIds.join(", ")
+                        : t("knowledge.noDeviceIds")}
+                    </code>
                   </div>
                   <button
                     type="button"

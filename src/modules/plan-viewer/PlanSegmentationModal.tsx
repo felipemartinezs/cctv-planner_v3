@@ -515,6 +515,7 @@ export function PlanSegmentationModal({
         recordsInScope.find((record) => record.iconDevice) ??
         recordsInScope[0] ??
         null;
+      const allSuppressed = recordsInScope.length > 0 && recordsInScope.every((record) => record.visualDecision?.suppressed);
       const scopedNamePatternChoices: string[] = [];
       recordsInScope.forEach((record) => {
         const knowledge = getNamePatternKnowledge(record.name, visualKnowledgeIndex);
@@ -540,7 +541,9 @@ export function PlanSegmentationModal({
       const matchedIconCandidate = iconCandidates.find((candidate) => lookupIcon(rawIconMap, candidate));
       const matchedIconUrl = matchedIconCandidate ? lookupIcon(rawIconMap, matchedIconCandidate) : "";
       const visualChoices =
-        partNumber === PTZ_PART_NUMBER || isPosAmbiguousPartNumber(partNumber)
+        allSuppressed
+          ? []
+          : partNumber === PTZ_PART_NUMBER || isPosAmbiguousPartNumber(partNumber)
           ? buildVisualChoices(iconCandidates, rawIconMap, {
               iconDevice: matchedIconCandidate || preferred?.iconDevice || partNumber,
               iconUrl: matchedIconUrl || preferred?.iconUrl,
@@ -571,9 +574,10 @@ export function PlanSegmentationModal({
             ? partNumber === PTZ_PART_NUMBER
               ? `${t("segmentation.ptzInterior")} · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
               : `${t("segmentation.posAmbiguousTitle")} · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
-            : visualChoices[0]?.iconDevice || matchedIconCandidate || preferred?.iconDevice || partNumber,
+            : visualChoices[0]?.iconDevice ||
+              (allSuppressed ? "" : matchedIconCandidate || preferred?.iconDevice || partNumber),
         iconOptions: partKnowledge?.iconDevices ?? [],
-        iconUrl: visualChoices[0]?.iconUrl || matchedIconUrl || preferred?.iconUrl,
+        iconUrl: allSuppressed ? "" : visualChoices[0]?.iconUrl || matchedIconUrl || preferred?.iconUrl,
         matchedIconCandidate: matchedIconCandidate || "",
         matchMode,
         preferredHadIconUrl: Boolean(preferred?.iconUrl),
@@ -626,13 +630,17 @@ export function PlanSegmentationModal({
       }
 
       const resolvedIconUrl =
-        record.iconUrl ||
-        lookupIcon(rawIconMap, record.partNumber) ||
-        lookupIcon(rawIconMap, record.iconDevice) ||
-        "";
+        record.visualDecision?.suppressed
+          ? ""
+          : record.iconUrl ||
+            lookupIcon(rawIconMap, record.partNumber) ||
+            lookupIcon(rawIconMap, record.iconDevice) ||
+            "";
       const nameKnowledge = getNamePatternKnowledge(record.name, visualKnowledgeIndex);
       const visualChoices =
-        record.partNumber === PTZ_PART_NUMBER || isPosAmbiguousPartNumber(record.partNumber)
+        record.visualDecision?.suppressed
+          ? []
+          : record.partNumber === PTZ_PART_NUMBER || isPosAmbiguousPartNumber(record.partNumber)
           ? buildVisualChoices(
               record.partNumber === PTZ_PART_NUMBER
                 ? resolvePtzVisualCandidates([record])
@@ -659,8 +667,9 @@ export function PlanSegmentationModal({
             ? record.partNumber === PTZ_PART_NUMBER
               ? `${t("segmentation.ptzInterior")} · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
               : `${t("segmentation.posAmbiguousTitle")} · ${visualChoices.map((choice) => choice.shortLabel).join(" / ")}`
-            : visualChoices[0]?.iconDevice || record.iconDevice || record.partNumber,
-        iconUrl: visualChoices[0]?.iconUrl || resolvedIconUrl,
+            : visualChoices[0]?.iconDevice ||
+              (record.visualDecision?.suppressed ? "" : record.iconDevice || record.partNumber),
+        iconUrl: record.visualDecision?.suppressed ? "" : visualChoices[0]?.iconUrl || resolvedIconUrl,
         id: record.id,
         key: record.key,
         mountHeightFt: record.mountHeightFt,

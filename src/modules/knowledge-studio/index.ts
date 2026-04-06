@@ -1,1 +1,5 @@
-export { KnowledgeStudioPanel, type PendingKnowledgePattern } from "./KnowledgeStudioPanel";
+export {
+  KnowledgeStudioPanel,
+  type PendingKnowledgePattern,
+  type VisualDecisionIssue,
+} from "./KnowledgeStudioPanel";

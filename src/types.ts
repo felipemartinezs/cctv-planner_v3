@@ -6,6 +6,42 @@ export type DeviceCategory =
   | "infrastructure"
   | "unknown";
 
+export type VisualDecisionSource =
+  | "name-pattern"
+  | "part-number"
+  | "existing-icon-device"
+  | "device-rule"
+  | "ambiguous-name-suggestion"
+  | "fallback-icon-device"
+  | "fallback-part-number"
+  | "fallback-device-task-type"
+  | "none";
+
+export type VisualDecisionRisk = "safe" | "review" | "abstain";
+
+export interface VisualDecisionAudit {
+  contextualizedFrom: string;
+  deviceRuleDescription: string;
+  deviceRuleId: string;
+  finalIconDevice: string;
+  finalIconUrl: string;
+  hasAmbiguousNameKnowledge: boolean;
+  hasNameKnowledge: boolean;
+  hasPartKnowledge: boolean;
+  iconLookupMode: "exact" | "flexible" | "none";
+  knowledgeMatchedBy: "existing-icon-device" | "name-pattern" | "part-number" | "";
+  namePattern: string;
+  partKnowledgeIconChoices: number;
+  proposedIconDevice: string;
+  proposedIconUrl: string;
+  rawIconDeviceProvided: boolean;
+  rawPartNumberProvided: boolean;
+  resolvedPartNumber: string;
+  risk: VisualDecisionRisk;
+  source: VisualDecisionSource;
+  suppressed: boolean;
+}
+
 export interface PlanMarker {
   id: number;
   x: number;
@@ -49,6 +85,7 @@ export interface DeviceRecord {
   mountHeightRuleKey: string;
   hasPosition: boolean;
   iconUrl: string;
+  visualDecision?: VisualDecisionAudit;
   raw: Record<string, string>;
 }
 
