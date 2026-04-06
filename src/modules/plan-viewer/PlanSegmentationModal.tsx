@@ -7,7 +7,12 @@ import {
 import { useI18n } from "../../i18n";
 import type { DeviceRecord, PlanData } from "../../types";
 import { lookupIcon, normalizeIconKey } from "../../lib/icons";
-import { getNamePatternKnowledge, getPartNumberKnowledge } from "../../lib/visual-knowledge";
+import {
+  DEFAULT_VISUAL_KNOWLEDGE_INDEX,
+  getNamePatternKnowledge,
+  getPartNumberKnowledge,
+  type VisualKnowledgeIndex,
+} from "../../lib/visual-knowledge";
 import type { PlanSegmentation } from "../plan-segmentation";
 import { renderPlanPreview, type RenderedPlanPreview } from "./render-page-preview";
 
@@ -36,6 +41,7 @@ interface PlanSegmentationModalProps {
   records: DeviceRecord[];
   rawIconMap: Map<string, string>;
   segmentation: PlanSegmentation | null;
+  visualKnowledgeIndex?: VisualKnowledgeIndex;
   onClose: () => void;
 }
 
@@ -343,6 +349,7 @@ export function PlanSegmentationModal({
   records,
   rawIconMap,
   segmentation,
+  visualKnowledgeIndex = DEFAULT_VISUAL_KNOWLEDGE_INDEX,
   onClose,
 }: PlanSegmentationModalProps) {
   const { t } = useI18n();
@@ -502,7 +509,7 @@ export function PlanSegmentationModal({
         matchesSelectedSegment(record.switchSegment)
       );
       const recordsInScope = contextualCandidates.length > 0 ? contextualCandidates : candidates;
-      const partKnowledge = getPartNumberKnowledge(partNumber);
+      const partKnowledge = getPartNumberKnowledge(partNumber, visualKnowledgeIndex);
       const preferred =
         recordsInScope.find((record) => record.iconUrl) ??
         recordsInScope.find((record) => record.iconDevice) ??
@@ -510,7 +517,7 @@ export function PlanSegmentationModal({
         null;
       const scopedNamePatternChoices: string[] = [];
       recordsInScope.forEach((record) => {
-        const knowledge = getNamePatternKnowledge(record.name);
+        const knowledge = getNamePatternKnowledge(record.name, visualKnowledgeIndex);
         (knowledge?.candidateIconDevices ?? []).forEach((candidate) => {
           scopedNamePatternChoices.push(candidate);
         });
@@ -574,7 +581,7 @@ export function PlanSegmentationModal({
         visualChoices,
       };
     });
-  }, [rawIconMap, records, selectedLabel, selectedPartNumbers, t]);
+  }, [rawIconMap, records, selectedLabel, selectedPartNumbers, t, visualKnowledgeIndex]);
 
   const mobileSummary = useMemo(() => {
     if (!segmentation) {
@@ -623,7 +630,7 @@ export function PlanSegmentationModal({
         lookupIcon(rawIconMap, record.partNumber) ||
         lookupIcon(rawIconMap, record.iconDevice) ||
         "";
-      const nameKnowledge = getNamePatternKnowledge(record.name);
+      const nameKnowledge = getNamePatternKnowledge(record.name, visualKnowledgeIndex);
       const visualChoices =
         record.partNumber === PTZ_PART_NUMBER || isPosAmbiguousPartNumber(record.partNumber)
           ? buildVisualChoices(
@@ -670,7 +677,7 @@ export function PlanSegmentationModal({
     });
 
     return Array.from(devicesByKey.values());
-  }, [plan, rawIconMap, records, t]);
+  }, [plan, rawIconMap, records, t, visualKnowledgeIndex]);
 
   useEffect(() => {
     if (typeof window === "undefined") {

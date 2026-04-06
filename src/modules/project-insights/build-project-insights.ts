@@ -1,5 +1,9 @@
 import type { DeviceRecord } from "../../types";
-import { buildVisualKnowledgeCoverage } from "../../lib/visual-knowledge";
+import {
+  buildVisualKnowledgeCoverage,
+  DEFAULT_VISUAL_KNOWLEDGE_INDEX,
+  type VisualKnowledgeIndex,
+} from "../../lib/visual-knowledge";
 import type { PlanSegmentation } from "../plan-segmentation";
 import { hasSwitchAssignment, switchDisplayLabel } from "../switch-segmentation";
 import type { InsightGroup, ProjectInsights } from "./types";
@@ -30,7 +34,8 @@ function buildGroups(values: string[], fallback: string): InsightGroup[] {
 export function buildProjectInsights(
   records: DeviceRecord[],
   context: ProjectInsights["context"],
-  segmentation: PlanSegmentation | null = null
+  segmentation: PlanSegmentation | null = null,
+  knowledgeIndex: VisualKnowledgeIndex = DEFAULT_VISUAL_KNOWLEDGE_INDEX
 ): ProjectInsights {
   const segmentedSwitches = segmentation?.segments ?? [];
   const topSwitches = segmentedSwitches.length > 0
@@ -60,7 +65,7 @@ export function buildProjectInsights(
 
   return {
     context,
-    knowledge: buildVisualKnowledgeCoverage(records),
+    knowledge: buildVisualKnowledgeCoverage(records, knowledgeIndex),
     review: {
       missingPartNumber: records.filter((record) => !record.partNumber).length,
       missingPositions: records.filter((record) => !record.hasPosition).length,

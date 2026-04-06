@@ -6,7 +6,12 @@ import { estimateNetworkCables } from "./cable-planning";
 import { readFileAsText } from "./file-io";
 import { lookupIcon, normalizeIconKey } from "./icons";
 import { contextualizeIconDeviceForInstallation, resolveInstallationSpec } from "./installation-rules";
-import { getNamePatternKnowledge, resolveRecordVisualKnowledge } from "./visual-knowledge";
+import {
+  DEFAULT_VISUAL_KNOWLEDGE_INDEX,
+  getNamePatternKnowledge,
+  resolveRecordVisualKnowledge,
+  type VisualKnowledgeIndex,
+} from "./visual-knowledge";
 
 const HEADER_ALIASES: Record<string, string[]> = {
   id: ["id", "index"],
@@ -373,11 +378,12 @@ export function normalizeRows(
 
 export function attachIcons(
   records: DeviceRecord[],
-  iconMap: Map<string, string>
+  iconMap: Map<string, string>,
+  knowledgeIndex: VisualKnowledgeIndex = DEFAULT_VISUAL_KNOWLEDGE_INDEX
 ): DeviceRecord[] {
   return records.map((record) => {
-    const knowledge = resolveRecordVisualKnowledge(record);
-    const nameKnowledge = getNamePatternKnowledge(record.name);
+    const knowledge = resolveRecordVisualKnowledge(record, knowledgeIndex);
+    const nameKnowledge = getNamePatternKnowledge(record.name, knowledgeIndex);
     const resolvedPartNumber = knowledge?.partNumber || record.partNumber;
     const resolvedIconDevice = knowledge?.iconDevice || record.iconDevice;
     const installationSpec = resolveInstallationSpec({

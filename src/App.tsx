@@ -1,12 +1,24 @@
 import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { attachIcons, buildMetrics, countBy, normalizeRows, parseTabularFile } from "./lib/normalize";
 import { readFileAsArrayBuffer } from "./lib/file-io";
-import { getNamePatternKnowledge } from "./lib/visual-knowledge";
+import {
+  buildVisualKnowledgeCoverage,
+  createVisualKnowledgeIndex,
+  getNamePatternKnowledge,
+  normalizeKnowledgeNamePattern,
+  type VisualKnowledgeIndex,
+} from "./lib/visual-knowledge";
 import { loadIconsFromDirectory, loadIconsFromManifest, loadIconsFromZip, mergeIconMaps } from "./lib/icons";
 import { loadPlan } from "./lib/pdf";
 import { useI18n } from "./i18n";
 import type { DeviceCategory, DeviceRecord, ImportBundle, PlanData } from "./types";
+import {
+  VISUAL_KNOWLEDGE_SEEDS,
+  type NamePatternKnowledgeRule,
+  type VisualKnowledgeSeed,
+} from "./config/visual-knowledge";
 import { mergeDeviceRecords } from "./modules/device-records";
+import { KnowledgeStudioPanel, type PendingKnowledgePattern } from "./modules/knowledge-studio";
 import { parsePdfDataRecords } from "./modules/pdf-data-parser";
 import {
   buildProjectInsights,
@@ -19,23 +31,16 @@ import { hasSwitchAssignment, switchDisplayLabel } from "./modules/switch-segmen
 
 type TaskState = "pending" | "active" | "done";
 
-const EMPTY_IMPORT: ImportBundle = {
-  records: [],
-  metrics: {
-    totalDevices: 0,
-    positionedDevices: 0,
-    areas: 0,
-    switches: 0,
-    estimatedCables: 0,
-    cameras: 0,
-    monitors: 0
-  },
-  missingPositions: 0
-};
-
 const STORAGE_KEY = "cctv-field-task-statuses-v1";
+const KNOWLEDGE_OVERRIDES_STORAGE_KEY = "cctv-visual-knowledge-overrides-v1";
+const KNOWLEDGE_ENABLED_STORAGE_KEY = "cctv-visual-knowledge-enabled-v1";
 const SHOW_FIELD_TASK_ICONS = false;
 const BUILD_LABEL = __APP_BUILD_ID__.replace("T", " ").replace(/\.\d+Z$/, "Z");
+const EMPTY_MANUAL_VISUAL_KNOWLEDGE_SEED: VisualKnowledgeSeed = {
+  seedName: "manual-dev-overrides",
+  partNumberProfiles: [],
+  namePatternRules: [],
+};
 
 function revokePlanResources(plan: PlanData | null) {
   if (!plan) {
@@ -213,8 +218,8 @@ function normalizeState(raw: string | null | undefined): TaskState {
   return "pending";
 }
 
-function ambiguityFor(record: DeviceRecord) {
-  const knowledge = getNamePatternKnowledge(record.name);
+function ambiguityFor(record: DeviceRecord, visualKnowledgeIndex: VisualKnowledgeIndex) {
+  const knowledge = getNamePatternKnowledge(record.name, visualKnowledgeIndex);
   if (!knowledge) {
     return null;
   }
@@ -231,6 +236,7 @@ function ambiguityFor(record: DeviceRecord) {
 
 function taskWarnings(
   record: DeviceRecord,
+  visualKnowledgeIndex: VisualKnowledgeIndex,
   t: (key: string, vars?: Record<string, string | number | boolean | undefined>) => string
 ): string[] {
   const warnings: string[] = [];
@@ -243,7 +249,7 @@ function taskWarnings(
   if (!record.hasPosition) {
     warnings.push(t("task.warning.noPosition"));
   }
-  if (ambiguityFor(record)) {
+  if (ambiguityFor(record, visualKnowledgeIndex)) {
     warnings.push(t("task.warning.validateField"));
   }
   if (record.mountHeightNeedsFieldValidation) {
@@ -262,8 +268,89 @@ function summaryLine(values: Array<[string, number]>, fallback: string): string 
     .join(" • ");
 }
 
+function sanitizeManualList(values: unknown): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      values
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean)
+    )
+  );
+}
+
+function sanitizeManualRule(raw: unknown): NamePatternKnowledgeRule | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const input = raw as Partial<NamePatternKnowledgeRule>;
+  const namePattern = typeof input.namePattern === "string" ? input.namePattern.trim() : "";
+  const suggestedPartNumber =
+    typeof input.suggestedPartNumber === "string" ? input.suggestedPartNumber.trim() : "";
+  const suggestedIconDevice =
+    typeof input.suggestedIconDevice === "string" ? input.suggestedIconDevice.trim() : "";
+
+  if (!namePattern || !suggestedPartNumber || !suggestedIconDevice) {
+    return null;
+  }
+
+  const candidatePartNumbers = sanitizeManualList(input.candidatePartNumbers);
+  const candidateIconDevices = sanitizeManualList(input.candidateIconDevices);
+
+  return {
+    candidateIconDevices:
+      candidateIconDevices.length > 0 ? candidateIconDevices : [suggestedIconDevice],
+    candidatePartNumbers:
+      candidatePartNumbers.length > 0 ? candidatePartNumbers : [suggestedPartNumber],
+    iconConfidence:
+      typeof input.iconConfidence === "number" && Number.isFinite(input.iconConfidence)
+        ? input.iconConfidence
+        : 1,
+    namePattern,
+    partConfidence:
+      typeof input.partConfidence === "number" && Number.isFinite(input.partConfidence)
+        ? input.partConfidence
+        : 1,
+    suggestedIconDevice,
+    suggestedPartNumber,
+  };
+}
+
+function sanitizeManualSeed(raw: unknown): VisualKnowledgeSeed {
+  if (!raw || typeof raw !== "object") {
+    return { ...EMPTY_MANUAL_VISUAL_KNOWLEDGE_SEED };
+  }
+
+  const input = raw as Partial<VisualKnowledgeSeed>;
+  const seen = new Map<string, NamePatternKnowledgeRule>();
+
+  if (Array.isArray(input.namePatternRules)) {
+    input.namePatternRules.forEach((rule) => {
+      const sanitized = sanitizeManualRule(rule);
+      if (!sanitized) {
+        return;
+      }
+      seen.set(normalizeKnowledgeNamePattern(sanitized.namePattern), sanitized);
+    });
+  }
+
+  return {
+    seedName:
+      typeof input.seedName === "string" && input.seedName.trim()
+        ? input.seedName.trim()
+        : EMPTY_MANUAL_VISUAL_KNOWLEDGE_SEED.seedName,
+    partNumberProfiles: [],
+    namePatternRules: Array.from(seen.values()),
+  };
+}
+
 export default function App() {
   const { lang, setLang, t } = useI18n();
+  const showKnowledgeStudio = import.meta.env.DEV;
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [extraDataFile, setExtraDataFile] = useState<File | null>(null);
@@ -271,9 +358,8 @@ export default function App() {
   const [iconZipFile, setIconZipFile] = useState<File | null>(null);
   const [iconFolderFiles, setIconFolderFiles] = useState<File[]>([]);
   const [plan, setPlan] = useState<PlanData | null>(null);
-  const [bundle, setBundle] = useState<ImportBundle>(EMPTY_IMPORT);
-  const [insights, setInsights] = useState<ProjectInsights | null>(null);
-  const [segmentation, setSegmentation] = useState<PlanSegmentation | null>(null);
+  const [sourceRecords, setSourceRecords] = useState<DeviceRecord[]>([]);
+  const [insightContext, setInsightContext] = useState<ProjectInsights["context"] | null>(null);
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({});
   const [selectedKey, setSelectedKey] = useState("");
   const [search, setSearch] = useState("");
@@ -292,6 +378,10 @@ export default function App() {
   const [iconDebugInfo, setIconDebugInfo] = useState<IconDebugInfo | null>(null);
   const [bundledIconMap, setBundledIconMap] = useState<Map<string, string>>(new Map());
   const [rawIconMap, setRawIconMap] = useState<Map<string, string>>(new Map());
+  const [manualKnowledgeSeed, setManualKnowledgeSeed] = useState<VisualKnowledgeSeed>(
+    EMPTY_MANUAL_VISUAL_KNOWLEDGE_SEED
+  );
+  const [manualKnowledgeEnabled, setManualKnowledgeEnabled] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const iconFolderInputRef = useRef<HTMLInputElement | null>(null);
   const deferredSearch = useDeferredValue(search);
@@ -324,6 +414,92 @@ export default function App() {
       iconDebugInfo.psa ? t("common.yes") : t("common.no")
     } · CIP ${iconDebugInfo.cip ? t("common.yes") : t("common.no")}${mod}`;
   }, [iconDebugInfo, t]);
+  const baseVisualKnowledgeIndex = useMemo(
+    () => createVisualKnowledgeIndex(VISUAL_KNOWLEDGE_SEEDS),
+    []
+  );
+  const effectiveVisualKnowledgeIndex = useMemo(
+    () =>
+      createVisualKnowledgeIndex(
+        showKnowledgeStudio && manualKnowledgeEnabled && manualKnowledgeSeed.namePatternRules.length > 0
+          ? [...VISUAL_KNOWLEDGE_SEEDS, manualKnowledgeSeed]
+          : VISUAL_KNOWLEDGE_SEEDS
+      ),
+    [manualKnowledgeEnabled, manualKnowledgeSeed, showKnowledgeStudio]
+  );
+  const baseResolvedRecords = useMemo(
+    () => attachIcons(sourceRecords, rawIconMap, baseVisualKnowledgeIndex),
+    [baseVisualKnowledgeIndex, rawIconMap, sourceRecords]
+  );
+  const resolvedRecords = useMemo(
+    () => attachIcons(sourceRecords, rawIconMap, effectiveVisualKnowledgeIndex),
+    [effectiveVisualKnowledgeIndex, rawIconMap, sourceRecords]
+  );
+  const bundle = useMemo<ImportBundle>(
+    () => ({
+      records: resolvedRecords,
+      metrics: buildMetrics(resolvedRecords),
+      missingPositions: resolvedRecords.filter((record) => !record.hasPosition).length,
+    }),
+    [resolvedRecords]
+  );
+  const segmentation = useMemo<PlanSegmentation | null>(
+    () => (plan ? buildPlanSegmentation(resolvedRecords, plan) : null),
+    [plan, resolvedRecords]
+  );
+  const insights = useMemo<ProjectInsights | null>(() => {
+    if (!insightContext) {
+      return null;
+    }
+
+    return buildProjectInsights(
+      resolvedRecords,
+      {
+        ...insightContext,
+        recordsParsed: resolvedRecords.length,
+      },
+      segmentation,
+      effectiveVisualKnowledgeIndex
+    );
+  }, [effectiveVisualKnowledgeIndex, insightContext, resolvedRecords, segmentation]);
+  const baseKnowledgeCoverage = useMemo(
+    () => buildVisualKnowledgeCoverage(baseResolvedRecords, baseVisualKnowledgeIndex),
+    [baseResolvedRecords, baseVisualKnowledgeIndex]
+  );
+  const pendingKnowledgePatterns = useMemo<PendingKnowledgePattern[]>(() => {
+    const grouped = new Map<string, { count: number; sampleNames: string[] }>();
+
+    sourceRecords.forEach((record) => {
+      const normalized = normalizeKnowledgeNamePattern(record.name);
+      if (!normalized) {
+        return;
+      }
+      if (getNamePatternKnowledge(record.name, baseVisualKnowledgeIndex)) {
+        return;
+      }
+
+      const current = grouped.get(normalized) ?? { count: 0, sampleNames: [] };
+      current.count += 1;
+      if (current.sampleNames.length < 3 && !current.sampleNames.includes(record.name)) {
+        current.sampleNames.push(record.name);
+      }
+      grouped.set(normalized, current);
+    });
+
+    return Array.from(grouped.entries())
+      .map(([normalizedPattern, value]) => ({
+        count: value.count,
+        normalizedPattern,
+        sampleNames: value.sampleNames,
+      }))
+      .sort((left, right) => {
+        if (right.count !== left.count) {
+          return right.count - left.count;
+        }
+        return left.normalizedPattern.localeCompare(right.normalizedPattern);
+      })
+      .slice(0, 10);
+  }, [baseVisualKnowledgeIndex, sourceRecords]);
 
   useEffect(() => {
     if (!iconFolderInputRef.current) {
@@ -383,36 +559,46 @@ export default function App() {
   }, [taskStates]);
 
   useEffect(() => {
-    if (bundle.records.length === 0) {
+    if (!showKnowledgeStudio) {
       return;
     }
 
-    setBundle((current) => {
-      if (current.records.length === 0) {
-        return current;
+    try {
+      const rawSeed = window.localStorage.getItem(KNOWLEDGE_OVERRIDES_STORAGE_KEY);
+      if (rawSeed) {
+        setManualKnowledgeSeed(sanitizeManualSeed(JSON.parse(rawSeed)));
       }
 
-      const nextRecords = attachIcons(current.records, rawIconMap);
-      const changed = nextRecords.some((record, index) => {
-        const previous = current.records[index];
-        return (
-          previous?.iconUrl !== record.iconUrl ||
-          previous?.iconDevice !== record.iconDevice ||
-          previous?.partNumber !== record.partNumber ||
-          previous?.cables !== record.cables
-        );
-      });
-
-      if (!changed) {
-        return current;
+      const rawEnabled = window.localStorage.getItem(KNOWLEDGE_ENABLED_STORAGE_KEY);
+      if (rawEnabled === "true" || rawEnabled === "false") {
+        setManualKnowledgeEnabled(rawEnabled === "true");
       }
+    } catch {
+      // ignore malformed development knowledge state
+    }
+  }, [showKnowledgeStudio]);
 
-      return {
-        ...current,
-        records: nextRecords,
-      };
-    });
-  }, [rawIconMap]);
+  useEffect(() => {
+    if (!showKnowledgeStudio) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      KNOWLEDGE_OVERRIDES_STORAGE_KEY,
+      JSON.stringify(manualKnowledgeSeed)
+    );
+  }, [manualKnowledgeSeed, showKnowledgeStudio]);
+
+  useEffect(() => {
+    if (!showKnowledgeStudio) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      KNOWLEDGE_ENABLED_STORAGE_KEY,
+      String(manualKnowledgeEnabled)
+    );
+  }, [manualKnowledgeEnabled, showKnowledgeStudio]);
 
   useEffect(() => {
     return () => {
@@ -471,10 +657,6 @@ export default function App() {
         records = mergeDeviceRecords(records, extraCsvRecords);
       }
 
-      // Aplicar la semilla visual siempre, aunque no haya iconos cargados,
-      // para que segmentacion y conteos usen el part number normalizado.
-      records = attachIcons(records, new Map());
-
       let nextBundledMap = bundledIconMap;
       if (records.length > 0 && nextBundledMap.size === 0) {
         try {
@@ -497,7 +679,6 @@ export default function App() {
           fingerprintFile(iconZipFile),
         ]);
         nextRawIconMap = mergeIconMaps(nextBundledMap, loadedSupplementalMap);
-        records = attachIcons(records, nextRawIconMap);
         nextIconCount = nextRawIconMap.size;
         nextIconFingerprint = fingerprint;
         nextIconDebugInfo = buildIconDebugInfo(nextRawIconMap, formatDateTime(iconZipFile.lastModified));
@@ -515,38 +696,24 @@ export default function App() {
       } else if (records.length > 0 && iconFolderFiles.length > 0) {
         const loadedSupplementalMap = await loadIconsFromDirectory(iconFolderFiles);
         nextRawIconMap = mergeIconMaps(nextBundledMap, loadedSupplementalMap);
-        records = attachIcons(records, nextRawIconMap);
         nextIconCount = nextRawIconMap.size;
         nextIconDebugInfo = buildIconDebugInfo(nextRawIconMap);
         console.log("[icons] Carpeta cargada:", nextRawIconMap.size, "entradas. Primeras 8 claves:", Array.from(nextRawIconMap.keys()).slice(0, 8));
-      } else if (records.length > 0 && nextBundledMap.size > 0) {
-        records = attachIcons(records, nextBundledMap);
       } else {
         console.log("[icons] Sin ZIP ni carpeta. iconZipFile:", !!iconZipFile, "iconFolderFiles:", iconFolderFiles.length);
       }
-
-      const nextBundle = {
-        records,
-        metrics: buildMetrics(records),
-        missingPositions: records.filter((record) => !record.hasPosition).length
-      };
-      processStep = "build-segmentation";
-      const nextSegmentation = buildPlanSegmentation(records, nextPlan);
-      processStep = "build-insights";
-      const nextInsights = buildProjectInsights(records, {
-        dataPages: parsedPdf.dataPages,
-        rawRows: parsedPdf.rawRows,
-        recordsParsed: records.length,
-        template: parsedPdf.template
-      }, nextSegmentation);
 
       processStep = "commit-ui-state";
       startTransition(() => {
         revokePlanResources(plan);
         setPlan(nextPlan);
-        setBundle(nextBundle);
-        setInsights(nextInsights);
-        setSegmentation(nextSegmentation);
+        setSourceRecords(records);
+        setInsightContext({
+          dataPages: parsedPdf.dataPages,
+          rawRows: parsedPdf.rawRows,
+          recordsParsed: records.length,
+          template: parsedPdf.template,
+        });
         setSelectedKey(records[0]?.key || "");
         setBundledIconMap(nextBundledMap);
         setBundledIconCount(nextBundledMap.size);
@@ -594,6 +761,51 @@ export default function App() {
     } finally {
       setIsBusy(false);
     }
+  }
+
+  function handleToggleManualKnowledge() {
+    setManualKnowledgeEnabled((current) => !current);
+  }
+
+  function handleUpsertManualRule(rule: NamePatternKnowledgeRule) {
+    const sanitizedRule = sanitizeManualRule(rule);
+    if (!sanitizedRule) {
+      return;
+    }
+
+    setManualKnowledgeSeed((current) => {
+      const ruleKey = normalizeKnowledgeNamePattern(sanitizedRule.namePattern);
+      const nextRules = current.namePatternRules.filter(
+        (item) => normalizeKnowledgeNamePattern(item.namePattern) !== ruleKey
+      );
+      nextRules.push(sanitizedRule);
+
+      return {
+        ...current,
+        namePatternRules: nextRules
+          .slice()
+          .sort((left, right) =>
+            normalizeKnowledgeNamePattern(left.namePattern).localeCompare(
+              normalizeKnowledgeNamePattern(right.namePattern)
+            )
+          ),
+      };
+    });
+    setManualKnowledgeEnabled(true);
+  }
+
+  function handleDeleteManualRule(normalizedPattern: string) {
+    setManualKnowledgeSeed((current) => ({
+      ...current,
+      namePatternRules: current.namePatternRules.filter(
+        (rule) => normalizeKnowledgeNamePattern(rule.namePattern) !== normalizedPattern
+      ),
+    }));
+  }
+
+  function handleClearManualRules() {
+    setManualKnowledgeSeed({ ...EMPTY_MANUAL_VISUAL_KNOWLEDGE_SEED });
+    setManualKnowledgeEnabled(false);
   }
 
   function getTaskState(record: DeviceRecord): TaskState {
@@ -657,8 +869,12 @@ export default function App() {
     { pending: 0, active: 0, done: 0 }
   );
 
-  const selectedWarnings = selectedRecord ? taskWarnings(selectedRecord, t) : [];
-  const selectedAmbiguity = selectedRecord ? ambiguityFor(selectedRecord) : null;
+  const selectedWarnings = selectedRecord
+    ? taskWarnings(selectedRecord, effectiveVisualKnowledgeIndex, t)
+    : [];
+  const selectedAmbiguity = selectedRecord
+    ? ambiguityFor(selectedRecord, effectiveVisualKnowledgeIndex)
+    : null;
   const canViewPlan = Boolean(plan?.viewerUrl);
   const reportLinks = [
     {
@@ -871,6 +1087,20 @@ export default function App() {
 
       <ProjectInsightsPanel insights={insights} />
 
+      {showKnowledgeStudio && (
+        <KnowledgeStudioPanel
+          baseCoverage={baseKnowledgeCoverage}
+          effectiveCoverage={insights?.knowledge ?? baseKnowledgeCoverage}
+          enabled={manualKnowledgeEnabled}
+          manualSeed={manualKnowledgeSeed}
+          pendingPatterns={pendingKnowledgePatterns}
+          onClearRules={handleClearManualRules}
+          onDeleteRule={handleDeleteManualRule}
+          onToggleEnabled={handleToggleManualKnowledge}
+          onUpsertRule={handleUpsertManualRule}
+        />
+      )}
+
       <section className="snapshot-grid">
         <article className="snapshot-card">
           <span>{t("snapshot.pending")}</span>
@@ -978,7 +1208,7 @@ export default function App() {
 
             {orderedRecords.map((record) => {
               const currentState = getTaskState(record);
-              const warnings = taskWarnings(record, t);
+              const warnings = taskWarnings(record, effectiveVisualKnowledgeIndex, t);
               return (
                 <button
                   key={record.key}
@@ -1226,6 +1456,7 @@ export default function App() {
         records={bundle.records}
         rawIconMap={rawIconMap}
         segmentation={segmentation}
+        visualKnowledgeIndex={effectiveVisualKnowledgeIndex}
         onClose={() => setShowSegmentationModal(false)}
       />
     </div>

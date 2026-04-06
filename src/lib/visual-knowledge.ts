@@ -2,6 +2,7 @@ import {
   VISUAL_KNOWLEDGE_SEEDS,
   type NamePatternKnowledgeRule,
   type PartNumberKnowledgeProfile,
+  type VisualKnowledgeSeed,
 } from "../config/visual-knowledge";
 import type { DeviceRecord } from "../types";
 
@@ -42,6 +43,12 @@ export interface VisualKnowledgeCoverage {
   unknownNamePatterns: KnowledgeCoverageGroup[];
   unknownPartNumbers: KnowledgeCoverageGroup[];
   ambiguousNamePatterns: KnowledgePatternCoverage[];
+}
+
+export interface VisualKnowledgeIndex {
+  namePatternRules: Map<string, NamePatternKnowledgeRule>;
+  partNumberProfiles: Map<string, PartNumberKnowledgeProfile>;
+  seedName: string;
 }
 
 function normalizePartNumberKey(value: string): string {
@@ -100,10 +107,12 @@ function toCoverageGroups(counter: Map<string, number>): KnowledgeCoverageGroup[
     });
 }
 
-function buildPartNumberProfiles(): Map<string, PartNumberKnowledgeProfile> {
+function buildPartNumberProfiles(
+  seeds: VisualKnowledgeSeed[]
+): Map<string, PartNumberKnowledgeProfile> {
   const merged = new Map<string, PartNumberKnowledgeProfile>();
 
-  VISUAL_KNOWLEDGE_SEEDS.forEach((seed) => {
+  seeds.forEach((seed) => {
     seed.partNumberProfiles.forEach((profile) => {
       const key = normalizePartNumberKey(profile.partNumber);
       const existing = merged.get(key);
@@ -127,10 +136,12 @@ function buildPartNumberProfiles(): Map<string, PartNumberKnowledgeProfile> {
   return merged;
 }
 
-function buildNamePatternRules(): Map<string, NamePatternKnowledgeRule> {
+function buildNamePatternRulesForSeeds(
+  seeds: VisualKnowledgeSeed[]
+): Map<string, NamePatternKnowledgeRule> {
   const merged = new Map<string, NamePatternKnowledgeRule>();
 
-  VISUAL_KNOWLEDGE_SEEDS.forEach((seed) => {
+  seeds.forEach((seed) => {
     seed.namePatternRules.forEach((rule) => {
       const key = normalizeKnowledgeNamePattern(rule.namePattern);
       const existing = merged.get(key);
@@ -182,31 +193,42 @@ function buildNamePatternRules(): Map<string, NamePatternKnowledgeRule> {
   return merged;
 }
 
-const partNumberProfiles = buildPartNumberProfiles();
-const namePatternRules = buildNamePatternRules();
+export function createVisualKnowledgeIndex(
+  seeds: VisualKnowledgeSeed[]
+): VisualKnowledgeIndex {
+  return {
+    namePatternRules: buildNamePatternRulesForSeeds(seeds),
+    partNumberProfiles: buildPartNumberProfiles(seeds),
+    seedName: seeds.map((seed) => seed.seedName).join(" + "),
+  };
+}
+export const DEFAULT_VISUAL_KNOWLEDGE_INDEX = createVisualKnowledgeIndex(VISUAL_KNOWLEDGE_SEEDS);
 
 export function getPartNumberKnowledge(
-  partNumber: string
+  partNumber: string,
+  index: VisualKnowledgeIndex = DEFAULT_VISUAL_KNOWLEDGE_INDEX
 ): PartNumberKnowledgeProfile | null {
-  return partNumberProfiles.get(normalizePartNumberKey(partNumber)) ?? null;
+  return index.partNumberProfiles.get(normalizePartNumberKey(partNumber)) ?? null;
 }
 
 export function getNamePatternKnowledge(
-  name: string
+  name: string,
+  index: VisualKnowledgeIndex = DEFAULT_VISUAL_KNOWLEDGE_INDEX
 ): NamePatternKnowledgeRule | null {
-  return namePatternRules.get(normalizeKnowledgeNamePattern(name)) ?? null;
+  return index.namePatternRules.get(normalizeKnowledgeNamePattern(name)) ?? null;
 }
 
 export function resolveRecordVisualKnowledge(
-  record: Pick<DeviceRecord, "iconDevice" | "name" | "partNumber">
+  record: Pick<DeviceRecord, "iconDevice" | "name" | "partNumber">,
+  index: VisualKnowledgeIndex = DEFAULT_VISUAL_KNOWLEDGE_INDEX
 ): VisualKnowledgeResolution | null {
   const currentPartNumber = record.partNumber.trim();
   const currentIconDevice = record.iconDevice.trim();
   const currentPartKey = normalizePartNumberKey(currentPartNumber);
   const currentIconKey = normalizePartNumberKey(currentIconDevice);
   const namePattern = normalizeKnowledgeNamePattern(record.name);
-  const nameKnowledge = namePattern ? namePatternRules.get(namePattern) ?? null : null;
-  const partKnowledge = currentPartKey ? partNumberProfiles.get(currentPartKey) ?? null : null;
+  const nameKnowledge = namePattern ? index.namePatternRules.get(namePattern) ?? null : null;
+  const partKnowledge = currentPartKey ? index.partNumberProfiles.get(currentPartKey) ?? null : null;
 
   if (nameKnowledge) {
     const suggestedPartNumber = nameKnowledge.suggestedPartNumber.trim();
@@ -264,7 +286,8 @@ export function resolveRecordVisualKnowledge(
 }
 
 export function buildVisualKnowledgeCoverage(
-  records: DeviceRecord[]
+  records: DeviceRecord[],
+  index: VisualKnowledgeIndex = DEFAULT_VISUAL_KNOWLEDGE_INDEX
 ): VisualKnowledgeCoverage {
   const unknownPartNumbers = new Map<string, number>();
   const unknownNamePatterns = new Map<string, number>();
@@ -288,8 +311,8 @@ export function buildVisualKnowledgeCoverage(
   records.forEach((record) => {
     const partNumberKey = normalizePartNumberKey(record.partNumber);
     const namePattern = normalizeKnowledgeNamePattern(record.name);
-    const partKnowledge = partNumberKey ? partNumberProfiles.get(partNumberKey) ?? null : null;
-    const nameKnowledge = namePattern ? namePatternRules.get(namePattern) ?? null : null;
+    const partKnowledge = partNumberKey ? index.partNumberProfiles.get(partNumberKey) ?? null : null;
+    const nameKnowledge = namePattern ? index.namePatternRules.get(namePattern) ?? null : null;
 
     if (partKnowledge) {
       recordsWithKnownPartNumber += 1;
@@ -373,9 +396,9 @@ export function buildVisualKnowledgeCoverage(
     recordsWithSingleIconDeviceKnowledge,
     recordsWithSeededPartButNoIconDevice,
     recordsWithVariantIconDeviceKnowledge,
-    seedName: VISUAL_KNOWLEDGE_SEEDS.map((seed) => seed.seedName).join(" + "),
-    seededNamePatterns: namePatternRules.size,
-    seededPartNumbers: partNumberProfiles.size,
+    seedName: index.seedName,
+    seededNamePatterns: index.namePatternRules.size,
+    seededPartNumbers: index.partNumberProfiles.size,
     unknownNamePatterns: toCoverageGroups(unknownNamePatterns).slice(0, 8),
     unknownPartNumbers: toCoverageGroups(unknownPartNumbers).slice(0, 8),
   };
