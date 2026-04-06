@@ -397,13 +397,17 @@ function computeVisualDecision(
         nameKnowledge.candidateIconDevices.length > 1)
   );
   const partKnowledgeIconChoices = partKnowledge?.iconDevices.length ?? 0;
+  const exactPartNumberIcon =
+    lookup.field === "part-number" &&
+    lookup.mode === "exact" &&
+    sameNormalizedValue(lookup.candidate, resolvedPartNumber);
 
   let risk: VisualDecisionRisk = "safe";
   if (source === "device-rule" && partKnowledgeIconChoices > 1 && knowledge?.matchedBy !== "name-pattern") {
     risk = "abstain";
   } else if (source === "ambiguous-name-suggestion") {
     risk = "abstain";
-  } else if (source === "fallback-part-number" && partKnowledgeIconChoices > 1) {
+  } else if (source === "fallback-part-number" && partKnowledgeIconChoices > 1 && !exactPartNumberIcon) {
     risk = "abstain";
   } else if (source === "fallback-device-task-type") {
     risk = "abstain";
@@ -416,6 +420,9 @@ function computeVisualDecision(
   }
 
   if (source === "device-rule" && !nameKnowledge && partKnowledgeIconChoices <= 1) {
+    risk = promoteRisk(risk, "review");
+  }
+  if (source === "fallback-part-number" && exactPartNumberIcon && partKnowledgeIconChoices > 1) {
     risk = promoteRisk(risk, "review");
   }
   if (source !== "name-pattern" && hasAmbiguousNameKnowledge) {
