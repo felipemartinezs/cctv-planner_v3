@@ -55,6 +55,9 @@ const PREFIXES = new Set([
   "VMS"
 ]);
 
+const PTZ_PART_NUMBER_KEY = normalizeIconKey("CIP-QNP6250H");
+const PTZ_OUTDOOR_RULE_KEY = "install.height.ptzOutdoor";
+
 function normalizeHeader(value: string): string {
   return value
     .trim()
@@ -397,6 +400,9 @@ function computeVisualDecision(
         nameKnowledge.candidateIconDevices.length > 1)
   );
   const partKnowledgeIconChoices = partKnowledge?.iconDevices.length ?? 0;
+  const isPtzPartNumber = normalizeIconKey(resolvedPartNumber) === PTZ_PART_NUMBER_KEY;
+  const isOutdoorPtz =
+    isPtzPartNumber && finalInstallationSpec.mountHeightRuleKey === PTZ_OUTDOOR_RULE_KEY;
   const exactPartNumberIcon =
     lookup.field === "part-number" &&
     lookup.mode === "exact" &&
@@ -437,6 +443,9 @@ function computeVisualDecision(
     partKnowledgeIconChoices > 1
   ) {
     risk = promoteRisk(risk, "review");
+  }
+  if (isPtzPartNumber) {
+    risk = isOutdoorPtz ? "safe" : risk === "abstain" ? "review" : promoteRisk(risk, "review");
   }
   if (source !== "name-pattern" && hasAmbiguousNameKnowledge) {
     risk = promoteRisk(risk, "review");
