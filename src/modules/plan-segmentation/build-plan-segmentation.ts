@@ -70,8 +70,12 @@ function segmentSummary(points: SegmentationPoint[], label: string): SegmentSumm
       y0: Math.min(...ys),
       y1: Math.max(...ys)
     },
+    confirmedCables: segmentPoints.reduce((sum, p) => sum + p.cables, 0),
+    confirmedDeviceCount: segmentPoints.length,
     deviceCount: segmentPoints.length,
     label,
+    suggestedCables: 0,
+    suggestedDeviceCount: 0,
     switchFamily: families.values().next().value || "",
     switches: Array.from(switches).sort(),
     totalCables: segmentPoints.reduce((sum, p) => sum + p.cables, 0)
@@ -278,13 +282,18 @@ export function buildPlanSegmentation(
         new Set(grp.map((r) => resolveRecordSwitch(r).name).filter(Boolean))
       ).sort();
       const family = grp.map((r) => resolveRecordSwitch(r).family).find(Boolean) || "";
+      const confirmedCables = grp.reduce((sum, r) => sum + r.cables, 0);
       return {
         bounds: { x0: 0, x1: 0, y0: 0, y1: 0 },
+        confirmedCables,
+        confirmedDeviceCount: grp.length,
         deviceCount: grp.length,
         label,
+        suggestedCables: 0,
+        suggestedDeviceCount: 0,
         switchFamily: family,
         switches: switchNames,
-        totalCables: grp.reduce((s, r) => s + r.cables, 0)
+        totalCables: confirmedCables
       };
     });
 
@@ -349,10 +358,8 @@ export function buildPlanSegmentation(
   }
 
   const smoothedGrid = smoothGrid(grid, gridWidth, gridHeight, labels.length, 1);
-  const segments = labels
-    .map((label) => segmentSummary(points, label))
-    .sort((left, right) => right.deviceCount - left.deviceCount);
-  const segmentsByLabel = new Map(segments.map((segment) => [segment.label, segment]));
+  const baseSegments = labels.map((label) => segmentSummary(points, label));
+  const segmentsByLabel = new Map(baseSegments.map((segment) => [segment.label, segment]));
   const suggestedNoSwitchDevices = noSwitchDevices.map((device) => {
     const suggestedSegmentLabel = resolveGridSegmentLabel(
       device,
@@ -384,6 +391,53 @@ export function buildPlanSegmentation(
   const partNumberNoSwitch = groupDevicesByPartNumber(
     suggestedNoSwitchDevices.filter((device) => Boolean(device.partNumber))
   );
+  const recordsByKey = new Map(records.map((record) => [record.key, record]));
+
+  const confirmedMetrics = new Map<string, { cables: number; devices: number }>();
+  records.forEach((record) => {
+    const switchInfo = resolveRecordSwitch(record);
+    if (!switchInfo.hasSwitch) {
+      return;
+    }
+    const current = confirmedMetrics.get(switchInfo.segmentLabel) ?? { cables: 0, devices: 0 };
+    current.cables += record.cables;
+    current.devices += 1;
+    confirmedMetrics.set(switchInfo.segmentLabel, current);
+  });
+
+  const suggestedMetrics = new Map<string, { cables: number; devices: number }>();
+  suggestedNoSwitchDevices.forEach((device) => {
+    if (!device.segmentLabel) {
+      return;
+    }
+    const record = recordsByKey.get(device.key);
+    if (!record) {
+      return;
+    }
+    const current = suggestedMetrics.get(device.segmentLabel) ?? { cables: 0, devices: 0 };
+    current.cables += record.cables;
+    current.devices += 1;
+    suggestedMetrics.set(device.segmentLabel, current);
+  });
+
+  const segments = baseSegments
+    .map((segment) => {
+      const confirmed = confirmedMetrics.get(segment.label) ?? {
+        cables: segment.confirmedCables,
+        devices: segment.confirmedDeviceCount,
+      };
+      const suggested = suggestedMetrics.get(segment.label) ?? { cables: 0, devices: 0 };
+      return {
+        ...segment,
+        confirmedCables: confirmed.cables,
+        confirmedDeviceCount: confirmed.devices,
+        deviceCount: confirmed.devices + suggested.devices,
+        suggestedCables: suggested.cables,
+        suggestedDeviceCount: suggested.devices,
+        totalCables: confirmed.cables + suggested.cables,
+      };
+    })
+    .sort((left, right) => right.totalCables - left.totalCables || right.deviceCount - left.deviceCount);
   const gmMemberSwitches = new Set(
     points.filter((point) => point.switchFamily === "S-GM").map((point) => point.switchName)
   );

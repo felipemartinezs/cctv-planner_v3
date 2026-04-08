@@ -1896,6 +1896,11 @@ export function PlanSegmentationModal({
                         <span style={{ fontSize: "0.7rem", opacity: 0.8, fontWeight: 500, lineHeight: 1 }}>
                           {segment.totalCables} {segment.totalCables === 1 ? t("common.cableSingular") : t("common.cablePlural")}
                         </span>
+                        {segment.suggestedCables > 0 && (
+                          <span style={{ fontSize: "0.64rem", opacity: 0.62, fontWeight: 500, lineHeight: 1 }}>
+                            {t("segmentation.includesSuggestedCables", { count: segment.suggestedCables })}
+                          </span>
+                        )}
                       </span>
                     </button>
                   );
@@ -1926,6 +1931,14 @@ export function PlanSegmentationModal({
                     <span style={{ fontSize: "0.75rem", color: "rgba(120,200,255,0.85)", fontWeight: 700 }}>
                       {seg.totalCables} {seg.totalCables === 1 ? t("common.cableSingular") : t("common.cablePlural")} CAT5
                     </span>
+                    {seg.suggestedCables > 0 && (
+                      <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
+                        {t("segmentation.cableBreakdown", {
+                          confirmed: seg.confirmedCables,
+                          suggested: seg.suggestedCables,
+                        })}
+                      </span>
+                    )}
                     {seg.switches.length > 0 && (
                       <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.38)", fontWeight: 400 }}>
                         {seg.switches.join(" · ")}

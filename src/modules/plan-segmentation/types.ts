@@ -35,8 +35,12 @@ export interface SegmentSummary {
     y0: number;
     y1: number;
   };
+  confirmedCables: number;
+  confirmedDeviceCount: number;
   deviceCount: number;
   label: string;
+  suggestedCables: number;
+  suggestedDeviceCount: number;
   switchFamily: string;
   switches: string[];
   totalCables: number;
