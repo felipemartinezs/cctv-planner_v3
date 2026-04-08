@@ -510,7 +510,7 @@ export function PlanSegmentationModal({
       return suggestions;
     }
 
-    flattenRecordGroups(segmentation.partNumberNoSwitch).forEach((device) => {
+    segmentation.missingSwitchDevices.forEach((device) => {
       if (!device.suggestedSegmentLabel && !device.suggestedSwitchName) {
         return;
       }
@@ -625,7 +625,7 @@ export function PlanSegmentationModal({
     }
 
     const segmented = segmentation.totals.segmentedPoints;
-    const noSwitch = groupedEntryCount(segmentation.partNumberNoSwitch);
+    const noSwitch = segmentation.missingSwitchDevices.length;
     const noPos = groupedEntryCount(segmentation.partNumberUnpositioned);
     const total = segmented + noSwitch + noPos;
 
@@ -1853,7 +1853,7 @@ export function PlanSegmentationModal({
                 <span style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.72rem", fontWeight: 700, flexShrink: 0, letterSpacing: "0.04em", textTransform: "uppercase" }}>{t("segmentation.segment")}</span>
                 {(() => {
                   const segmented = segmentation.totals.segmentedPoints;
-                  const noSwitch = groupedEntryCount(segmentation.partNumberNoSwitch);
+                  const noSwitch = segmentation.missingSwitchDevices.length;
                   const noPos = groupedEntryCount(segmentation.partNumberUnpositioned);
                   const total = segmented + noSwitch + noPos;
                   return (

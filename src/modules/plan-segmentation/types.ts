@@ -48,6 +48,7 @@ export interface PlanSegmentation {
   gridWidth: number;
   height: number;
   labels: string[];
+  missingSwitchDevices: FloatingSegmentationDevice[];
   points: SegmentationPoint[];
   segments: SegmentSummary[];
   partNumberTotals: Record<string, number>;

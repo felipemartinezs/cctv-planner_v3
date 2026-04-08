@@ -185,7 +185,7 @@ export function buildPlanSegmentation(
   const noSwitchDevices: FloatingSegmentationDevice[] = [];
 
   records.forEach((record) => {
-    if (!record.partNumber || record.id === null) {
+    if (record.id === null) {
       return;
     }
 
@@ -209,7 +209,7 @@ export function buildPlanSegmentation(
       return;
     }
 
-    if (!position) {
+    if (!position && record.partNumber) {
       unpositionedDevices.push({
         id: record.id,
         key: record.key,
@@ -294,11 +294,14 @@ export function buildPlanSegmentation(
       gridWidth: 0,
       height: plan.height,
       labels: fallbackLabels,
+      missingSwitchDevices: noSwitchDevices,
       points: fallbackPoints,
       segments: fallbackSegments.sort((a, b) => b.deviceCount - a.deviceCount),
       partNumberTotals: partNumberTotalsNoPos,
       partNumberUnpositioned,
-      partNumberNoSwitch: groupDevicesByPartNumber(noSwitchDevices),
+      partNumberNoSwitch: groupDevicesByPartNumber(
+        noSwitchDevices.filter((device) => Boolean(device.partNumber))
+      ),
       totals: {
         gmMemberSwitches: 0,
         physicalSwitches: fallbackSegments.length,
@@ -378,7 +381,9 @@ export function buildPlanSegmentation(
       suggestionSource: "spatial-grid" as const,
     };
   });
-  const partNumberNoSwitch = groupDevicesByPartNumber(suggestedNoSwitchDevices);
+  const partNumberNoSwitch = groupDevicesByPartNumber(
+    suggestedNoSwitchDevices.filter((device) => Boolean(device.partNumber))
+  );
   const gmMemberSwitches = new Set(
     points.filter((point) => point.switchFamily === "S-GM").map((point) => point.switchName)
   );
@@ -396,6 +401,7 @@ export function buildPlanSegmentation(
     gridWidth,
     height: plan.height,
     labels,
+    missingSwitchDevices: suggestedNoSwitchDevices,
     partNumberTotals,
     partNumberUnpositioned,
     partNumberNoSwitch,
