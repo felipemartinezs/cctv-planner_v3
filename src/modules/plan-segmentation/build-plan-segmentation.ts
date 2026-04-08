@@ -9,6 +9,10 @@ import type {
 
 const EPSILON = 1e-6;
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function smoothGrid(
   input: Uint16Array,
   gridWidth: number,
@@ -126,6 +130,25 @@ function groupDevicesByPartNumber(devices: FloatingSegmentationDevice[]) {
   return grouped;
 }
 
+function resolveGridSegmentLabel(
+  device: FloatingSegmentationDevice,
+  plan: PlanData,
+  grid: Uint16Array,
+  gridWidth: number,
+  gridHeight: number,
+  labels: string[]
+) {
+  if (device.x === null || device.y === null || grid.length === 0 || labels.length === 0) {
+    return "";
+  }
+
+  const gx = clamp(Math.floor((device.x / plan.width) * gridWidth), 0, gridWidth - 1);
+  const gy = clamp(Math.floor((device.y / plan.height) * gridHeight), 0, gridHeight - 1);
+  const labelIndex = grid[gy * gridWidth + gx] ?? 0;
+
+  return labels[labelIndex] || "";
+}
+
 export function buildPlanSegmentation(
   records: DeviceRecord[],
   plan: PlanData,
@@ -204,7 +227,6 @@ export function buildPlanSegmentation(
   });
 
   const partNumberUnpositioned = groupDevicesByPartNumber(unpositionedDevices);
-  const partNumberNoSwitch = groupDevicesByPartNumber(noSwitchDevices);
 
   if (points.length === 0) {
     // Fallback: no hay dispositivos con posición en el plano.
@@ -276,7 +298,7 @@ export function buildPlanSegmentation(
       segments: fallbackSegments.sort((a, b) => b.deviceCount - a.deviceCount),
       partNumberTotals: partNumberTotalsNoPos,
       partNumberUnpositioned,
-      partNumberNoSwitch,
+      partNumberNoSwitch: groupDevicesByPartNumber(noSwitchDevices),
       totals: {
         gmMemberSwitches: 0,
         physicalSwitches: fallbackSegments.length,
@@ -327,6 +349,36 @@ export function buildPlanSegmentation(
   const segments = labels
     .map((label) => segmentSummary(points, label))
     .sort((left, right) => right.deviceCount - left.deviceCount);
+  const segmentsByLabel = new Map(segments.map((segment) => [segment.label, segment]));
+  const suggestedNoSwitchDevices = noSwitchDevices.map((device) => {
+    const suggestedSegmentLabel = resolveGridSegmentLabel(
+      device,
+      plan,
+      smoothedGrid,
+      gridWidth,
+      gridHeight,
+      labels
+    );
+    if (!suggestedSegmentLabel) {
+      return device;
+    }
+
+    const suggestedSegment = segmentsByLabel.get(suggestedSegmentLabel);
+    const suggestedSwitchName =
+      suggestedSegment && suggestedSegment.switches.length === 1
+        ? suggestedSegment.switches[0]
+        : "";
+
+    return {
+      ...device,
+      segmentLabel: suggestedSegmentLabel,
+      suggestedSegmentLabel,
+      suggestedSwitchName,
+      suggestionConfidence: "medium" as const,
+      suggestionSource: "spatial-grid" as const,
+    };
+  });
+  const partNumberNoSwitch = groupDevicesByPartNumber(suggestedNoSwitchDevices);
   const gmMemberSwitches = new Set(
     points.filter((point) => point.switchFamily === "S-GM").map((point) => point.switchName)
   );

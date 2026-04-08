@@ -17,6 +17,10 @@ export interface FloatingSegmentationDevice {
   partNumber: string;
   positionSource: "marker" | "none" | "record";
   segmentLabel: string;
+  suggestedSegmentLabel?: string;
+  suggestedSwitchName?: string;
+  suggestionConfidence?: "medium";
+  suggestionSource?: "spatial-grid";
   switchFamily: string;
   switchName: string;
   issues: Array<"missing-position" | "missing-switch">;

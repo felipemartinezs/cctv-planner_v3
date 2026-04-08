@@ -85,6 +85,8 @@ interface InteractiveDevice {
   name: string;
   partNumber: string;
   segmentLabel: string;
+  suggestedSegmentLabel: string;
+  suggestedSwitchName: string;
   switchName: string;
   visualChoices: VisualChoice[];
   x: number;
@@ -502,6 +504,25 @@ export function PlanSegmentationModal({
     };
   }, [segmentation, selectedLabel, selectedPartNumberSet, selectedPartNumbers]);
 
+  const noSwitchSuggestionByKey = useMemo(() => {
+    const suggestions = new Map<string, { suggestedSegmentLabel: string; suggestedSwitchName: string }>();
+    if (!segmentation) {
+      return suggestions;
+    }
+
+    flattenRecordGroups(segmentation.partNumberNoSwitch).forEach((device) => {
+      if (!device.suggestedSegmentLabel && !device.suggestedSwitchName) {
+        return;
+      }
+      suggestions.set(device.key, {
+        suggestedSegmentLabel: device.suggestedSegmentLabel || "",
+        suggestedSwitchName: device.suggestedSwitchName || "",
+      });
+    });
+
+    return suggestions;
+  }, [segmentation]);
+
   const selectedPartVisuals = useMemo(() => {
     return selectedPartNumbers.map((partNumber) => {
       const candidates = records.filter((record) => record.partNumber === partNumber);
@@ -659,6 +680,7 @@ export function PlanSegmentationModal({
               iconDevice: record.iconDevice || record.partNumber,
               iconUrl: resolvedIconUrl,
             });
+      const switchSuggestion = noSwitchSuggestionByKey.get(record.key);
 
       devicesByKey.set(record.key, {
         ambiguityHint: getVisualAmbiguityHint(record.partNumber, visualChoices, t),
@@ -678,6 +700,8 @@ export function PlanSegmentationModal({
         name: record.abbreviatedName || record.name,
         partNumber: record.partNumber,
         segmentLabel: record.switchSegment,
+        suggestedSegmentLabel: switchSuggestion?.suggestedSegmentLabel || "",
+        suggestedSwitchName: switchSuggestion?.suggestedSwitchName || "",
         switchName: record.switchName || record.hub || t("common.noSwitch"),
         visualChoices,
         x,
@@ -686,7 +710,7 @@ export function PlanSegmentationModal({
     });
 
     return Array.from(devicesByKey.values());
-  }, [plan, rawIconMap, records, t, visualKnowledgeIndex]);
+  }, [noSwitchSuggestionByKey, plan, rawIconMap, records, t, visualKnowledgeIndex]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1753,9 +1777,19 @@ export function PlanSegmentationModal({
                 <span>
                   <strong>{t("segmentation.switch")}:</strong> {devicePreview.device.switchName}
                 </span>
+                {!devicePreview.device.segmentLabel && devicePreview.device.suggestedSwitchName && (
+                  <span>
+                    <strong>{t("segmentation.suggestedSwitch")}:</strong> {devicePreview.device.suggestedSwitchName}
+                  </span>
+                )}
                 {devicePreview.device.segmentLabel && (
                   <span>
                     <strong>{t("segmentation.segment")}:</strong> {devicePreview.device.segmentLabel}
+                  </span>
+                )}
+                {!devicePreview.device.segmentLabel && devicePreview.device.suggestedSegmentLabel && (
+                  <span>
+                    <strong>{t("segmentation.suggestedSegment")}:</strong> {devicePreview.device.suggestedSegmentLabel}
                   </span>
                 )}
                 <span>
