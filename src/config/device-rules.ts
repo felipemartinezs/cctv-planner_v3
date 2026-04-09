@@ -69,6 +69,19 @@ export const DEVICE_RULES: DeviceRule[] = [
       "Monitor dual EVPM 10\" — correr 2 CAT5 (uno por pantalla) + 1 cable 12/2 power; validar visualmente si cae en Cosmetics, Sporting Goods o Baby Formula",
   },
   {
+    id: "salesfloor-evpm-10-placeholder-double",
+    description: "Monitor EVPM 10\" placeholder doble en Pharmacy / Razor Blades",
+    namePattern:
+      "(?:RAZOR[_ ]BLADES|PHARMACY).*(?:PLACEHOLDER[_ ]DOUBLE|PLACEHOLDER.*DOUBLE).*(?:EPVM|PVM)|(?:EPVM|PVM).*(?:RAZOR[_ ]BLADES|PHARMACY).*(?:PLACEHOLDER[_ ]DOUBLE|PLACEHOLDER.*DOUBLE)",
+    deviceType: "EVPM 10\"",
+    inferredIconDevice: "PVM10-B-2086-WMT",
+    inferredPartNumber: "PVM10-B-2086-WMT",
+    cablesCAT5: 2,
+    cablesPower: 1,
+    installerNote:
+      "Monitor dual EVPM 10\" — correr 2 CAT5 (uno por pantalla) + 1 cable 12/2 power; validar visualmente si cae en Pharmacy o Razor Blades",
+  },
+  {
     id: "pickup-opd-ods-pvm-24",
     description: "PVM 24\" con encoder para OPD / ODS / pickup door",
     namePattern:
