@@ -132,6 +132,162 @@
       "iconConfidence": 1
     },
     {
+      "namePattern": "EMGX PVM ACC",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM APPAREL BO YS",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM APPAREL GI RLS",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM APPAREL INF ANT",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM APPAREL ME NS",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM CHEMICALS",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM FABRICS",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM HARDWARE",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM PAINT",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM PAPER",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM PETS",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "EMGX PVM RX",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 32",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 32"
+      ],
+      "iconConfidence": 1
+    },
+    {
       "namePattern": "ENT PICKUP DOOR PVM",
       "suggestedPartNumber": "DE-HASPD-24-MONITOR",
       "candidatePartNumbers": [
