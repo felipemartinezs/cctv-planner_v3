@@ -66,7 +66,14 @@ function includesNormalizedValue(values: string[], expected: string): boolean {
 }
 
 export function normalizeKnowledgeNamePattern(value: string): string {
-  const normalized = repairExtractedDeviceName(value)
+  const placeholderStripped = value
+    .replace(/\u00a0/g, " ")
+    .replace(
+      /(?:^|[ _/\-])PLACEHOLDER(?:[ _/\-]+)PVM(?:[ _/\-]+)ICON(?=$|[ _/\-])/gi,
+      " "
+    );
+
+  const normalized = repairExtractedDeviceName(repairExtractedDeviceName(placeholderStripped))
     .toUpperCase()
     .replace(/\u00a0/g, " ")
     .replace(/\//g, " ")
