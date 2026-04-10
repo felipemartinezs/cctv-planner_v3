@@ -57,6 +57,10 @@
       "path": "Camera Symbols/NDE/NDE-5704-AL-W OUTDOOR/NDE-5704-AL-W OUTDOOR.txt"
     },
     {
+      "alias": "NDP-5522-Z30C-W\n",
+      "path": "Camera Symbols/NDP/NDP-5522-Z30C-W/NDP-5522-Z30C-W.txt"
+    },
+    {
       "alias": "Bosch NDS-5704-F360 12 Megapixel INDOOR\r\nPanoramic Camera",
       "path": "Camera Symbols/NDS/NDS-5704-F360 INDOOR/NDS-5704-F360 INDOOR.txt"
     },
@@ -101,8 +105,8 @@
       "path": "Camera Symbols/PVM/PVM10-B-2086-WMT/PVM10-B-2086-WMT.txt"
     }
   ],
-  "generatedAt": "2026-03-30T14:50:31.010Z",
-  "iconCount": 56,
+  "generatedAt": "2026-04-10T17:02:31.684Z",
+  "iconCount": 58,
   "icons": [
     {
       "path": "Camera Symbols/3680 Tower/3680 Tower.png",
@@ -239,6 +243,14 @@
     {
       "path": "Camera Symbols/NDE/NDE-5704-AL-W OUTDOOR/NDE-5704-AL-W OUTDOOR.svg",
       "url": "/device-icons/Camera%20Symbols/NDE/NDE-5704-AL-W%20OUTDOOR/NDE-5704-AL-W%20OUTDOOR.svg"
+    },
+    {
+      "path": "Camera Symbols/NDP/NDP-5522-Z30C-W/NDP-5522-Z30C-W.png",
+      "url": "/device-icons/Camera%20Symbols/NDP/NDP-5522-Z30C-W/NDP-5522-Z30C-W.png"
+    },
+    {
+      "path": "Camera Symbols/NDP/NDP-5522-Z30C-W/NDP-5522-Z30C-W.svg",
+      "url": "/device-icons/Camera%20Symbols/NDP/NDP-5522-Z30C-W/NDP-5522-Z30C-W.svg"
     },
     {
       "path": "Camera Symbols/NDS/NDS-5704-F360 INDOOR/NDS-5704-F360 INDOOR.png",
