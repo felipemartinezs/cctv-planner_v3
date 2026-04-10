@@ -83,9 +83,9 @@ export const DEVICE_RULES: DeviceRule[] = [
   },
   {
     id: "pickup-opd-ods-pvm-24",
-    description: "PVM 24\" con encoder para OPD / ODS / pickup door",
+    description: "PVM 24\" con encoder para OPD / ODS / OGD / OGP / pickup door",
     namePattern:
-      "(?:PICKUP[_ ]DOOR|(?:^|[_ ])OPD(?:$|[_ ])|(?:^|[_ ])ODS(?:$|[_ ])).*(?:EPVM|PVM)|(?:EPVM|PVM).*(?:PICKUP[_ ]DOOR|(?:^|[_ ])OPD(?:$|[_ ])|(?:^|[_ ])ODS(?:$|[_ ]))",
+      "(?:PICKUP[_ ]DOOR|(?:^|[_ ])OPD(?:$|[_ ])|(?:^|[_ ])ODS(?:$|[_ ])|(?:^|[_ ])OGD(?:$|[_ ])|(?:^|[_ ])OGP(?:$|[_ ])).*(?:EPVM|PVM)|(?:EPVM|PVM).*(?:PICKUP[_ ]DOOR|(?:^|[_ ])OPD(?:$|[_ ])|(?:^|[_ ])ODS(?:$|[_ ])|(?:^|[_ ])OGD(?:$|[_ ])|(?:^|[_ ])OGP(?:$|[_ ]))",
     deviceType: "PVM 24\" con encoder",
     inferredIconDevice: "DE-HASPD 24 LED Monitor Desk MountWall Mount",
     inferredPartNumber: "DE-HASPD-24-MONITOR",
