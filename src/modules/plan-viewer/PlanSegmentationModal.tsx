@@ -14,7 +14,13 @@ import {
   type VisualKnowledgeIndex,
 } from "../../lib/visual-knowledge";
 import type { PlanSegmentation } from "../plan-segmentation";
-import { renderPlanPreview, type RenderedPlanPreview } from "./render-page-preview";
+import {
+  releaseRenderedPlanDocument,
+  renderPlanPreview,
+  renderPlanViewportTile,
+  type RenderedPlanPreview,
+  type RenderedPlanViewportTile,
+} from "./render-page-preview";
 
 const RENDER_SCALE = 2;
 const MAX_SELECTED_PART_NUMBERS = 2;
@@ -101,6 +107,13 @@ interface DevicePreviewState {
 
 interface PlanRasterState extends RenderedPlanPreview {}
 
+interface PlanViewportRasterState extends RenderedPlanViewportTile {}
+
+interface RasterLike {
+  revokeUrl: boolean;
+  url: string;
+}
+
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
@@ -114,7 +127,7 @@ function buildBasePlanRaster(plan: PlanData): PlanRasterState {
   };
 }
 
-function revokePlanRaster(raster: PlanRasterState | null) {
+function revokePlanRaster(raster: RasterLike | null) {
   if (!raster?.revokeUrl) {
     return;
   }
@@ -364,11 +377,16 @@ export function PlanSegmentationModal({
   const [selectedLabel, setSelectedLabel] = useState("");
   const [selectedPartNumbers, setSelectedPartNumbers] = useState<string[]>([]);
   const [isMobileViewport, setIsMobileViewport] = useState(() => detectCompactViewport());
+  const [viewportSize, setViewportSize] = useState(() => ({
+    height: typeof window === "undefined" ? 0 : window.innerHeight,
+    width: typeof window === "undefined" ? 0 : window.innerWidth,
+  }));
   const [controlsExpanded, setControlsExpanded] = useState(() => !detectCompactViewport());
   const [devicePreview, setDevicePreview] = useState<DevicePreviewState | null>(null);
   const [planRaster, setPlanRaster] = useState<PlanRasterState | null>(
     () => (plan ? buildBasePlanRaster(plan) : null)
   );
+  const [focusRaster, setFocusRaster] = useState<PlanViewportRasterState | null>(null);
   const [isTransformReady, setIsTransformReady] = useState(false);
   const [isTransformInteracting, setIsTransformInteracting] = useState(false);
   const dragging = useRef(false);
@@ -387,6 +405,8 @@ export function PlanSegmentationModal({
     startXform: { x: 0, y: 0, s: 1 },
   });
   const planRasterRef = useRef<PlanRasterState | null>(plan ? buildBasePlanRaster(plan) : null);
+  const focusRasterRef = useRef<PlanViewportRasterState | null>(null);
+  const focusRasterRequestRef = useRef("");
   const pointerMovedRef = useRef(false);
   const suppressInspectUntilRef = useRef(0);
   const [navigating, setNavigating] = useState(false);
@@ -719,6 +739,10 @@ export function PlanSegmentationModal({
 
     const handleResize = () => {
       setIsMobileViewport(detectCompactViewport());
+      setViewportSize({
+        height: window.innerHeight,
+        width: window.innerWidth,
+      });
     };
 
     handleResize();
@@ -753,10 +777,24 @@ export function PlanSegmentationModal({
   }, [planRaster]);
 
   useEffect(() => {
+    focusRasterRef.current = focusRaster;
+  }, [focusRaster]);
+
+  useEffect(() => {
     return () => {
       revokePlanRaster(planRasterRef.current);
+      revokePlanRaster(focusRasterRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    const activeBlobUrl = plan?.blobUrl ?? "";
+    return () => {
+      if (activeBlobUrl) {
+        void releaseRenderedPlanDocument(activeBlobUrl);
+      }
+    };
+  }, [plan?.blobUrl]);
 
   useEffect(() => {
     setPlanRaster((current) => {
@@ -766,6 +804,13 @@ export function PlanSegmentationModal({
       }
       return next;
     });
+    setFocusRaster((current) => {
+      if (current) {
+        revokePlanRaster(current);
+      }
+      return null;
+    });
+    focusRasterRequestRef.current = "";
   }, [plan]);
 
   useEffect(() => {
@@ -877,8 +922,9 @@ export function PlanSegmentationModal({
     setPdfReady(false);
   }, [open, plan]);
 
-  // PDF is displayed via <img> in JSX so iOS Safari composites at the image's
-  // natural resolution (3840px) rather than CSS_size*DPR — gives sharp zoom.
+  // The plan is displayed via <img> so iOS Safari composites against the
+  // raster's natural size instead of only the CSS box, which helps preserve
+  // detail while we swap in sharper viewport tiles on demand.
   useEffect(() => {
     if (!open || !planRaster) {
       setPdfReady(false);
@@ -976,6 +1022,144 @@ export function PlanSegmentationModal({
       fitToViewport();
     }
   }, [fitToViewport, isTransformReady, pdfReady]);
+
+  useEffect(() => {
+    if (!open || !plan || !pdfReady || !viewportRef.current) {
+      setFocusRaster((current) => {
+        if (current) {
+          revokePlanRaster(current);
+        }
+        return null;
+      });
+      focusRasterRequestRef.current = "";
+      return;
+    }
+
+    const viewport = viewportRef.current;
+    const viewportWidth = viewport.clientWidth;
+    const viewportHeight = viewport.clientHeight;
+    if (!viewportWidth || !viewportHeight) {
+      return;
+    }
+
+    const fitScale = getFitScale();
+    const focusActivationScale = Math.max(
+      fitScale * (isMobileViewport ? 1.18 : 1.1),
+      INTERACTIVE_MIN_SCALE
+    );
+
+    if (xform.s <= focusActivationScale) {
+      setFocusRaster((current) => {
+        if (current) {
+          revokePlanRaster(current);
+        }
+        return null;
+      });
+      focusRasterRequestRef.current = "";
+      return;
+    }
+
+    const visibleLeft = clamp(-xform.x / xform.s, 0, plan.width);
+    const visibleTop = clamp(-xform.y / xform.s, 0, plan.height);
+    const visibleRight = clamp((viewportWidth - xform.x) / xform.s, 0, plan.width);
+    const visibleBottom = clamp((viewportHeight - xform.y) / xform.s, 0, plan.height);
+
+    if (visibleRight - visibleLeft < 1 || visibleBottom - visibleTop < 1) {
+      return;
+    }
+
+    const overscanPixels = isMobileViewport ? 112 : 164;
+    const overscanX = Math.min(plan.width * 0.08, overscanPixels / Math.max(xform.s, 0.35));
+    const overscanY = Math.min(plan.height * 0.08, overscanPixels / Math.max(xform.s, 0.35));
+    const regionLeft = clamp(Math.floor(visibleLeft - overscanX), 0, Math.max(0, plan.width - 1));
+    const regionTop = clamp(Math.floor(visibleTop - overscanY), 0, Math.max(0, plan.height - 1));
+    const regionRight = clamp(Math.ceil(visibleRight + overscanX), regionLeft + 1, plan.width);
+    const regionBottom = clamp(Math.ceil(visibleBottom + overscanY), regionTop + 1, plan.height);
+    const regionWidth = Math.max(1, regionRight - regionLeft);
+    const regionHeight = Math.max(1, regionBottom - regionTop);
+
+    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const targetPixelWidth =
+      (viewportWidth + overscanPixels * 2) * dpr * (isMobileViewport ? 1.08 : 1.22);
+    const targetPixelHeight =
+      (viewportHeight + overscanPixels * 2) * dpr * (isMobileViewport ? 1.08 : 1.22);
+    const pixelBudget = isMobileViewport ? 4_600_000 : 8_200_000;
+    const area = Math.max(regionWidth * regionHeight, 1);
+    const scaleForViewport = Math.max(
+      targetPixelWidth / regionWidth,
+      targetPixelHeight / regionHeight
+    );
+    const scaleForBudget = Math.sqrt(pixelBudget / area);
+    const renderScale = clamp(
+      Math.min(scaleForViewport, scaleForBudget, isMobileViewport ? 2.3 : 3.2),
+      0.6,
+      4
+    );
+
+    const requestKey = [
+      plan.blobUrl,
+      regionLeft,
+      regionTop,
+      regionWidth,
+      regionHeight,
+      Math.round(renderScale * 100),
+    ].join(":");
+
+    if (requestKey === focusRasterRequestRef.current && focusRasterRef.current) {
+      return;
+    }
+
+    let live = true;
+    const timeoutId = window.setTimeout(() => {
+      focusRasterRequestRef.current = requestKey;
+      renderPlanViewportTile(plan.blobUrl, {
+        preferLossless: true,
+        region: {
+          height: regionHeight,
+          width: regionWidth,
+          x: regionLeft,
+          y: regionTop,
+        },
+        scale: renderScale,
+      })
+        .then((rendered) => {
+          if (!live || focusRasterRequestRef.current !== requestKey) {
+            revokePlanRaster(rendered);
+            return;
+          }
+          setFocusRaster((current) => {
+            if (current && current.url !== rendered.url) {
+              revokePlanRaster(current);
+            }
+            return rendered;
+          });
+        })
+        .catch((error) => {
+          if (focusRasterRequestRef.current === requestKey) {
+            focusRasterRequestRef.current = "";
+          }
+          console.warn("[segmentation] No pude generar el detalle del viewport:", error);
+        });
+    }, isTransformInteracting ? 240 : 120);
+
+    return () => {
+      live = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    controlsExpanded,
+    getFitScale,
+    isMobileViewport,
+    isTransformInteracting,
+    open,
+    pdfReady,
+    plan,
+    viewportSize.height,
+    viewportSize.width,
+    xform.s,
+    xform.x,
+    xform.y,
+  ]);
 
   // Draw segmentation overlay at the same pixel dimensions as the PDF canvas
   useEffect(() => {
@@ -1413,7 +1597,8 @@ export function PlanSegmentationModal({
   }
 
   function findDeviceNearStagePoint(stageX: number, stageY: number) {
-    const threshold = Math.max(20, 28 / Math.max(xformRef.current.s, 0.35));
+    const touchRadiusPx = isMobileViewport ? 32 : 24;
+    const threshold = touchRadiusPx / Math.max(xformRef.current.s, 0.35);
     let best: InteractiveDevice | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
 
@@ -1531,6 +1716,28 @@ export function PlanSegmentationModal({
           )}
         </div>
         <div className="pdf-modal__actions">
+          {!isMobileViewport && (
+            <>
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={() => stepZoom(1 / 1.35)}
+                aria-label={t("common.zoomOut")}
+                disabled={!canInteractWithPlan}
+              >
+                -
+              </button>
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={() => stepZoom(1.35)}
+                aria-label={t("common.zoomIn")}
+                disabled={!canInteractWithPlan}
+              >
+                +
+              </button>
+            </>
+          )}
           {!isMobileViewport && (
             <button type="button" className="secondary-action" onClick={fitToViewport}>
               {t("segmentation.fitView")}
@@ -1684,6 +1891,21 @@ export function PlanSegmentationModal({
                     src={planRaster.url}
                     alt=""
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
+                  />
+                )}
+                {focusRaster && (
+                  <img
+                    src={focusRaster.url}
+                    alt=""
+                    style={{
+                      position: "absolute",
+                      left: focusRaster.planX,
+                      top: focusRaster.planY,
+                      width: focusRaster.planWidth,
+                      height: focusRaster.planHeight,
+                      display: "block",
+                      pointerEvents: "none",
+                    }}
                   />
                 )}
                 <canvas
