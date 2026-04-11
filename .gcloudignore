@@ -9,6 +9,8 @@ tmp
 *.log
 
 # Repo-only assets and drafts that should not ship in App Engine deployments
+README.md
+src/**/README.md
 reporte/social/
 reporte/assets/linkedin-cover.png
 reporte/assets/linkedin-mobile-preview.png
