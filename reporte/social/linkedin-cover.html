@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCTV Field Operations Planner | LinkedIn Cover</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #07111f;
+            --panel: rgba(13, 27, 46, 0.78);
+            --line: rgba(135, 174, 211, 0.2);
+            --text: #eef5ff;
+            --muted: #a9bbd1;
+            --brand: #76d8ff;
+            --brand-strong: #2d97d3;
+            --accent: #f0c56f;
+            --shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            width: 1200px;
+            height: 675px;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 14% 18%, rgba(45, 151, 211, 0.28), transparent 28%),
+                radial-gradient(circle at 88% 15%, rgba(118, 216, 255, 0.16), transparent 24%),
+                linear-gradient(160deg, #07111f 0%, #091624 45%, #0a1728 100%);
+            color: var(--text);
+            font-family: "IBM Plex Sans", sans-serif;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(circle at center, black 55%, transparent 95%);
+            opacity: 0.38;
+            pointer-events: none;
+        }
+
+        .frame {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: 44px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+            gap: 34px;
+        }
+
+        .left {
+            display: grid;
+            align-content: space-between;
+            min-width: 0;
+        }
+
+        .badge-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(118, 216, 255, 0.22);
+            background: rgba(45, 151, 211, 0.1);
+            color: var(--brand);
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        .badge::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--brand);
+            box-shadow: 0 0 18px rgba(118, 216, 255, 0.75);
+        }
+
+        .copy {
+            display: grid;
+            gap: 18px;
+            max-width: 600px;
+        }
+
+        .eyebrow {
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        h1 {
+            margin: 0;
+            font-family: "Sora", sans-serif;
+            font-size: 3.55rem;
+            line-height: 1.04;
+            letter-spacing: -0.04em;
+        }
+
+        .subhead {
+            margin: 0;
+            font-size: 1.08rem;
+            line-height: 1.6;
+            color: var(--muted);
+            max-width: 50ch;
+        }
+
+        .product {
+            display: grid;
+            gap: 8px;
+        }
+
+        .product strong {
+            font-size: 1.06rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .product span {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chip {
+            padding: 10px 13px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .right {
+            position: relative;
+            display: grid;
+            align-items: center;
+        }
+
+        .hero-card {
+            position: relative;
+            border-radius: 34px;
+            border: 1px solid rgba(135, 174, 211, 0.18);
+            background: linear-gradient(180deg, rgba(13, 27, 46, 0.92), rgba(9, 19, 33, 0.98));
+            box-shadow: var(--shadow);
+            padding: 18px;
+            overflow: hidden;
+        }
+
+        .hero-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(140deg, rgba(118, 216, 255, 0.08), transparent 35%, transparent 70%, rgba(240, 197, 111, 0.05)),
+                radial-gradient(circle at top right, rgba(118, 216, 255, 0.14), transparent 30%);
+            pointer-events: none;
+        }
+
+        .hero-media {
+            position: relative;
+            z-index: 1;
+            border-radius: 26px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #f4f7fb;
+            aspect-ratio: 0.82;
+        }
+
+        .hero-media img {
+            width: 100%;
+            display: block;
+            height: 100%;
+            object-fit: cover;
+            object-position: top center;
+        }
+
+    </style>
+</head>
+<body>
+    <main class="frame">
+        <section class="left">
+            <div class="badge-row">
+                <div class="badge">Field Operations</div>
+                <div class="badge">Security Projects</div>
+            </div>
+
+            <div class="copy">
+                <p class="eyebrow">CCTV Field Operations Planner</p>
+                <h1>La informacion ya existia.<br>Faltaba volverla operativa.</h1>
+                <p class="subhead">Una capa movil para preparar y ejecutar proyectos de seguridad en campo con mejor claridad, menos carga manual y una experiencia pensada para telefono.</p>
+                <div class="chips">
+                    <span class="chip">Phone-first workflow</span>
+                    <span class="chip">Client-side processing</span>
+                    <span class="chip">AI-assisted build</span>
+                </div>
+            </div>
+
+            <div class="product">
+                <strong>Preparacion movil para ejecucion en campo</strong>
+                <span>De datos estaticos a un flujo mas claro para managers y tecnicos.</span>
+            </div>
+        </section>
+
+        <section class="right">
+            <div class="hero-card">
+                <div class="hero-media">
+                    <img src="../assets/linkedin-mobile-preview.png" alt="Vista movil de CCTV Field Operations Planner">
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

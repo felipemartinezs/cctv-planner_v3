@@ -2,9 +2,33 @@
 
 Aplicacion web orientada a tecnicos de campo para convertir PDFs de CCTV en tareas accionables, conteos reales y una vista de segmentacion tactil sobre el plano.
 
+El proyecto nace de una friccion operativa concreta: recibir informacion de proyecto distribuida entre un plano austero con IDs y tablas separadas con `Name`, `Part Number` y `Hub`, lo que obliga a mas interpretacion manual para preparar y ejecutar trabajo en campo.
+
 ## Produccion
 
 https://cctv-planner-491120.uc.r.appspot.com (Google App Engine)
+
+## Reportes y presentaciones
+
+- Tecnico: `reporte/index.html`
+- Ejecutivo: `reporte/index-cio.html`
+- Ejecutivo bilingue: `reporte/index-cio-bilingual.html`
+
+Versiones publicadas:
+
+- https://cctv-planner-491120.uc.r.appspot.com/reporte/index.html
+- https://cctv-planner-491120.uc.r.appspot.com/reporte/index-cio.html
+- https://cctv-planner-491120.uc.r.appspot.com/reporte/index-cio-bilingual.html
+
+## Asset para LinkedIn
+
+- Cover editable: `reporte/social/linkedin-cover.html`
+- Preview movil: `reporte/assets/linkedin-mobile-preview.png`
+- PNG exportado: `reporte/assets/linkedin-cover.png`
+
+Mensaje base sugerido:
+
+`La informacion ya existia. Faltaba volverla operativa.`
 
 ## Estado actual
 

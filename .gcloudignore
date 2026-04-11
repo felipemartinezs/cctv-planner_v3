@@ -7,3 +7,8 @@ tmp
 .analysis-venv
 .DS_Store
 *.log
+
+# Repo-only assets and drafts that should not ship in App Engine deployments
+reporte/social/
+reporte/assets/linkedin-cover.png
+reporte/assets/linkedin-mobile-preview.png
