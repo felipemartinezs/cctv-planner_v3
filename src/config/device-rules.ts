@@ -59,7 +59,7 @@ export const DEVICE_RULES: DeviceRule[] = [
     id: "salesfloor-evpm-10",
     description: "Monitor EVPM 10\" en Cosmetics / Sporting Goods / Baby Formula",
     namePattern:
-      "(?:COSMETICS|SPORTING[_ ]G[_ ]OODS|BABY[_ ]FORMULA).*(?:EPVM|PVM)|(?:EPVM|PVM).*(?:COSMETICS|SPORTING[_ ]G[_ ]OODS|BABY[_ ]FORMULA)",
+      "(?:COSMETICS|SPORTING(?:[_ ]G[_ ]OODS|[_ ]GOODS)|BABY[_ ]FORMULA).*(?:EPVM|PVM)|(?:EPVM|PVM).*(?:COSMETICS|SPORTING(?:[_ ]G[_ ]OODS|[_ ]GOODS)|BABY[_ ]FORMULA)",
     deviceType: "EVPM 10\"",
     inferredIconDevice: "PVM10-B-2086-WMT",
     inferredPartNumber: "PVM10-B-2086-WMT",

@@ -473,7 +473,7 @@ export default function App() {
   }, [iconDebugInfo, t]);
   const baseVisualKnowledgeIndex = useMemo(
     () => createVisualKnowledgeIndex(VISUAL_KNOWLEDGE_SEEDS),
-    []
+    [VISUAL_KNOWLEDGE_SEEDS]
   );
   const effectiveVisualKnowledgeIndex = useMemo(
     () =>
@@ -482,7 +482,7 @@ export default function App() {
           ? [...VISUAL_KNOWLEDGE_SEEDS, manualKnowledgeSeed]
           : VISUAL_KNOWLEDGE_SEEDS
       ),
-    [manualKnowledgeEnabled, manualKnowledgeSeed, showKnowledgeStudio]
+    [VISUAL_KNOWLEDGE_SEEDS, manualKnowledgeEnabled, manualKnowledgeSeed, showKnowledgeStudio]
   );
   const baseResolvedRecords = useMemo(
     () => attachIcons(sourceRecords, rawIconMap, baseVisualKnowledgeIndex),
@@ -731,7 +731,7 @@ export default function App() {
       }
 
       let nextBundledMap = bundledIconMap;
-      if (records.length > 0 && nextBundledMap.size === 0) {
+      if (records.length > 0) {
         try {
           nextBundledMap = await loadIconsFromManifest();
         } catch (error) {
