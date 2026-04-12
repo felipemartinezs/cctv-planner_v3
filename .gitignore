@@ -3,6 +3,7 @@ dist/
 .DS_Store
 *.log
 tmp/
+.runtime-data/
 .analysis-venv/
 tsconfig.tsbuildinfo
 .env

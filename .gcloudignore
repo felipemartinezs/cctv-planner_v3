@@ -4,12 +4,14 @@
 node_modules
 dist
 tmp
+.runtime-data
 .analysis-venv
 .DS_Store
 *.log
 
 # Repo-only assets and drafts that should not ship in App Engine deployments
 README.md
+docs/
 src/**/README.md
 reporte/social/
 reporte/assets/linkedin-cover.png

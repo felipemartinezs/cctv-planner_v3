@@ -34,11 +34,22 @@ Mensaje base sugerido:
 
 - Pensada primero para iPhone — toda la UX esta optimizada para uso en campo.
 - Selector de idioma `ES / EN` con persistencia local.
-- Procesa el PDF en el navegador (100% client-side, sin servidor de datos).
+- Procesa el PDF en el navegador y ahora expone una API ligera para persistencia operativa por proyecto.
+- Ya puede publicar PDFs como proyectos compartidos y reabrirlos desde una biblioteca basica dentro de la app.
 - Usa la pagina 1 como plano de referencia.
 - Usa las paginas de datos del PDF para construir `DeviceRecord[]`.
 - Incluye una libreria interna de iconos universal en `public/device-icons/Camera Symbols`.
 - Puede recibir iconos extra por ZIP o folder solo como suplemento opcional.
+- Mantiene avance operativo por dispositivo con cache local y sincronizacion compartida por proyecto cuando el backend esta disponible.
+
+## Documentacion de flujo operativo
+
+- Flujo colaborativo propuesto para tecnico / gerencia: [docs/operational-progress-flow.md](docs/operational-progress-flow.md)
+- Este documento separa claramente:
+  - lo que la app ya hace hoy
+  - la base ya implementada de progreso persistente por proyecto
+  - la capa futura de progreso en tiempo real por tienda / gerencia
+  - el flujo iPhone-first para evitar errores operativos
 
 ## Arranque local
 
@@ -46,6 +57,12 @@ Mensaje base sugerido:
 npm install
 npm run dev
 ```
+
+En desarrollo, las APIs compartidas quedan disponibles dentro del mismo `vite dev server` y persisten en:
+
+- `.runtime-data/operational-progress.json`
+- `.runtime-data/published-projects.json`
+- `.runtime-data/published-project-files/`
 
 Build de produccion:
 
@@ -87,11 +104,21 @@ En el flujo normal de campo, el unico archivo realmente obligatorio es el `PDF d
 - Genera segmentacion por switch sobre el mismo plano.
 - Permite filtrar por `part number`, incluyendo multi-seleccion conservadora.
 - Permite tocar un `ID` en el plano para abrir una ficha visual del dispositivo.
+- Permite marcar progreso operativo por dispositivo dentro de segmentacion:
+  - `Cable corrido`
+  - `Instalado`
+  - `Conectado a switch`
+- Refleja ese progreso en el marker del plano con micro-marcadores compactos pensados para zonas densas.
 - Mantiene estados de tarea:
   - `Pendiente`
   - `En proceso`
   - `Hecho`
 - Guarda esos estados en `localStorage`.
+- Guarda tambien progreso operativo por proyecto:
+  - cache local en navegador
+  - sincronizacion compartida por API cuando el backend responde
+- Puede publicar el PDF actual como tienda/proyecto compartido.
+- Puede listar y volver a abrir tiendas publicadas desde la misma app.
 
 ## Libreria de iconos
 
@@ -121,13 +148,13 @@ La vista de segmentacion ya tiene varias ayudas pensadas para trabajo real:
 
 ### Calidad de imagen en iPhone
 
-El plano se renderiza directamente desde el PDF via `pdfjs-dist` con un pipeline de tres niveles:
+La vista de segmentacion ahora usa un render hibrido pensado para iPhone:
 
-1. **Thumbnail inicial** — 2000px PNG, calidad maxima, disponible al instante al abrir el modal.
-2. **Hi-res base** — 3840px PNG, se genera en segundo plano al abrir el modal (~2-4s), reemplaza el thumbnail automaticamente.
-3. **Upgrade por zoom** — cuando el usuario hace zoom mas alla del punto donde 3840px no es suficiente (≈3.5× en DPR=3), se dispara un nuevo render hasta 5000px (debounced 500ms).
+1. **Plano base ligero** — se abre rapido para no castigar memoria al entrar en segmentacion.
+2. **Raster mas nitido en segundo plano** — reemplaza la base cuando hace falta mejorar claridad general.
+3. **Detalle por viewport** — al acercarse, solo la zona visible del plano se vuelve a renderizar con mas detalle, sin cargar una imagen gigante completa.
 
-El plano se despliega como `<img>` (no `<canvas>`) para que iOS Safari composite a la resolucion natural de la imagen en lugar de `CSS_size × DPR`.
+El plano se despliega como capas `<img>` en lugar de depender solo de un `<canvas>` gigante, lo que ayuda a que iOS Safari mantenga mejor la nitidez y la estabilidad durante pan / zoom.
 
 ## Ambigüedades ya resueltas visualmente
 
@@ -165,14 +192,24 @@ Se muestran ambos iconos como ayuda visual sin duplicar conteos.
 ## Arquitectura actual
 
 - frontend: React + Vite
+- API operativa compartida: middleware Node reutilizado en `vite` y `server.mjs`
 - PWA: `vite-plugin-pwa`
 - parsing PDF: `pdfjs-dist`
 - parsing tabular: `papaparse`
 - iconos ZIP: `jszip`
+- almacenamiento compartido:
+  - desarrollo local: archivo `.runtime-data/operational-progress.json`
+  - produccion App Engine actual: Cloud Datastore via `@google-cloud/datastore`
+- biblioteca de proyectos:
+  - desarrollo local: `.runtime-data/published-projects.json` + `.runtime-data/published-project-files/`
+  - produccion App Engine actual: Cloud Datastore + Cloud Storage
 
 ## Proximo trabajo recomendado
 
 1. Agregar reglas formales de altura de instalacion.
 2. Definir control de acceso con Google IAP (actualmente sin autenticacion).
-3. Evaluar logs funcionales y, mas adelante, consultas AI acotadas.
-4. Explorar renderizado vectorial SVG desde pdfjs para calidad perfecta a cualquier zoom.
+3. Refinar administracion de proyectos publicados (archivar, reemplazar PDF y permisos de gerencia).
+4. Refinar la biblioteca de proyectos con filtros, busqueda y publicacion administrada por gerencia.
+5. Agregar actividad historica, snapshots y filtros de inconsistencias.
+6. Evaluar logs funcionales y, mas adelante, consultas AI acotadas.
+7. Explorar renderizado vectorial SVG desde pdfjs para calidad perfecta a cualquier zoom.

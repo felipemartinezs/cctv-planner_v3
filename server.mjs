@@ -2,12 +2,16 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createOperationalProgressMiddleware } from "./operational-progress-server.mjs";
+import { createProjectLibraryMiddleware } from "./project-library-server.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DIST_DIR = join(__dirname, "dist");
 const INDEX_FILE = join(DIST_DIR, "index.html");
 const PORT = Number(process.env.PORT || 8080);
+const operationalProgressMiddleware = createOperationalProgressMiddleware();
+const projectLibraryMiddleware = createProjectLibraryMiddleware();
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -63,26 +67,30 @@ function sendFile(response, filePath) {
 }
 
 const server = createServer((request, response) => {
-  const requestPath = safeFilePath(request.url || "/");
-  if (!requestPath) {
-    response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
-    response.end("Bad request.");
-    return;
-  }
+  projectLibraryMiddleware(request, response, () => {
+    operationalProgressMiddleware(request, response, () => {
+      const requestPath = safeFilePath(request.url || "/");
+      if (!requestPath) {
+        response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        response.end("Bad request.");
+        return;
+      }
 
-  if (existsSync(requestPath) && statSync(requestPath).isFile()) {
-    sendFile(response, requestPath);
-    return;
-  }
+      if (existsSync(requestPath) && statSync(requestPath).isFile()) {
+        sendFile(response, requestPath);
+        return;
+      }
 
-  const hasExtension = extname(requestPath) !== "";
-  if (!hasExtension && existsSync(INDEX_FILE)) {
-    sendFile(response, INDEX_FILE);
-    return;
-  }
+      const hasExtension = extname(requestPath) !== "";
+      if (!hasExtension && existsSync(INDEX_FILE)) {
+        sendFile(response, INDEX_FILE);
+        return;
+      }
 
-  response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-  response.end("Not found.");
+      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Not found.");
+    });
+  });
 });
 
 server.listen(PORT, "0.0.0.0", () => {

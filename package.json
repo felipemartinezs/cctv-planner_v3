@@ -13,6 +13,9 @@
     "node": "24.x.x"
   },
   "dependencies": {
+    "@google-cloud/datastore": "^10.1.0",
+    "@google-cloud/firestore": "^8.3.0",
+    "@google-cloud/storage": "^7.19.0",
     "jszip": "^3.10.1",
     "papaparse": "^5.5.3",
     "pdf-lib": "^1.17.1",

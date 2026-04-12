@@ -5,7 +5,12 @@ import {
   type ReactZoomPanPinchContentRef,
 } from "react-zoom-pan-pinch";
 import { useI18n } from "../../i18n";
-import type { DeviceRecord, PlanData } from "../../types";
+import type {
+  DeviceRecord,
+  OperationalDeviceProgress,
+  OperationalProgressStep,
+  PlanData,
+} from "../../types";
 import { lookupIcon, normalizeIconKey } from "../../lib/icons";
 import {
   DEFAULT_VISUAL_KNOWLEDGE_INDEX,
@@ -30,6 +35,7 @@ const INTERACTIVE_MIN_SCALE = 0.18;
 const MOBILE_MIN_SCALE_RATIO = 0.9;
 const DESKTOP_MIN_SCALE_RATIO = 0.72;
 const MIN_PINCH_DISTANCE = 24;
+const OPERATIONAL_PROGRESS_UNDO_MS = 6000;
 const PTZ_PART_NUMBER = "CIP-QNP6250H";
 const PTZ_OUTDOOR_RULE_KEY = "install.height.ptzOutdoor";
 const PTZ_CEILING_ICON = "CIP-QNP6250H Ceiling";
@@ -40,9 +46,13 @@ const POS_PSA_ICON = "PSA-W4-BAXFA51";
 
 interface PlanSegmentationModalProps {
   buildLabel: string;
+  deviceProgressByKey: Record<string, OperationalDeviceProgress>;
   iconDebugLabel: string;
   open: boolean;
   iconSourceLabel: string;
+  onChangeDeviceProgress: (deviceKey: string, nextProgress: OperationalDeviceProgress) => void;
+  projectProgressScope: string;
+  projectProgressStatusLabel: string;
   plan: PlanData | null;
   records: DeviceRecord[];
   rawIconMap: Map<string, string>;
@@ -81,6 +91,7 @@ interface VisualChoice {
 
 interface InteractiveDevice {
   ambiguityHint: string;
+  cables: number;
   iconDevice: string;
   iconUrl: string;
   id: number;
@@ -101,8 +112,21 @@ interface InteractiveDevice {
 
 interface DevicePreviewState {
   device: InteractiveDevice;
+  maxHeight: number;
   x: number;
   y: number;
+}
+
+interface PendingProgressAction {
+  deviceKey: string;
+  nextValue: boolean;
+  step: OperationalProgressStep;
+}
+
+interface UndoProgressAction {
+  deviceKey: string;
+  message: string;
+  previousProgress: OperationalDeviceProgress;
 }
 
 interface PlanRasterState extends RenderedPlanPreview {}
@@ -114,8 +138,66 @@ interface RasterLike {
   url: string;
 }
 
+interface SegmentProgressSummary {
+  cableRunCount: number;
+  completeCount: number;
+  installedCount: number;
+  notStartedCount: number;
+  partialCount: number;
+  remainingCount: number;
+  switchConnectedCount: number;
+  totalDevices: number;
+}
+
+const EMPTY_OPERATIONAL_PROGRESS: OperationalDeviceProgress = {
+  cableRun: false,
+  installed: false,
+  switchConnected: false,
+  updatedAt: 0,
+};
+
+const OPERATIONAL_PROGRESS_DRAW_ORDER: OperationalProgressStep[] = [
+  "cableRun",
+  "installed",
+  "switchConnected",
+];
+
+const OPERATIONAL_PROGRESS_VISUALS: Record<
+  OperationalProgressStep,
+  { fill: string; glow: string; stroke: string }
+> = {
+  cableRun: {
+    fill: "rgba(255, 205, 72, 0.24)",
+    glow: "rgba(255, 205, 72, 0.18)",
+    stroke: "rgba(255, 205, 72, 0.94)",
+  },
+  installed: {
+    fill: "rgba(95, 176, 255, 0.24)",
+    glow: "rgba(95, 176, 255, 0.18)",
+    stroke: "rgba(95, 176, 255, 0.94)",
+  },
+  switchConnected: {
+    fill: "rgba(88, 214, 141, 0.24)",
+    glow: "rgba(88, 214, 141, 0.18)",
+    stroke: "rgba(88, 214, 141, 0.94)",
+  },
+};
+
+const OPERATIONAL_PROGRESS_COMPLETE_VISUAL = {
+  fill: "rgba(41, 199, 122, 0.98)",
+  glow: "rgba(41, 199, 122, 0.28)",
+  stroke: "rgba(194, 255, 221, 0.96)",
+};
+
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
+}
+
+function percentage(completed: number, total: number) {
+  if (total <= 0) {
+    return 0;
+  }
+  return Math.round((completed / total) * 100);
 }
 
 function buildBasePlanRaster(plan: PlanData): PlanRasterState {
@@ -355,11 +437,78 @@ function drawMarkerPulse(
   ctx.stroke();
 }
 
+function activeOperationalSteps(progress: OperationalDeviceProgress): OperationalProgressStep[] {
+  return OPERATIONAL_PROGRESS_DRAW_ORDER.filter((step) => progress[step]);
+}
+
+function countOperationalProgressSteps(progress: OperationalDeviceProgress) {
+  return activeOperationalSteps(progress).length;
+}
+
+function isOperationalProgressComplete(progress: OperationalDeviceProgress) {
+  return progress.cableRun && progress.installed && progress.switchConnected;
+}
+
+function drawOperationalProgressLines(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  steps: OperationalProgressStep[]
+) {
+  if (steps.length === 0) {
+    return;
+  }
+
+  if (steps.length === OPERATIONAL_PROGRESS_DRAW_ORDER.length) {
+    const dotRadius = 2.75 * RENDER_SCALE;
+    const dotY = y + 6.7 * RENDER_SCALE;
+
+    ctx.beginPath();
+    ctx.arc(x, dotY, dotRadius + 1.25 * RENDER_SCALE, 0, Math.PI * 2);
+    ctx.fillStyle = OPERATIONAL_PROGRESS_COMPLETE_VISUAL.glow;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x, dotY, dotRadius, 0, Math.PI * 2);
+    ctx.fillStyle = OPERATIONAL_PROGRESS_COMPLETE_VISUAL.fill;
+    ctx.fill();
+    ctx.strokeStyle = OPERATIONAL_PROGRESS_COMPLETE_VISUAL.stroke;
+    ctx.lineWidth = 0.85 * RENDER_SCALE;
+    ctx.stroke();
+    return;
+  }
+
+  const lineLength = 5.4 * RENDER_SCALE;
+  const lineWidth = 1.3 * RENDER_SCALE;
+  const lineCenterY = y + 6.7 * RENDER_SCALE;
+  const slotOffsets = [-1.6, 0, 1.6];
+
+  OPERATIONAL_PROGRESS_DRAW_ORDER.forEach((step, index) => {
+    if (!steps.includes(step)) {
+      return;
+    }
+    const visual = OPERATIONAL_PROGRESS_VISUALS[step];
+    const lineY = lineCenterY + slotOffsets[index] * RENDER_SCALE;
+
+    ctx.beginPath();
+    ctx.moveTo(x - lineLength / 2, lineY);
+    ctx.lineTo(x + lineLength / 2, lineY);
+    ctx.strokeStyle = visual.stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = "round";
+    ctx.stroke();
+  });
+}
+
 export function PlanSegmentationModal({
   buildLabel,
+  deviceProgressByKey,
   iconDebugLabel,
   open,
   iconSourceLabel,
+  onChangeDeviceProgress,
+  projectProgressScope,
+  projectProgressStatusLabel,
   plan,
   records,
   rawIconMap,
@@ -383,6 +532,8 @@ export function PlanSegmentationModal({
   }));
   const [controlsExpanded, setControlsExpanded] = useState(() => !detectCompactViewport());
   const [devicePreview, setDevicePreview] = useState<DevicePreviewState | null>(null);
+  const [pendingProgressAction, setPendingProgressAction] = useState<PendingProgressAction | null>(null);
+  const [undoProgressAction, setUndoProgressAction] = useState<UndoProgressAction | null>(null);
   const [planRaster, setPlanRaster] = useState<PlanRasterState | null>(
     () => (plan ? buildBasePlanRaster(plan) : null)
   );
@@ -628,33 +779,6 @@ export function PlanSegmentationModal({
     });
   }, [rawIconMap, records, selectedLabel, selectedPartNumbers, t, visualKnowledgeIndex]);
 
-  const mobileSummary = useMemo(() => {
-    if (!segmentation) {
-      return { label: t("segmentation.summary.plan"), meta: "" };
-    }
-
-    if (selectedPartSummary) {
-      const partLabel =
-        selectedPartNumbers.length === 1
-          ? selectedPartNumbers[0]
-          : t("segmentation.partNumbersSelected", { count: selectedPartNumbers.length });
-      return {
-        label: selectedLabel || t("segmentation.all"),
-        meta: `${selectedPartSummary.plotted}/${selectedPartSummary.total} · ${partLabel}`,
-      };
-    }
-
-    const segmented = segmentation.totals.segmentedPoints;
-    const noSwitch = segmentation.missingSwitchDevices.length;
-    const noPos = groupedEntryCount(segmentation.partNumberUnpositioned);
-    const total = segmented + noSwitch + noPos;
-
-    return {
-      label: selectedLabel || t("segmentation.all"),
-      meta: `${segmented}/${total} ${t("common.devicePlural")}`,
-    };
-  }, [segmentation, selectedLabel, selectedPartNumbers, selectedPartSummary, t]);
-
   const interactiveDevices = useMemo<InteractiveDevice[]>(() => {
     const devicesByKey = new Map<string, InteractiveDevice>();
 
@@ -704,6 +828,7 @@ export function PlanSegmentationModal({
 
       devicesByKey.set(record.key, {
         ambiguityHint: getVisualAmbiguityHint(record.partNumber, visualChoices, t),
+        cables: record.cables,
         iconDevice:
           visualChoices.length > 1
             ? record.partNumber === PTZ_PART_NUMBER
@@ -731,6 +856,198 @@ export function PlanSegmentationModal({
 
     return Array.from(devicesByKey.values());
   }, [noSwitchSuggestionByKey, plan, rawIconMap, records, t, visualKnowledgeIndex]);
+
+  const progressSummary = useMemo(() => {
+    const totalDevices = interactiveDevices.length;
+    const cableEligibleDevices = interactiveDevices.filter((device) => device.cables > 0).length;
+    const cableExpectedUnits = interactiveDevices.reduce(
+      (sum, device) => sum + Math.max(0, device.cables),
+      0
+    );
+
+    let cableCompletedDevices = 0;
+    let cableCompletedUnits = 0;
+    let completeCount = 0;
+    let installedCount = 0;
+    let notStartedCount = 0;
+    let partialCount = 0;
+    let switchConnectedCount = 0;
+    const segmentSummaryByLabel: Record<string, SegmentProgressSummary> = {};
+
+    interactiveDevices.forEach((device) => {
+      const progress = deviceProgressByKey[device.key] ?? EMPTY_OPERATIONAL_PROGRESS;
+      const completedSteps = countOperationalProgressSteps(progress);
+      const deviceSegmentLabel = device.segmentLabel || device.suggestedSegmentLabel;
+      const segmentSummary = deviceSegmentLabel
+        ? (segmentSummaryByLabel[deviceSegmentLabel] ??= {
+            cableRunCount: 0,
+            completeCount: 0,
+            installedCount: 0,
+            notStartedCount: 0,
+            partialCount: 0,
+            remainingCount: 0,
+            switchConnectedCount: 0,
+            totalDevices: 0,
+          })
+        : null;
+
+      if (segmentSummary) {
+        segmentSummary.totalDevices += 1;
+      }
+
+      if (progress.cableRun) {
+        cableCompletedDevices += 1;
+        cableCompletedUnits += Math.max(0, device.cables);
+        if (segmentSummary) {
+          segmentSummary.cableRunCount += 1;
+        }
+      }
+      if (progress.installed) {
+        installedCount += 1;
+        if (segmentSummary) {
+          segmentSummary.installedCount += 1;
+        }
+      }
+      if (progress.switchConnected) {
+        switchConnectedCount += 1;
+        if (segmentSummary) {
+          segmentSummary.switchConnectedCount += 1;
+        }
+      }
+
+      if (completedSteps === 0) {
+        notStartedCount += 1;
+        if (segmentSummary) {
+          segmentSummary.notStartedCount += 1;
+        }
+      } else if (completedSteps === OPERATIONAL_PROGRESS_DRAW_ORDER.length) {
+        completeCount += 1;
+        if (segmentSummary) {
+          segmentSummary.completeCount += 1;
+        }
+      } else {
+        partialCount += 1;
+        if (segmentSummary) {
+          segmentSummary.partialCount += 1;
+        }
+      }
+    });
+
+    const overallExpectedMilestones = cableEligibleDevices + totalDevices + totalDevices;
+    const overallCompletedMilestones =
+      cableCompletedDevices + installedCount + switchConnectedCount;
+    const remainingCount = totalDevices - completeCount;
+
+    Object.values(segmentSummaryByLabel).forEach((segmentSummary) => {
+      segmentSummary.remainingCount = segmentSummary.totalDevices - segmentSummary.completeCount;
+    });
+
+    return {
+      cableCompletedDevices,
+      cableCompletedUnits,
+      cableEligibleDevices,
+      cableExpectedUnits,
+      cablePercent: percentage(cableCompletedUnits, cableExpectedUnits),
+      completeCount,
+      installedCount,
+      installedPercent: percentage(installedCount, totalDevices),
+      notStartedCount,
+      overallPercent: percentage(overallCompletedMilestones, overallExpectedMilestones),
+      partialCount,
+      remainingCount,
+      segmentSummaryByLabel,
+      switchConnectedCount,
+      switchPercent: percentage(switchConnectedCount, totalDevices),
+      totalDevices,
+    };
+  }, [deviceProgressByKey, interactiveDevices]);
+
+  const progressStepDefinitions = useMemo(
+    () => [
+      {
+        accentClass: "segmentation-progress-action--cable",
+        compactLabel: t("segmentation.progress.cableCompact"),
+        key: "cableRun" as const,
+        label: t("segmentation.progress.cable"),
+      },
+      {
+        accentClass: "segmentation-progress-action--installed",
+        compactLabel: t("segmentation.progress.installedCompact"),
+        key: "installed" as const,
+        label: t("segmentation.progress.installed"),
+      },
+      {
+        accentClass: "segmentation-progress-action--switch",
+        compactLabel: t("segmentation.progress.switchCompact"),
+        key: "switchConnected" as const,
+        label: t("segmentation.progress.switch"),
+      },
+    ],
+    [t]
+  );
+
+  const progressLegendDefinitions = useMemo(
+    () => [
+      ...progressStepDefinitions,
+      {
+        accentClass: "segmentation-progress-action--complete",
+        key: "complete",
+        label: t("segmentation.progress.complete"),
+      },
+    ],
+    [progressStepDefinitions, t]
+  );
+
+  const mobileSummary = useMemo(() => {
+    if (!segmentation) {
+      return { label: t("segmentation.summary.plan"), meta: "" };
+    }
+
+    if (selectedPartSummary) {
+      const partLabel =
+        selectedPartNumbers.length === 1
+          ? selectedPartNumbers[0]
+          : t("segmentation.partNumbersSelected", { count: selectedPartNumbers.length });
+      return {
+        label: selectedLabel || t("segmentation.all"),
+        meta: `${selectedPartSummary.plotted}/${selectedPartSummary.total} · ${partLabel}${
+          projectProgressScope
+            ? ` · ${progressSummary.overallPercent}% ${t("segmentation.progress.overall").toLowerCase()}`
+            : ""
+        }`,
+      };
+    }
+
+    const segmented = segmentation.totals.segmentedPoints;
+    const noSwitch = segmentation.missingSwitchDevices.length;
+    const noPos = groupedEntryCount(segmentation.partNumberUnpositioned);
+    const total = segmented + noSwitch + noPos;
+
+    return {
+      label: selectedLabel || t("segmentation.all"),
+      meta: `${segmented}/${total} ${t("common.devicePlural")}${
+        projectProgressScope
+          ? ` · ${progressSummary.overallPercent}% ${t("segmentation.progress.overall").toLowerCase()}`
+          : ""
+      }`,
+    };
+  }, [
+    progressSummary.overallPercent,
+    projectProgressScope,
+    segmentation,
+    selectedLabel,
+    selectedPartNumbers,
+    selectedPartSummary,
+    t,
+  ]);
+
+  const selectedSegmentProgressSummary = useMemo(() => {
+    if (!selectedLabel) {
+      return null;
+    }
+
+    return progressSummary.segmentSummaryByLabel[selectedLabel] ?? null;
+  }, [progressSummary.segmentSummaryByLabel, selectedLabel]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -762,6 +1079,8 @@ export function PlanSegmentationModal({
       setDevicePreview(null);
       setIsTransformInteracting(false);
       setIsTransformReady(false);
+      setPendingProgressAction(null);
+      setUndoProgressAction(null);
     }
   }, [open]);
 
@@ -769,6 +1088,8 @@ export function PlanSegmentationModal({
     setIsTransformReady(false);
     setIsTransformInteracting(false);
     setDevicePreview(null);
+    setPendingProgressAction(null);
+    setUndoProgressAction(null);
     commitXform({ x: 0, y: 0, s: 1 });
   }, [plan?.blobUrl]);
 
@@ -848,6 +1169,31 @@ export function PlanSegmentationModal({
         : null;
     });
   }, [interactiveDevices]);
+
+  useEffect(() => {
+    if (!pendingProgressAction) {
+      return;
+    }
+
+    const deviceStillVisible =
+      devicePreview?.device.key === pendingProgressAction.deviceKey ||
+      interactiveDevices.some((device) => device.key === pendingProgressAction.deviceKey);
+    if (!deviceStillVisible) {
+      setPendingProgressAction(null);
+    }
+  }, [devicePreview?.device.key, interactiveDevices, pendingProgressAction]);
+
+  useEffect(() => {
+    if (!undoProgressAction) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setUndoProgressAction(null);
+    }, OPERATIONAL_PROGRESS_UNDO_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [undoProgressAction]);
 
   useEffect(() => {
     if (!open || selectedPartVisuals.length === 0) {
@@ -1242,7 +1588,7 @@ export function PlanSegmentationModal({
 
   // Dibujar capa de part numbers — círculos por dispositivo
   useEffect(() => {
-    if (!pdfReady || !planRaster || !partNumCanvasRef.current) {
+    if (!pdfReady || !planRaster || !partNumCanvasRef.current || !segmentation) {
       return;
     }
     const canvas = partNumCanvasRef.current;
@@ -1252,21 +1598,54 @@ export function PlanSegmentationModal({
     }
     canvas.width = planRaster.width;
     canvas.height = planRaster.height;
-    const allowAnimatedMarkers = !isMobileViewport;
+    const allowAnimatedMarkers = !isMobileViewport && selectedPartNumbers.length > 0;
     let frameId = 0;
 
     const draw = (timeMs: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (selectedPartNumbers.length === 0 || !segmentation) {
-        return;
-      }
 
       const seg = segmentation;
       const W = canvas.width;
       const H = canvas.height;
       const R = 7 * RENDER_SCALE;
       const FONT_SIZE = 8 * RENDER_SCALE;
+
+      interactiveDevices.forEach((device) => {
+        const progress = deviceProgressByKey[device.key] ?? EMPTY_OPERATIONAL_PROGRESS;
+        const steps = activeOperationalSteps(progress);
+        const deviceSegment = device.segmentLabel || device.suggestedSegmentLabel;
+        if (steps.length === 0) {
+          return;
+        }
+        const x = (device.x / seg.width) * W;
+        const y = (device.y / seg.height) * H;
+        const isInSelectedSegment = !selectedLabel || deviceSegment === selectedLabel;
+        ctx.save();
+        if (!isInSelectedSegment) {
+          ctx.globalAlpha = 0.34;
+        }
+        drawOperationalProgressLines(
+          ctx,
+          x,
+          y,
+          isOperationalProgressComplete(progress) ? OPERATIONAL_PROGRESS_DRAW_ORDER : steps
+        );
+        ctx.restore();
+      });
+
+      if (selectedPartNumbers.length === 0) {
+        if (devicePreview) {
+          const x = (devicePreview.device.x / seg.width) * W;
+          const y = (devicePreview.device.y / seg.height) * H;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.arc(x, y, R + 4 * RENDER_SCALE, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(255, 198, 92, 0.96)";
+          ctx.lineWidth = 2 * RENDER_SCALE;
+          ctx.stroke();
+        }
+        return;
+      }
 
       // Grupo 1: dispositivos con switch asignado — círculo azul sólido
       ctx.setLineDash([]);
@@ -1364,6 +1743,8 @@ export function PlanSegmentationModal({
     };
   }, [
     devicePreview,
+    deviceProgressByKey,
+    interactiveDevices,
     isMobileViewport,
     pdfReady,
     planRaster?.height,
@@ -1621,15 +2002,27 @@ export function PlanSegmentationModal({
       return;
     }
 
+    if (isMobileViewport) {
+      setControlsExpanded(false);
+    }
+    setPendingProgressAction(null);
+
+    const margin = 12;
     const cardWidth = 272;
-    const cardHeight = 176;
+    const preferredHeight = isMobileViewport ? 520 : 440;
     const relativeX = clientX - rect.left;
     const relativeY = clientY - rect.top;
-    const x = clamp(relativeX + 12, 12, Math.max(12, rect.width - cardWidth - 12));
-    const y = clamp(relativeY - cardHeight - 12, 12, Math.max(12, rect.height - cardHeight - 12));
+    const maxHeight = clamp(rect.height - margin * 2, 220, preferredHeight);
+    const spaceBelow = rect.height - relativeY - margin;
+    const spaceAbove = relativeY - margin;
+    const openBelow = spaceBelow >= Math.min(280, maxHeight * 0.65) || spaceBelow >= spaceAbove;
+    const x = clamp(relativeX + 12, margin, Math.max(margin, rect.width - cardWidth - margin));
+    const desiredY = openBelow ? relativeY + 12 : relativeY - maxHeight - 12;
+    const y = clamp(desiredY, margin, Math.max(margin, rect.height - maxHeight - margin));
 
     setDevicePreview({
       device,
+      maxHeight,
       x,
       y,
     });
@@ -1650,11 +2043,72 @@ export function PlanSegmentationModal({
     const device = findDeviceNearStagePoint(stageX, stageY);
 
     if (!device) {
+      setPendingProgressAction(null);
       setDevicePreview(null);
       return;
     }
 
     openDevicePreview(device, clientX, clientY);
+  }
+
+  function progressForDevice(deviceKey: string) {
+    return deviceProgressByKey[deviceKey] ?? EMPTY_OPERATIONAL_PROGRESS;
+  }
+
+  function completedStepsFor(progress: OperationalDeviceProgress) {
+    return [progress.cableRun, progress.installed, progress.switchConnected].filter(Boolean).length;
+  }
+
+  function commitProgress(deviceKey: string, nextProgress: OperationalDeviceProgress, message: string) {
+    const previousProgress = progressForDevice(deviceKey);
+    onChangeDeviceProgress(deviceKey, {
+      ...nextProgress,
+      updatedAt: Date.now(),
+    });
+    setUndoProgressAction({
+      deviceKey,
+      message,
+      previousProgress,
+    });
+    setPendingProgressAction(null);
+  }
+
+  function toggleProgressStep(deviceKey: string, step: OperationalProgressStep, label: string) {
+    const currentProgress = progressForDevice(deviceKey);
+    const nextValue = !currentProgress[step];
+
+    if (
+      pendingProgressAction?.deviceKey === deviceKey &&
+      pendingProgressAction.step === step &&
+      pendingProgressAction.nextValue === nextValue
+    ) {
+      commitProgress(
+        deviceKey,
+        {
+          ...currentProgress,
+          [step]: nextValue,
+        },
+        nextValue
+          ? t("segmentation.progress.saved", { step: label })
+          : t("segmentation.progress.cleared", { step: label })
+      );
+      return;
+    }
+
+    setPendingProgressAction({
+      deviceKey,
+      nextValue,
+      step,
+    });
+  }
+
+  function undoLastProgressAction() {
+    if (!undoProgressAction) {
+      return;
+    }
+    onChangeDeviceProgress(undoProgressAction.deviceKey, undoProgressAction.previousProgress);
+    setUndoProgressAction(null);
+    setPendingProgressAction(null);
   }
 
   function handlePartNumberSelect(partNumber: string) {
@@ -1675,6 +2129,11 @@ export function PlanSegmentationModal({
       current.filter((value) => value !== partNumber)
     );
   }
+
+  const previewProgress = devicePreview
+    ? progressForDevice(devicePreview.device.key)
+    : EMPTY_OPERATIONAL_PROGRESS;
+  const previewCompletedSteps = completedStepsFor(previewProgress);
 
   if (!open || !plan) {
     return null;
@@ -1936,16 +2395,22 @@ export function PlanSegmentationModal({
 
           {devicePreview && (
             <div
-              className="segmentation-device-preview"
+              className={`segmentation-device-preview${
+                isMobileViewport ? " segmentation-device-preview--sheet" : ""
+              }`}
               style={{
-                left: devicePreview.x,
-                top: devicePreview.y,
+                left: isMobileViewport ? undefined : devicePreview.x,
+                maxHeight: isMobileViewport ? undefined : devicePreview.maxHeight,
+                top: isMobileViewport ? undefined : devicePreview.y,
               }}
             >
               <button
                 type="button"
                 className="segmentation-device-preview__close"
-                onClick={() => setDevicePreview(null)}
+                onClick={() => {
+                  setPendingProgressAction(null);
+                  setDevicePreview(null);
+                }}
                 aria-label={t("segmentation.closeDevicePreview", { id: devicePreview.device.id })}
               >
                 ×
@@ -2033,6 +2498,87 @@ export function PlanSegmentationModal({
                   </span>
                 )}
               </div>
+              <div className="segmentation-device-progress">
+                <div className="segmentation-device-progress__header">
+                  <div>
+                    <span className="segmentation-device-progress__eyebrow">
+                      {t("segmentation.progress.title")}
+                    </span>
+                    <strong>
+                      {previewCompletedSteps}/3 {t("segmentation.progress.stepsCompleted")}
+                    </strong>
+                  </div>
+                  <span className="segmentation-device-progress__status">
+                    {previewProgress.updatedAt
+                      ? t("segmentation.progress.updatedAt", {
+                          time: new Date(previewProgress.updatedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }),
+                        })
+                      : t("segmentation.progress.noProgress")}
+                  </span>
+                </div>
+                <div className="segmentation-device-progress__actions">
+                  {progressStepDefinitions.map((definition) => {
+                    const currentValue = previewProgress[definition.key];
+                    const isConfirming =
+                      pendingProgressAction?.deviceKey === devicePreview.device.key &&
+                      pendingProgressAction.step === definition.key;
+                    const nextValue = isConfirming ? pendingProgressAction.nextValue : !currentValue;
+                    return (
+                      <button
+                        key={definition.key}
+                        type="button"
+                        className={`segmentation-progress-action ${definition.accentClass}${
+                          currentValue ? " segmentation-progress-action--done" : ""
+                        }${isConfirming ? " segmentation-progress-action--confirm" : ""}`}
+                        disabled={!projectProgressScope}
+                        onClick={() =>
+                          toggleProgressStep(
+                            devicePreview.device.key,
+                            definition.key,
+                            definition.label
+                          )
+                        }
+                      >
+                        <span className="segmentation-progress-action__swatch" aria-hidden="true" />
+                        <span className="segmentation-progress-action__eyebrow">
+                          {isConfirming
+                            ? nextValue
+                              ? t("segmentation.progress.confirmShort")
+                              : t("segmentation.progress.removeShort")
+                            : currentValue
+                              ? t("segmentation.progress.marked")
+                              : t("segmentation.progress.pending")}
+                        </span>
+                        <strong>{definition.compactLabel}</strong>
+                        <span className="segmentation-progress-action__hint">
+                          {isConfirming
+                            ? t("segmentation.progress.confirmHint")
+                            : currentValue
+                              ? t("segmentation.progress.clearHint")
+                              : t("segmentation.progress.markHint")}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {pendingProgressAction?.deviceKey === devicePreview.device.key && (
+                  <p className="segmentation-device-progress__confirm-note">
+                    {t("segmentation.progress.confirmNote")}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {undoProgressAction && (
+            <div className="segmentation-progress-toast" role="status" aria-live="polite">
+              <span>{undoProgressAction.message}</span>
+              <button type="button" onClick={undoLastProgressAction}>
+                {t("segmentation.progress.undo")}
+              </button>
             </div>
           )}
         </div>
@@ -2041,7 +2587,9 @@ export function PlanSegmentationModal({
           <div
             className={`segmentation-controls${
               isMobileViewport ? " segmentation-controls--mobile" : ""
-            }${controlsExpanded ? " segmentation-controls--open" : ""}`}
+            }${controlsExpanded ? " segmentation-controls--open" : " segmentation-controls--collapsed"}${
+              isMobileViewport && devicePreview ? " segmentation-controls--hidden" : ""
+            }`}
           >
             <div className="segmentation-controls__summary">
               <div className="segmentation-controls__summary-copy">
@@ -2049,7 +2597,21 @@ export function PlanSegmentationModal({
                   {mobileSummary.label}
                 </span>
                 <strong>{mobileSummary.meta}</strong>
+                {projectProgressScope && progressSummary.totalDevices > 0 && (
+                  <span className="segmentation-controls__summary-progress">
+                    {t("segmentation.progress.overall")}: {progressSummary.overallPercent}% · {t("segmentation.progress.cable")}: {progressSummary.cablePercent}% · {t("segmentation.progress.installed")}: {progressSummary.installedPercent}% · {t("segmentation.progress.switch")}: {progressSummary.switchPercent}%
+                  </span>
+                )}
               </div>
+              {!isMobileViewport && (
+                <button
+                  type="button"
+                  className="segment-toggle-pill"
+                  onClick={() => setControlsExpanded((current) => !current)}
+                >
+                  {controlsExpanded ? t("common.hide") : t("common.openPanel")}
+                </button>
+              )}
               {isMobileViewport && (
                 <button
                   type="button"
@@ -2062,6 +2624,86 @@ export function PlanSegmentationModal({
             </div>
 
             <div className="segmentation-controls__body">
+              {projectProgressScope && progressSummary.totalDevices > 0 && (
+                <div className="segmentation-progress-summary">
+                  <div className="segmentation-progress-summary__top">
+                    <div>
+                      <span className="segmentation-progress-summary__eyebrow">
+                        {t("segmentation.progress.title")}
+                      </span>
+                      <strong>{progressSummary.overallPercent}%</strong>
+                    </div>
+                    <span className="segmentation-progress-summary__scope">
+                      {projectProgressStatusLabel}
+                    </span>
+                  </div>
+                  <div className="segmentation-progress-summary__legend">
+                    <span className="segmentation-progress-summary__legend-label">
+                      {t("segmentation.onPlan")}
+                    </span>
+                    {progressLegendDefinitions.map((definition) => (
+                      <span
+                        key={definition.key}
+                        className={`segmentation-progress-summary__legend-item ${definition.accentClass}`}
+                      >
+                        <span className="segmentation-progress-summary__legend-dot" />
+                        {definition.label}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="segmentation-progress-summary__grid">
+                    <div className="segmentation-progress-summary__card segmentation-progress-summary__card--cable">
+                      <span>{t("segmentation.progress.cable")}</span>
+                      <strong>{progressSummary.cablePercent}%</strong>
+                      <small>
+                        {progressSummary.cableCompletedUnits}/{progressSummary.cableExpectedUnits} {t("common.cablePlural")}
+                      </small>
+                    </div>
+                    <div className="segmentation-progress-summary__card segmentation-progress-summary__card--installed">
+                      <span>{t("segmentation.progress.installed")}</span>
+                      <strong>{progressSummary.installedPercent}%</strong>
+                      <small>
+                        {progressSummary.installedCount}/{progressSummary.totalDevices} {t("common.devicePlural")}
+                      </small>
+                    </div>
+                    <div className="segmentation-progress-summary__card segmentation-progress-summary__card--switch">
+                      <span>{t("segmentation.progress.switch")}</span>
+                      <strong>{progressSummary.switchPercent}%</strong>
+                      <small>
+                        {progressSummary.switchConnectedCount}/{progressSummary.totalDevices} {t("common.devicePlural")}
+                      </small>
+                    </div>
+                  </div>
+                  <div className="segmentation-progress-summary__status-grid">
+                    <div className="segmentation-progress-summary__status-card segmentation-progress-summary__status-card--complete">
+                      <span>{t("segmentation.progress.complete")}</span>
+                      <strong>{progressSummary.completeCount}</strong>
+                      <small>
+                        {t("segmentation.progress.ofTotalDevices", {
+                          count: progressSummary.completeCount,
+                          total: progressSummary.totalDevices,
+                        })}
+                      </small>
+                    </div>
+                    <div className="segmentation-progress-summary__status-card segmentation-progress-summary__status-card--remaining">
+                      <span>{t("segmentation.progress.remaining")}</span>
+                      <strong>{progressSummary.remainingCount}</strong>
+                      <small>{t("segmentation.progress.remainingHint")}</small>
+                    </div>
+                    <div className="segmentation-progress-summary__status-card segmentation-progress-summary__status-card--partial">
+                      <span>{t("segmentation.progress.partial")}</span>
+                      <strong>{progressSummary.partialCount}</strong>
+                      <small>{t("segmentation.progress.partialHint")}</small>
+                    </div>
+                    <div className="segmentation-progress-summary__status-card segmentation-progress-summary__status-card--pending">
+                      <span>{t("segmentation.progress.notStarted")}</span>
+                      <strong>{progressSummary.notStartedCount}</strong>
+                      <small>{t("segmentation.progress.notStartedHint")}</small>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div
                 style={{
                   display: "flex",
@@ -2165,6 +2807,29 @@ export function PlanSegmentationModal({
                       <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.38)", fontWeight: 400 }}>
                         {seg.switches.join(" · ")}
                       </span>
+                    )}
+                    {selectedSegmentProgressSummary && (
+                      <>
+                        <span className="segmentation-segment-progress-pill segmentation-segment-progress-pill--complete">
+                          <strong>
+                            {selectedSegmentProgressSummary.completeCount}/
+                            {selectedSegmentProgressSummary.totalDevices}
+                          </strong>
+                          <small>{t("segmentation.progress.complete")}</small>
+                        </span>
+                        <span className="segmentation-segment-progress-pill segmentation-segment-progress-pill--remaining">
+                          <strong>{selectedSegmentProgressSummary.remainingCount}</strong>
+                          <small>{t("segmentation.progress.remaining")}</small>
+                        </span>
+                        <span className="segmentation-segment-progress-pill segmentation-segment-progress-pill--partial">
+                          <strong>{selectedSegmentProgressSummary.partialCount}</strong>
+                          <small>{t("segmentation.progress.partial")}</small>
+                        </span>
+                        <span className="segmentation-segment-progress-pill segmentation-segment-progress-pill--pending">
+                          <strong>{selectedSegmentProgressSummary.notStartedCount}</strong>
+                          <small>{t("segmentation.progress.notStarted")}</small>
+                        </span>
+                      </>
                     )}
                   </div>
                 );

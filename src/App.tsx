@@ -10,8 +10,28 @@ import {
 } from "./lib/visual-knowledge";
 import { loadIconsFromDirectory, loadIconsFromManifest, loadIconsFromZip, mergeIconMaps } from "./lib/icons";
 import { loadPlan } from "./lib/pdf";
+import {
+  fetchOperationalProject,
+  syncOperationalDeviceProgress,
+  syncOperationalProjectSnapshot,
+} from "./lib/operational-progress-api";
+import {
+  createPublishedProject,
+  downloadPublishedProjectPdf,
+  listPublishedProjects,
+  uploadPublishedProjectPdf,
+} from "./lib/project-library-api";
 import { useI18n } from "./i18n";
-import type { DeviceCategory, DeviceRecord, ImportBundle, PlanData } from "./types";
+import type {
+  DeviceCategory,
+  DeviceRecord,
+  ImportBundle,
+  OperationalDeviceProgress,
+  OperationalProjectMeta,
+  PlanData,
+  PublishedProjectDraft,
+  PublishedProjectRecord,
+} from "./types";
 import {
   VISUAL_KNOWLEDGE_SEEDS,
   type NamePatternKnowledgeRule,
@@ -38,6 +58,7 @@ import { wasDeviceNameRepaired } from "./lib/device-name-repair";
 type TaskState = "pending" | "active" | "done";
 
 const STORAGE_KEY = "cctv-field-task-statuses-v1";
+const OPERATIONAL_PROGRESS_STORAGE_KEY = "cctv-operational-device-progress-v1";
 const KNOWLEDGE_OVERRIDES_STORAGE_KEY = "cctv-visual-knowledge-overrides-v1";
 const KNOWLEDGE_ENABLED_STORAGE_KEY = "cctv-visual-knowledge-enabled-v1";
 const SHOW_FIELD_TASK_ICONS = false;
@@ -47,6 +68,14 @@ const EMPTY_MANUAL_VISUAL_KNOWLEDGE_SEED: VisualKnowledgeSeed = {
   partNumberProfiles: [],
   namePatternRules: [],
 };
+const EMPTY_OPERATIONAL_PROGRESS: OperationalDeviceProgress = {
+  cableRun: false,
+  installed: false,
+  switchConnected: false,
+  updatedAt: 0,
+};
+
+type OperationalSyncMode = "local" | "syncing" | "shared";
 
 function revokePlanResources(plan: PlanData | null) {
   if (!plan) {
@@ -89,6 +118,45 @@ function formatDateTime(value: number): string {
   });
 }
 
+function slugifyProjectValue(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 72);
+}
+
+function normalizeOperationalProgress(raw: unknown): OperationalDeviceProgress | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const input = raw as Partial<OperationalDeviceProgress>;
+  return {
+    cableRun: Boolean(input.cableRun),
+    installed: Boolean(input.installed),
+    switchConnected: Boolean(input.switchConnected),
+    updatedAt:
+      typeof input.updatedAt === "number" && Number.isFinite(input.updatedAt)
+        ? input.updatedAt
+        : 0,
+  };
+}
+
+function buildProjectProgressScope(
+  file: File,
+  title: string,
+  markerCount: number,
+  fingerprint: string
+) {
+  const base = slugifyProjectValue(title || file.name) || "project";
+  const uniqueToken =
+    fingerprint ||
+    [file.size, file.lastModified, markerCount].filter(Boolean).join("-") ||
+    "local";
+  return `${base}__${uniqueToken}`;
+}
+
 async function fingerprintFile(file: File): Promise<string> {
   if (!window.crypto || !window.crypto.subtle) {
     return "";
@@ -98,6 +166,81 @@ async function fingerprintFile(file: File): Promise<string> {
     .map((value) => value.toString(16).padStart(2, "0"))
     .join("")
     .slice(0, 16);
+}
+
+async function fingerprintBytes(bytes: Uint8Array): Promise<string> {
+  if (!window.crypto || !window.crypto.subtle) {
+    return "";
+  }
+  const strictBuffer = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength
+  ) as ArrayBuffer;
+  const digest = await window.crypto.subtle.digest("SHA-256", strictBuffer);
+  return Array.from(new Uint8Array(digest))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 16);
+}
+
+function bytesToStrictArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
+function inferPublishedProjectDraft(fileName: string, preferredTitle = ""): PublishedProjectDraft {
+  const trimmedFileName = fileName.trim();
+  const fileBaseName = trimmedFileName.replace(/\.pdf$/i, "").trim();
+  const titleCandidate = preferredTitle.trim();
+  const sourceTitle = titleCandidate || fileBaseName;
+  const retailMatch = sourceTitle.match(/walmart retail-([^]+?)-cctv/i);
+  const extractedLabel = (retailMatch?.[1] || sourceTitle)
+    .replace(/^siteowl[-_\s]*multi[-_\s]*plan[-_\s]*report[-_\s]*/i, "")
+    .trim();
+
+  const storeMatch = extractedLabel.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+  const storeCode = storeMatch?.[1]?.trim() || "";
+  const locationLabel = (storeMatch?.[2] || extractedLabel)
+    .replace(/\s+/g, " ")
+    .trim();
+  const locationMatch = locationLabel.match(/^(.+?)(?:,\s*([A-Z]{2}))?$/);
+  const city = locationMatch?.[1]?.trim() || locationLabel;
+  const region = locationMatch?.[2]?.trim() || "";
+  const normalizedTitle = storeCode
+    ? `${storeCode} ${city}${region ? `, ${region}` : ""}`
+    : locationLabel || fileBaseName;
+
+  return {
+    city,
+    region,
+    sourcePdfName: trimmedFileName || "project-plan.pdf",
+    storeCode,
+    title: normalizedTitle,
+  };
+}
+
+function mergeOperationalProgressMaps(
+  base: Record<string, OperationalDeviceProgress>,
+  incoming: Record<string, OperationalDeviceProgress>
+) {
+  const merged = { ...base };
+
+  Object.keys(incoming).forEach((deviceKey) => {
+    const nextValue = normalizeOperationalProgress(incoming[deviceKey]);
+    if (!nextValue) {
+      return;
+    }
+
+    const currentValue = normalizeOperationalProgress(merged[deviceKey]);
+    if (!currentValue || nextValue.updatedAt >= currentValue.updatedAt) {
+      if (nextValue.cableRun || nextValue.installed || nextValue.switchConnected) {
+        merged[deviceKey] = nextValue;
+      } else {
+        delete merged[deviceKey];
+      }
+    }
+  });
+
+  return merged;
 }
 
 interface IconDebugInfo {
@@ -418,6 +561,15 @@ export default function App() {
   const [sourceRecords, setSourceRecords] = useState<DeviceRecord[]>([]);
   const [insightContext, setInsightContext] = useState<ProjectInsights["context"] | null>(null);
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({});
+  const [activeProjectScope, setActiveProjectScope] = useState("");
+  const [activeOperationalProjectMeta, setActiveOperationalProjectMeta] =
+    useState<OperationalProjectMeta | null>(null);
+  const [operationalProgressStore, setOperationalProgressStore] = useState<
+    Record<string, Record<string, OperationalDeviceProgress>>
+  >({});
+  const [operationalSyncMode, setOperationalSyncMode] = useState<OperationalSyncMode>("local");
+  const [publishedProjects, setPublishedProjects] = useState<PublishedProjectRecord[]>([]);
+  const [isLibraryBusy, setIsLibraryBusy] = useState(false);
   const [selectedKey, setSelectedKey] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TaskState>("all");
@@ -441,6 +593,7 @@ export default function App() {
   const [manualKnowledgeEnabled, setManualKnowledgeEnabled] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const iconFolderInputRef = useRef<HTMLInputElement | null>(null);
+  const operationalProgressStoreRef = useRef(operationalProgressStore);
   const deferredSearch = useDeferredValue(search);
   const statusText = useMemo(
     () => (status.kind === "raw" ? status.text : t(status.key, status.vars)),
@@ -519,6 +672,22 @@ export default function App() {
       effectiveVisualKnowledgeIndex
     );
   }, [effectiveVisualKnowledgeIndex, insightContext, resolvedRecords, segmentation]);
+  const activeOperationalProgress = useMemo(
+    () => (activeProjectScope ? operationalProgressStore[activeProjectScope] ?? {} : {}),
+    [activeProjectScope, operationalProgressStore]
+  );
+  const projectProgressStatusLabel = useMemo(() => {
+    if (!activeProjectScope) {
+      return t("segmentation.progress.localProject");
+    }
+    if (operationalSyncMode === "shared") {
+      return t("segmentation.progress.sharedProject");
+    }
+    if (operationalSyncMode === "syncing") {
+      return t("segmentation.progress.syncingProject");
+    }
+    return t("segmentation.progress.localProject");
+  }, [activeProjectScope, operationalSyncMode, t]);
   const baseKnowledgeCoverage = useMemo(
     () => buildVisualKnowledgeCoverage(baseResolvedRecords, baseVisualKnowledgeIndex),
     [baseResolvedRecords, baseVisualKnowledgeIndex]
@@ -573,6 +742,15 @@ export default function App() {
       })
       .slice(0, 10);
   }, [baseVisualKnowledgeIndex, sourceRecords]);
+
+  async function refreshPublishedProjectLibrary() {
+    try {
+      const projects = await listPublishedProjects(24);
+      setPublishedProjects(projects);
+    } catch (error) {
+      console.warn("[project-library] Could not refresh published projects:", error);
+    }
+  }
 
   useEffect(() => {
     if (!iconFolderInputRef.current) {
@@ -632,6 +810,124 @@ export default function App() {
   }, [taskStates]);
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(OPERATIONAL_PROGRESS_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw) as Record<string, Record<string, unknown>>;
+      const next: Record<string, Record<string, OperationalDeviceProgress>> = {};
+      Object.keys(parsed).forEach((projectScope) => {
+        const scoped = parsed[projectScope];
+        if (!scoped || typeof scoped !== "object") {
+          return;
+        }
+        const scopedProgress: Record<string, OperationalDeviceProgress> = {};
+        Object.keys(scoped).forEach((deviceKey) => {
+          const normalized = normalizeOperationalProgress(scoped[deviceKey]);
+          if (
+            normalized &&
+            (normalized.cableRun || normalized.installed || normalized.switchConnected)
+          ) {
+            scopedProgress[deviceKey] = normalized;
+          }
+        });
+        if (Object.keys(scopedProgress).length > 0) {
+          next[projectScope] = scopedProgress;
+        }
+      });
+      setOperationalProgressStore(next);
+    } catch {
+      // ignore malformed operational progress state
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      OPERATIONAL_PROGRESS_STORAGE_KEY,
+      JSON.stringify(operationalProgressStore)
+    );
+  }, [operationalProgressStore]);
+
+  useEffect(() => {
+    operationalProgressStoreRef.current = operationalProgressStore;
+  }, [operationalProgressStore]);
+
+  useEffect(() => {
+    void refreshPublishedProjectLibrary();
+  }, []);
+
+  useEffect(() => {
+    if (!activeOperationalProjectMeta) {
+      setOperationalSyncMode("local");
+      return;
+    }
+
+    let live = true;
+    let hasSeededLocalSnapshot = false;
+
+    const pullRemoteProject = async () => {
+      try {
+        const remoteProject = await fetchOperationalProject(activeOperationalProjectMeta.scope);
+        if (!live) {
+          return;
+        }
+
+        let nextRemoteProgress = remoteProject.deviceProgressByKey;
+        const localSnapshot =
+          operationalProgressStoreRef.current[activeOperationalProjectMeta.scope] ?? {};
+
+        if (!hasSeededLocalSnapshot && Object.keys(localSnapshot).length > 0) {
+          hasSeededLocalSnapshot = true;
+          const seededProject = await syncOperationalProjectSnapshot(
+            activeOperationalProjectMeta.scope,
+            activeOperationalProjectMeta,
+            localSnapshot
+          );
+          if (!live) {
+            return;
+          }
+          nextRemoteProgress = seededProject.deviceProgressByKey;
+        }
+
+        setOperationalProgressStore((current) => {
+          const currentProject = current[activeOperationalProjectMeta.scope] ?? {};
+          const mergedProject = mergeOperationalProgressMaps(currentProject, nextRemoteProgress);
+          if (Object.keys(mergedProject).length === 0) {
+            if (!(activeOperationalProjectMeta.scope in current)) {
+              return current;
+            }
+            const { [activeOperationalProjectMeta.scope]: _removed, ...rest } = current;
+            return rest;
+          }
+          return {
+            ...current,
+            [activeOperationalProjectMeta.scope]: mergedProject,
+          };
+        });
+        setOperationalSyncMode("shared");
+      } catch (error) {
+        if (!live) {
+          return;
+        }
+        console.warn("[operational-progress] Remote project sync unavailable, using local cache:", error);
+        setOperationalSyncMode("local");
+      }
+    };
+
+    setOperationalSyncMode("syncing");
+    void pullRemoteProject();
+    const intervalId = window.setInterval(() => {
+      void pullRemoteProject();
+    }, 12000);
+
+    return () => {
+      live = false;
+      window.clearInterval(intervalId);
+    };
+  }, [activeOperationalProjectMeta]);
+
+  useEffect(() => {
     if (!showKnowledgeStudio) {
       return;
     }
@@ -679,12 +975,69 @@ export default function App() {
     };
   }, [plan]);
 
-  async function handleProcess() {
-    if (!planFile) {
-      setStatus({ kind: "translated", key: "status.missingPlan" });
+  function setOperationalDeviceProgress(deviceKey: string, nextProgress: OperationalDeviceProgress) {
+    if (!activeProjectScope || !deviceKey) {
       return;
     }
 
+    const normalized = {
+      cableRun: Boolean(nextProgress.cableRun),
+      installed: Boolean(nextProgress.installed),
+      switchConnected: Boolean(nextProgress.switchConnected),
+      updatedAt:
+        typeof nextProgress.updatedAt === "number" && Number.isFinite(nextProgress.updatedAt)
+          ? nextProgress.updatedAt
+          : Date.now(),
+    };
+
+    setOperationalProgressStore((current) => {
+      const currentProject = current[activeProjectScope] ?? {};
+      const nextProject = { ...currentProject };
+
+      if (normalized.cableRun || normalized.installed || normalized.switchConnected) {
+        nextProject[deviceKey] = normalized;
+      } else {
+        delete nextProject[deviceKey];
+      }
+
+      if (Object.keys(nextProject).length === 0) {
+        const { [activeProjectScope]: _removed, ...rest } = current;
+        return rest;
+      }
+
+      return {
+        ...current,
+        [activeProjectScope]: nextProject,
+      };
+    });
+
+    if (!activeOperationalProjectMeta) {
+      return;
+    }
+
+    setOperationalSyncMode("syncing");
+    void syncOperationalDeviceProgress(
+      activeOperationalProjectMeta.scope,
+      activeOperationalProjectMeta,
+      deviceKey,
+      normalized
+    )
+      .then(() => {
+        setOperationalSyncMode("shared");
+      })
+      .catch((error) => {
+        console.warn("[operational-progress] Device progress stayed local after sync failure:", error);
+        setOperationalSyncMode("local");
+      });
+  }
+
+  async function processPlanPayload(options: {
+    forcedProjectMeta?: PublishedProjectRecord | null;
+    planBytes: Uint8Array;
+    planFileName: string;
+    sourceFile?: File | null;
+  }) {
+    const { forcedProjectMeta = null, planBytes, planFileName, sourceFile = null } = options;
     setIsBusy(true);
     setShowPdfViewer(false);
     setShowSegmentationModal(false);
@@ -692,10 +1045,23 @@ export default function App() {
     let processStep = "init";
 
     try {
-      processStep = "read-plan-file";
-      const planBytes = new Uint8Array(await readFileAsArrayBuffer(planFile));
       processStep = "load-plan";
-      const nextPlan = await loadPlan(new Uint8Array(planBytes), planFile.name);
+      const nextPlan = await loadPlan(new Uint8Array(planBytes), planFileName);
+      processStep = "fingerprint-plan";
+      const planFingerprint = sourceFile
+        ? await fingerprintFile(sourceFile)
+        : await fingerprintBytes(planBytes);
+      const nextProjectScope = forcedProjectMeta?.scope
+        ? forcedProjectMeta.scope
+        : buildProjectProgressScope(
+            sourceFile ||
+              new File([bytesToStrictArrayBuffer(planBytes)], planFileName, {
+                type: "application/pdf",
+              }),
+            nextPlan.title,
+            nextPlan.markers.size,
+            planFingerprint
+          );
       const isExtraPdf = extraDataFile?.type === "application/pdf" ||
         extraDataFile?.name.toLowerCase().endsWith(".pdf");
       processStep = "parse-main-pdf";
@@ -755,30 +1121,26 @@ export default function App() {
         nextIconCount = nextRawIconMap.size;
         nextIconFingerprint = fingerprint;
         nextIconDebugInfo = buildIconDebugInfo(nextRawIconMap, formatDateTime(iconZipFile.lastModified));
-        console.log("[icons] ZIP cargado:", {
-          bnb: nextIconDebugInfo.bnb,
-          cip: nextIconDebugInfo.cip,
-          file: iconZipFile.name,
-          lastModified: nextIconDebugInfo.lastModifiedLabel,
-          mapSize: nextRawIconMap.size,
-          psa: nextIconDebugInfo.psa,
-          sampleKeys: nextIconDebugInfo.sampleKeys,
-          sha16: fingerprint,
-          size: iconZipFile.size,
-        });
       } else if (records.length > 0 && iconFolderFiles.length > 0) {
         const loadedSupplementalMap = await loadIconsFromDirectory(iconFolderFiles);
         nextRawIconMap = mergeIconMaps(nextBundledMap, loadedSupplementalMap);
         nextIconCount = nextRawIconMap.size;
         nextIconDebugInfo = buildIconDebugInfo(nextRawIconMap);
-        console.log("[icons] Carpeta cargada:", nextRawIconMap.size, "entradas. Primeras 8 claves:", Array.from(nextRawIconMap.keys()).slice(0, 8));
-      } else {
-        console.log("[icons] Sin ZIP ni carpeta. iconZipFile:", !!iconZipFile, "iconFolderFiles:", iconFolderFiles.length);
       }
 
       processStep = "commit-ui-state";
       startTransition(() => {
         revokePlanResources(plan);
+        if (sourceFile) {
+          setPlanFile(sourceFile);
+        }
+        setActiveProjectScope(nextProjectScope);
+        setActiveOperationalProjectMeta({
+          markerCount: nextPlan.markers.size,
+          scope: nextProjectScope,
+          sourcePdfName: forcedProjectMeta?.sourcePdfName || planFileName,
+          title: forcedProjectMeta?.title || nextPlan.title,
+        });
         setPlan(nextPlan);
         setSourceRecords(records);
         setInsightContext({
@@ -833,6 +1195,120 @@ export default function App() {
       );
     } finally {
       setIsBusy(false);
+    }
+  }
+
+  async function handleProcess() {
+    if (!planFile) {
+      setStatus({ kind: "translated", key: "status.missingPlan" });
+      return;
+    }
+    const planBytes = new Uint8Array(await readFileAsArrayBuffer(planFile));
+    await processPlanPayload({
+      planBytes,
+      planFileName: planFile.name,
+      sourceFile: planFile,
+    });
+  }
+
+  async function handlePublishCurrentPlan() {
+    if (!planFile) {
+      setStatus({ kind: "translated", key: "status.missingPlan" });
+      return;
+    }
+
+    setIsLibraryBusy(true);
+    try {
+      const draft = inferPublishedProjectDraft(planFile.name, plan?.title || "");
+      const createdProject = await createPublishedProject(draft);
+      const uploadedProject = await uploadPublishedProjectPdf(createdProject.scope, planFile);
+      await refreshPublishedProjectLibrary();
+
+      if (plan) {
+        const nextMeta: OperationalProjectMeta = {
+          markerCount: plan.markers.size,
+          scope: uploadedProject.scope,
+          sourcePdfName: uploadedProject.sourcePdfName,
+          title: uploadedProject.title,
+        };
+        const currentProgressSnapshot =
+          activeProjectScope && activeProjectScope !== uploadedProject.scope
+            ? operationalProgressStoreRef.current[activeProjectScope] ?? {}
+            : operationalProgressStoreRef.current[uploadedProject.scope] ?? {};
+
+        if (Object.keys(currentProgressSnapshot).length > 0) {
+          setOperationalProgressStore((current) => ({
+            ...current,
+            [uploadedProject.scope]: mergeOperationalProgressMaps(
+              current[uploadedProject.scope] ?? {},
+              currentProgressSnapshot
+            ),
+          }));
+          void syncOperationalProjectSnapshot(
+            uploadedProject.scope,
+            nextMeta,
+            currentProgressSnapshot
+          ).catch((error) => {
+            console.warn("[project-library] Could not seed published project progress:", error);
+          });
+        }
+
+        setActiveProjectScope(uploadedProject.scope);
+        setActiveOperationalProjectMeta(nextMeta);
+      }
+
+      setStatus({
+        kind: "raw",
+        text: `Proyecto publicado: ${uploadedProject.title}`,
+      });
+    } catch (error) {
+      console.error("[project-library] Could not publish current plan:", error);
+      setStatus({
+        kind: "raw",
+        text:
+          error instanceof Error
+            ? `No pude publicar el proyecto: ${error.message}`
+            : "No pude publicar el proyecto.",
+      });
+    } finally {
+      setIsLibraryBusy(false);
+    }
+  }
+
+  async function handleOpenPublishedProject(project: PublishedProjectRecord) {
+    setIsLibraryBusy(true);
+    try {
+      const filePayload = await downloadPublishedProjectPdf(project.scope);
+      const file = new File([bytesToStrictArrayBuffer(filePayload.bytes)], filePayload.fileName, {
+        lastModified: project.updatedAt,
+        type: "application/pdf",
+      });
+
+      setDataFile(null);
+      setExtraDataFile(null);
+      setMappingFile(null);
+      setStatus({
+        kind: "raw",
+        text: `Abriendo proyecto publicado: ${project.title}`,
+      });
+
+      await processPlanPayload({
+        forcedProjectMeta: project,
+        planBytes: filePayload.bytes,
+        planFileName: filePayload.fileName,
+        sourceFile: file,
+      });
+    } catch (error) {
+      console.error("[project-library] Could not open published project:", error);
+      setStatus({
+        kind: "raw",
+        text:
+          error instanceof Error
+            ? `No pude abrir el proyecto publicado: ${error.message}`
+            : "No pude abrir el proyecto publicado.",
+      });
+    } finally {
+      setIsLibraryBusy(false);
     }
   }
 
@@ -1155,6 +1631,94 @@ export default function App() {
             </strong>
             <small>{t("ingest.extraFolderHelp")}</small>
           </label>
+        </div>
+      </section>
+
+      <section className="project-library-card">
+        <div className="project-library-card__header">
+          <div>
+            <p className="eyebrow">{t("library.eyebrow")}</p>
+            <h2>{t("library.title")}</h2>
+          </div>
+          <div className="project-library-card__actions">
+            <button
+              type="button"
+              className="secondary-action"
+              disabled={isLibraryBusy}
+              onClick={() => {
+                setIsLibraryBusy(true);
+                void refreshPublishedProjectLibrary().finally(() => setIsLibraryBusy(false));
+              }}
+            >
+              {t("library.refresh")}
+            </button>
+            <button
+              type="button"
+              className="primary-action"
+              disabled={isLibraryBusy || !planFile}
+              onClick={handlePublishCurrentPlan}
+            >
+              {isLibraryBusy ? t("library.publishing") : t("library.publishCurrent")}
+            </button>
+          </div>
+        </div>
+
+        <p className="project-library-card__description">{t("library.description")}</p>
+
+        {planFile && (
+          <div className="project-library-card__draft">
+            <strong>{t("library.readyToPublish")}</strong>
+            <span>
+              {(() => {
+                const inferred = inferPublishedProjectDraft(planFile.name, plan?.title || "");
+                return `${inferred.title} · ${planFile.name}`;
+              })()}
+            </span>
+          </div>
+        )}
+
+        <div className="project-library-grid">
+          {publishedProjects.length === 0 ? (
+            <div className="empty-inline">{t("library.empty")}</div>
+          ) : (
+            publishedProjects.map((project) => (
+              <article
+                key={project.scope}
+                className={`project-library-item${
+                  activeProjectScope === project.scope ? " project-library-item--active" : ""
+                }`}
+              >
+                <div className="project-library-item__copy">
+                  <strong>{project.title}</strong>
+                  <span>{project.sourcePdfName}</span>
+                  <small>
+                    {project.storeCode ? `${project.storeCode} · ` : ""}
+                    {project.city || t("common.noData")}
+                    {project.region ? `, ${project.region}` : ""}
+                    {` · ${t("library.updatedAt", { time: formatDateTime(project.updatedAt) })}`}
+                  </small>
+                  <small>
+                    {project.pdfAvailable
+                      ? t("library.available", {
+                          mode: `${project.storageMode} / ${project.pdfStorageMode}`,
+                          size: formatFileSize(project.pdfSizeBytes),
+                        })
+                      : t("library.missingPdf")}
+                  </small>
+                </div>
+                <div className="project-library-item__actions">
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    disabled={isLibraryBusy || !project.pdfAvailable}
+                    onClick={() => void handleOpenPublishedProject(project)}
+                  >
+                    {t("library.open")}
+                  </button>
+                </div>
+              </article>
+            ))
+          )}
         </div>
       </section>
 
@@ -1526,13 +2090,17 @@ export default function App() {
         key={plan?.blobUrl ?? "no-plan"}
         open={showSegmentationModal}
         buildLabel={BUILD_LABEL}
+        deviceProgressByKey={activeOperationalProgress}
         iconDebugLabel={iconDebugLabel}
         iconSourceLabel={iconSourceLabel}
+        projectProgressScope={activeProjectScope}
+        projectProgressStatusLabel={projectProgressStatusLabel}
         plan={plan}
         records={bundle.records}
         rawIconMap={rawIconMap}
         segmentation={segmentation}
         visualKnowledgeIndex={effectiveVisualKnowledgeIndex}
+        onChangeDeviceProgress={setOperationalDeviceProgress}
         onClose={() => setShowSegmentationModal(false)}
       />
     </div>

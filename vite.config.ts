@@ -4,6 +4,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import legacy from "@vitejs/plugin-legacy";
 import { VitePWA } from "vite-plugin-pwa";
+import { createOperationalProgressMiddleware } from "./operational-progress-server.mjs";
+import { createProjectLibraryMiddleware } from "./project-library-server.mjs";
 
 const REPORTS_ROUTE_PREFIX = "/reporte";
 const REPORT_MIME_TYPES: Record<string, string> = {
@@ -231,6 +233,34 @@ function reportBuildCopyPlugin() {
   };
 }
 
+function operationalProgressApiPlugin() {
+  const middleware = createOperationalProgressMiddleware();
+
+  return {
+    configurePreviewServer(server: { middlewares: { use: (middleware: typeof createOperationalProgressMiddleware extends (...args: never[]) => infer R ? R : never) => void } }) {
+      server.middlewares.use(middleware);
+    },
+    configureServer(server: { middlewares: { use: (middleware: typeof createOperationalProgressMiddleware extends (...args: never[]) => infer R ? R : never) => void } }) {
+      server.middlewares.use(middleware);
+    },
+    name: "operational-progress-api-plugin",
+  };
+}
+
+function projectLibraryApiPlugin() {
+  const middleware = createProjectLibraryMiddleware();
+
+  return {
+    configurePreviewServer(server: { middlewares: { use: (middleware: typeof createProjectLibraryMiddleware extends (...args: never[]) => infer R ? R : never) => void } }) {
+      server.middlewares.use(middleware);
+    },
+    configureServer(server: { middlewares: { use: (middleware: typeof createProjectLibraryMiddleware extends (...args: never[]) => infer R ? R : never) => void } }) {
+      server.middlewares.use(middleware);
+    },
+    name: "project-library-api-plugin",
+  };
+}
+
 export default defineConfig({
   define: {
     __APP_BUILD_ID__: JSON.stringify(new Date().toISOString()),
@@ -239,6 +269,8 @@ export default defineConfig({
     deviceIconManifestPlugin(),
     reportStaticPlugin(),
     reportBuildCopyPlugin(),
+    projectLibraryApiPlugin(),
+    operationalProgressApiPlugin(),
     legacy({
       targets: ["defaults", "iOS >= 12", "Safari >= 12"],
       modernPolyfills: [

@@ -6,6 +6,8 @@ export type DeviceCategory =
   | "infrastructure"
   | "unknown";
 
+export type OperationalProgressStep = "cableRun" | "installed" | "switchConnected";
+
 export type VisualDecisionSource =
   | "name-pattern"
   | "part-number"
@@ -110,4 +112,44 @@ export interface IconAsset {
   name: string;
   url: string;
   sourcePath: string;
+}
+
+export interface OperationalDeviceProgress {
+  cableRun: boolean;
+  installed: boolean;
+  switchConnected: boolean;
+  updatedAt: number;
+}
+
+export interface OperationalProjectMeta {
+  markerCount: number;
+  scope: string;
+  sourcePdfName: string;
+  title: string;
+}
+
+export interface OperationalProjectRecord extends OperationalProjectMeta {
+  createdAt: number;
+  deviceCount: number;
+  storageMode: string;
+  updatedAt: number;
+}
+
+export interface PublishedProjectDraft {
+  city: string;
+  region: string;
+  scope?: string;
+  sourcePdfName: string;
+  storeCode: string;
+  title: string;
+}
+
+export interface PublishedProjectRecord extends Omit<PublishedProjectDraft, "scope"> {
+  createdAt: number;
+  pdfAvailable: boolean;
+  pdfSizeBytes: number;
+  pdfStorageMode: string;
+  scope: string;
+  storageMode: string;
+  updatedAt: number;
 }

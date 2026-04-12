@@ -4,3 +4,6 @@ instance_class: F1
 
 env_variables:
   NODE_ENV: "production"
+  OPERATIONAL_PROGRESS_BACKEND: "datastore"
+  PROJECT_LIBRARY_BACKEND: "datastore"
+  PROJECT_LIBRARY_BUCKET: "cctv-planner-491120.appspot.com"
