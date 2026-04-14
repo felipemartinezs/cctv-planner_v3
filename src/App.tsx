@@ -2087,7 +2087,7 @@ export default function App() {
         onClose={() => setShowPdfViewer(false)}
       />
       <PlanSegmentationModal
-        key={plan?.blobUrl ?? "no-plan"}
+        key={activeProjectScope || "no-plan"}
         open={showSegmentationModal}
         buildLabel={BUILD_LABEL}
         deviceProgressByKey={activeOperationalProgress}

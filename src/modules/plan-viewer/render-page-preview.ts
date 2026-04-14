@@ -126,7 +126,10 @@ export async function renderPlanPreview(
     viewport
   }).promise;
 
-  return canvasToPreview(canvas, options.preferLossless);
+  const result = await canvasToPreview(canvas, options.preferLossless);
+  canvas.width = 0;
+  canvas.height = 0;
+  return result;
 }
 
 export async function renderPlanViewportTile(
@@ -162,6 +165,8 @@ export async function renderPlanViewportTile(
   }).promise;
 
   const preview = await canvasToPreview(canvas, options.preferLossless);
+  canvas.width = 0;
+  canvas.height = 0;
   return {
     ...preview,
     planHeight: region.height,

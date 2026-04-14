@@ -266,10 +266,15 @@ async function renderPlanPreviewFromPage(page: PDFPageProxy, baseWidth: number) 
     previewUrl = canvas.toDataURL("image/png");
   }
 
+  const previewWidth = canvas.width;
+  const previewHeight = canvas.height;
+  canvas.width = 0;
+  canvas.height = 0;
+
   return {
-    previewHeight: canvas.height,
+    previewHeight,
     previewUrl,
-    previewWidth: canvas.width,
+    previewWidth,
   };
 }
 

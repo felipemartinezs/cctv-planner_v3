@@ -1215,7 +1215,7 @@ export function PlanSegmentationModal({
   }, [open, selectedPartVisuals]);
 
   useEffect(() => {
-    if (!open || !plan) {
+    if (!open || !plan || !plan.blobUrl) {
       return;
     }
 
@@ -1459,7 +1459,7 @@ export function PlanSegmentationModal({
     const timeoutId = window.setTimeout(() => {
       focusRasterRequestRef.current = requestKey;
       renderPlanViewportTile(plan.blobUrl, {
-        preferLossless: true,
+        preferLossless: false,
         region: {
           height: regionHeight,
           width: regionWidth,
@@ -1486,7 +1486,7 @@ export function PlanSegmentationModal({
           }
           console.warn("[segmentation] No pude generar el detalle del viewport:", error);
         });
-    }, isTransformInteracting ? 240 : 120);
+    }, isTransformInteracting ? 400 : 150);
 
     return () => {
       live = false;
@@ -2310,13 +2310,11 @@ export function PlanSegmentationModal({
             onPinchingStop={() => setIsTransformInteracting(false)}
             onZoom={() => markTransformInteraction()}
             onTransformed={(_, state) => {
-              const next = {
+              scheduleXform({
                 s: state.scale,
                 x: state.positionX,
                 y: state.positionY,
-              };
-              xformRef.current = next;
-              setXform(next);
+              });
             }}
           >
             <TransformComponent
