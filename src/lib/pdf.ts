@@ -2,6 +2,11 @@ import { GlobalWorkerOptions, Util, getDocument } from "pdfjs-dist/legacy/build/
 import type { PDFPageProxy, TextItem } from "pdfjs-dist/types/src/display/api";
 import type { PlanData, PlanMarker } from "../types";
 import { readFileAsArrayBuffer } from "./file-io";
+import { removeOrangeMarkersFromPdf } from "./pdf-marker-cleanup";
+
+// Flag global para poder apagar la limpieza rapido si algo sale raro en iPhone.
+// Cambiar a false (o exponer desde env) para volver al comportamiento anterior.
+const ENABLE_MARKER_CLEANUP = true;
 
 GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
@@ -289,11 +294,40 @@ export async function loadPlan(
     throw formatLoadPlanError("read-source", error);
   }
 
+  // Limpieza vectorial de marcadores naranja (port del Python make_markers_transparent_all.py).
+  // Se corre una sola vez al cargar el plan. Si falla por cualquier razon,
+  // seguimos con el PDF original sin bloquear al tecnico en campo.
+  if (ENABLE_MARKER_CLEANUP) {
+    try {
+      const cleanup = await removeOrangeMarkersFromPdf(buffer);
+      if (cleanup.markersEdited > 0) {
+        buffer = cleanup.bytes;
+        if (typeof console !== "undefined") {
+          console.info(
+            `[cctv-planner] Limpieza de marcadores: ${cleanup.markersEdited}/${cleanup.markersFound} gotas quitadas en ${cleanup.pagesTouched} pagina(s) (${Math.round(cleanup.timingMs)} ms).`
+          );
+        }
+      }
+    } catch (error) {
+      if (typeof console !== "undefined") {
+        console.warn(
+          "[cctv-planner] No pude limpiar los marcadores naranjas del PDF. Continuo con el PDF original.",
+          error
+        );
+      }
+    }
+  }
+
   const blobBytes = new Uint8Array(buffer);
   let blob: Blob | File;
   try {
+    // Usamos siempre un Blob construido a partir del buffer ya limpio, asi la
+    // vista "Ver pagina 1" y cualquier consumidor del blobUrl ven el PDF sin
+    // puntos naranjas. Si el source era un File, lo dejamos pasar de largo solo
+    // cuando la limpieza no cambio nada (para conservar metadata del archivo).
+    const cleanupHappened = ENABLE_MARKER_CLEANUP && blobBytes !== (source as unknown as Uint8Array);
     blob =
-      source instanceof File
+      source instanceof File && !cleanupHappened
         ? source
         : new Blob([toStrictArrayBuffer(blobBytes)], { type: "application/pdf" });
   } catch (error) {

@@ -44,6 +44,17 @@ const PTZ_OUTDOOR_ICON = "CIP-QNP6250H Outdoor";
 const POS_BNB_ICON = "BNB-SCB-1KIT";
 const POS_PSA_ICON = "PSA-W4-BAXFA51";
 
+// V1: Dibujar el icono real del dispositivo sobre el plano en vez del circulo
+// azul clasico. El icono queda centrado en (x, y) — la posicion del marcador
+// naranja original — y el numero de ID se pinta encima con halo blanco para
+// que siga legible incluso en clusters densos (farmacia, self checkout, AP).
+// Flip a `false` para regresar al render de circulo sin tocar el resto del flujo.
+const SHOW_ICON_MARKERS = true;
+// Lado del icono en pixels del canvas base (antes del zoom de react-zoom-pan-pinch).
+// ~14px * RENDER_SCALE queda ligeramente mas grande que el circulo azul (R=7*RS)
+// y se ve nitido en iPhone con el escalado del wrapper.
+const ICON_MARKER_SIZE = 14 * RENDER_SCALE;
+
 interface PlanSegmentationModalProps {
   buildLabel: string;
   deviceProgressByKey: Record<string, OperationalDeviceProgress>;
@@ -562,6 +573,32 @@ export function PlanSegmentationModal({
   const suppressInspectUntilRef = useRef(0);
   const [navigating, setNavigating] = useState(false);
 
+  // Cache de HTMLImageElement por iconUrl. Se carga perezosamente la primera
+  // vez que se intenta dibujar un icono; cuando termina la descarga, bump del
+  // contador `iconImageVersion` fuerza un redraw del canvas.
+  const iconImageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const [iconImageVersion, setIconImageVersion] = useState(0);
+
+  const getReadyIconImage = useCallback((url: string | undefined): HTMLImageElement | null => {
+    if (!url) return null;
+    const cache = iconImageCacheRef.current;
+    const cached = cache.get(url);
+    if (cached) {
+      return cached.complete && cached.naturalWidth > 0 ? cached : null;
+    }
+    if (typeof Image === "undefined") return null;
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => setIconImageVersion((v) => v + 1);
+    img.onerror = () => {
+      // Dejamos el entry en cache aunque haya fallado para no intentar de nuevo
+      // en cada frame. El fallback (circulo) se encarga del render visual.
+    };
+    img.src = url;
+    cache.set(url, img);
+    return null;
+  }, []);
+
   function commitXform(next: Xform) {
     xformRef.current = next;
     setXform(next);
@@ -856,6 +893,34 @@ export function PlanSegmentationModal({
 
     return Array.from(devicesByKey.values());
   }, [noSwitchSuggestionByKey, plan, rawIconMap, records, t, visualKnowledgeIndex]);
+
+  // Lookup rapido para el render de markers: key del device -> iconUrl.
+  // Usamos la misma resolucion que ya existe en interactiveDevices (respeta
+  // visualDecision.suppressed, visualChoices, PTZ, POS ambiguo, etc.).
+  const iconUrlByDeviceKey = useMemo(() => {
+    const map = new Map<string, string>();
+    interactiveDevices.forEach((device) => {
+      if (device.iconUrl) {
+        map.set(device.key, device.iconUrl);
+      }
+    });
+    return map;
+  }, [interactiveDevices]);
+
+  // Precarga anticipada: arrancamos la descarga de todos los iconos unicos en
+  // cuanto tenemos la lista de devices, asi cuando el tecnico hace tap en un
+  // part number ya estan en cache y no se ve el flicker de "primero circulo,
+  // luego icono".
+  useEffect(() => {
+    if (!SHOW_ICON_MARKERS) return;
+    const unique = new Set<string>();
+    iconUrlByDeviceKey.forEach((url) => {
+      if (url) unique.add(url);
+    });
+    unique.forEach((url) => {
+      getReadyIconImage(url);
+    });
+  }, [iconUrlByDeviceKey, getReadyIconImage]);
 
   const progressSummary = useMemo(() => {
     const totalDevices = interactiveDevices.length;
@@ -1610,6 +1675,64 @@ export function PlanSegmentationModal({
       const R = 7 * RENDER_SCALE;
       const FONT_SIZE = 8 * RENDER_SCALE;
 
+      // Helper local (mismo contexto de `ctx`, `R`, `FONT_SIZE`) para pintar un
+      // marker de dispositivo con icono (si el iconUrl resuelve) o circulo
+      // azul (fallback). En ambos casos pinta el ID del device encima con halo
+      // blanco para que siga legible sobre el icono o sobre el plano.
+      const drawDeviceMarker = (
+        x: number,
+        y: number,
+        deviceKey: string,
+        idLabel: string,
+        variant: "solid" | "dashed"
+      ) => {
+        const iconUrl = SHOW_ICON_MARKERS ? iconUrlByDeviceKey.get(deviceKey) : undefined;
+        const iconImg = iconUrl ? getReadyIconImage(iconUrl) : null;
+
+        if (iconImg) {
+          // Dibujamos el icono centrado en el anchor del marcador.
+          ctx.save();
+          const size = ICON_MARKER_SIZE;
+          // Un leve "card" blanco atras para separar visualmente del plano y
+          // mantener contraste consistente entre iconos con transparencia.
+          const pad = 1.5 * RENDER_SCALE;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+          ctx.beginPath();
+          ctx.arc(x, y, size / 2 + pad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.drawImage(iconImg, x - size / 2, y - size / 2, size, size);
+          ctx.restore();
+        } else {
+          // Fallback: circulo clasico (solido o punteado) como antes.
+          ctx.save();
+          if (variant === "dashed") {
+            ctx.setLineDash([5 * RENDER_SCALE, 4 * RENDER_SCALE]);
+          } else {
+            ctx.setLineDash([]);
+          }
+          ctx.beginPath();
+          ctx.arc(x, y, R, 0, Math.PI * 2);
+          ctx.strokeStyle = PART_MARKER_COLOR;
+          ctx.lineWidth = 1.5 * RENDER_SCALE;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // ID del dispositivo con halo blanco encima — siempre legible incluso
+        // sobre iconos oscuros/claros o sobre el plano de fondo.
+        ctx.save();
+        ctx.font = `700 ${FONT_SIZE}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = 3 * RENDER_SCALE;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+        ctx.strokeText(idLabel, x, y);
+        ctx.fillStyle = PART_MARKER_COLOR;
+        ctx.fillText(idLabel, x, y);
+        ctx.restore();
+      };
+
       interactiveDevices.forEach((device) => {
         const progress = deviceProgressByKey[device.key] ?? EMPTY_OPERATIONAL_PROGRESS;
         const steps = activeOperationalSteps(progress);
@@ -1647,7 +1770,8 @@ export function PlanSegmentationModal({
         return;
       }
 
-      // Grupo 1: dispositivos con switch asignado — círculo azul sólido
+      // Grupo 1: dispositivos con switch asignado — icono del device + ID con halo
+      // (fallback a circulo azul solido si el iconUrl aun no cargo o no existe).
       ctx.setLineDash([]);
       seg.points
         .filter(
@@ -1663,16 +1787,7 @@ export function PlanSegmentationModal({
           if (allowAnimatedMarkers) {
             drawMarkerPulse(ctx, x, y, R, timeMs);
           }
-          ctx.beginPath();
-          ctx.arc(x, y, R, 0, Math.PI * 2);
-          ctx.strokeStyle = PART_MARKER_COLOR;
-          ctx.lineWidth = 1.5 * RENDER_SCALE;
-          ctx.stroke();
-          ctx.font = `700 ${FONT_SIZE}px system-ui, sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = PART_MARKER_COLOR;
-          ctx.fillText(String(point.id), x, y);
+          drawDeviceMarker(x, y, point.key, String(point.id), "solid");
         });
 
       // Grupo 2: dispositivos posicionados pero sin switch — círculo naranja punteado
@@ -1688,27 +1803,16 @@ export function PlanSegmentationModal({
             pt.y !== null
         );
       if (noSwitchPoints.length > 0) {
-        ctx.setLineDash([5 * RENDER_SCALE, 4 * RENDER_SCALE]);
-        ctx.lineWidth = 1.5 * RENDER_SCALE;
         noSwitchPoints.forEach((pt) => {
           const x = ((pt.x as number) / seg.width) * W;
           const y = ((pt.y as number) / seg.height) * H;
           if (allowAnimatedMarkers) {
             drawMarkerPulse(ctx, x, y, R, timeMs);
           }
-          ctx.beginPath();
-          ctx.arc(x, y, R, 0, Math.PI * 2);
-          ctx.strokeStyle = PART_MARKER_COLOR;
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.font = `700 ${FONT_SIZE}px system-ui, sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = PART_MARKER_COLOR;
-          ctx.fillText(String(pt.id), x, y);
-          ctx.setLineDash([5 * RENDER_SCALE, 4 * RENDER_SCALE]);
+          // Mismo render que Grupo 1; si no hay icono, el fallback pinta
+          // circulo punteado para seguir distinguiendo "sin switch".
+          drawDeviceMarker(x, y, pt.key, String(pt.id), "dashed");
         });
-        ctx.setLineDash([]);
       }
 
       if (devicePreview) {
@@ -1744,6 +1848,9 @@ export function PlanSegmentationModal({
   }, [
     devicePreview,
     deviceProgressByKey,
+    getReadyIconImage,
+    iconImageVersion,
+    iconUrlByDeviceKey,
     interactiveDevices,
     isMobileViewport,
     pdfReady,
