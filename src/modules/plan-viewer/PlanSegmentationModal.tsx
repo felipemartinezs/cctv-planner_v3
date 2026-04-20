@@ -26,6 +26,12 @@ import {
   type RenderedPlanPreview,
   type RenderedPlanViewportTile,
 } from "./render-page-preview";
+import {
+  computeMarkerLayout,
+  type MarkerPlacement,
+  type VisibleMarker,
+} from "./marker-layout";
+import { resolveMarkerColor, type MarkerColor } from "./marker-colors";
 
 const RENDER_SCALE = 2;
 const MAX_SELECTED_PART_NUMBERS = 2;
@@ -44,16 +50,52 @@ const PTZ_OUTDOOR_ICON = "CIP-QNP6250H Outdoor";
 const POS_BNB_ICON = "BNB-SCB-1KIT";
 const POS_PSA_ICON = "PSA-W4-BAXFA51";
 
-// V1: Dibujar el icono real del dispositivo sobre el plano en vez del circulo
-// azul clasico. El icono queda centrado en (x, y) — la posicion del marcador
-// naranja original — y el numero de ID se pinta encima con halo blanco para
-// que siga legible incluso en clusters densos (farmacia, self checkout, AP).
-// Flip a `false` para regresar al render de circulo sin tocar el resto del flujo.
+// Camino C: marker principal es una GOTA coloreada (forma original de SiteOwl)
+// con el ID blanco al centro. La punta de la gota apunta a (x, y) — la
+// posicion exacta del dispositivo en el plano — y el color del relleno
+// representa la familia del part number (ver marker-colors.ts).
+// Cuando este flag esta activo, los iconos PNG solo se usan en la tarjeta
+// lateral / preview, NO sobre el plano.
+const USE_COLORED_TEARDROPS = true;
+
+// V1 legacy: Dibujar el icono real del dispositivo sobre el plano en vez del
+// circulo azul clasico. Mantenemos el flag para poder volver rapido al modo
+// iconos si Camino C no convence en campo. Solo se aplica cuando
+// USE_COLORED_TEARDROPS === false.
 const SHOW_ICON_MARKERS = true;
 // Lado del icono en pixels del canvas base (antes del zoom de react-zoom-pan-pinch).
 // ~14px * RENDER_SCALE queda ligeramente mas grande que el circulo azul (R=7*RS)
 // y se ve nitido en iPhone con el escalado del wrapper.
 const ICON_MARKER_SIZE = 14 * RENDER_SCALE;
+
+// Dimensiones de la gota. La cabeza circular es donde va el ID; el pico
+// inferior marca la posicion exacta del device (igual que el marker naranja
+// del PDF original de SiteOwl).
+const TEARDROP_HEAD_RADIUS = 9 * RENDER_SCALE;
+const TEARDROP_TIP_LENGTH = 5 * RENDER_SCALE;
+
+// V2: leader lines para zonas densas (farmacia, self-checkout, AP office).
+// Cuando varios markers caen cerca, sus IDs se encimen y el tecnico no puede
+// distinguir cual corresponde a cual. Detectamos clusters por proximidad y
+// desplazamos la etiqueta (ID) a un anillo al rededor del cluster, conectandola
+// al anchor del icono con una linea fina. El icono NO se mueve — queda en su
+// posicion exacta sobre el plano.
+const SHOW_LEADER_LINES = true;
+// Radio de vecindad en pixels de canvas. ~40 pt * RENDER_SCALE cubre los
+// cumulos tipicos (2 a 6 camaras pegadas) sin unir zonas separadas. Ajustar si
+// aparecen falsos clusters.
+const CLUSTER_RADIUS_CANVAS = 40 * RENDER_SCALE;
+// Necesitamos >= 3 para considerar cluster. 2 dispositivos no justifican
+// leader lines (ocupan menos que el anillo y se entienden con el halo V1).
+const MIN_CLUSTER_SIZE = 3;
+// Separacion del anillo de etiquetas respecto al borde del cluster.
+const LABEL_OFFSET_CANVAS = 12 * RENDER_SCALE;
+// Gap angular minimo entre 2 labels consecutivas (radianes). ~24 grados
+// garantiza que el ancho tipico de un pill de ID (2-3 digitos) no choque con
+// el vecino.
+const LABEL_MIN_ARC_GAP = 0.42;
+// Padding interior del canvas donde no se permite poner la etiqueta.
+const LABEL_CANVAS_PADDING = 14 * RENDER_SCALE;
 
 interface PlanSegmentationModalProps {
   buildLabel: string;
@@ -907,6 +949,19 @@ export function PlanSegmentationModal({
     return map;
   }, [interactiveDevices]);
 
+  // Camino C: color de la gota por device key. Usamos partNumber + name del
+  // InteractiveDevice (que ya reparo abreviaciones y consulta visual knowledge)
+  // como entrada a resolveMarkerColor. Para puntos Grupo 2 (sin switch) el
+  // device puede no estar en interactiveDevices — por eso el render cae a una
+  // resolucion directa por partNumber (ver drawDeviceMarker).
+  const markerColorByDeviceKey = useMemo(() => {
+    const map = new Map<string, MarkerColor>();
+    interactiveDevices.forEach((device) => {
+      map.set(device.key, resolveMarkerColor(device.partNumber, device.name));
+    });
+    return map;
+  }, [interactiveDevices]);
+
   // Precarga anticipada: arrancamos la descarga de todos los iconos unicos en
   // cuanto tenemos la lista de devices, asi cuando el tecnico hace tap en un
   // part number ya estan en cache y no se ve el flicker de "primero circulo,
@@ -921,6 +976,70 @@ export function PlanSegmentationModal({
       getReadyIconImage(url);
     });
   }, [iconUrlByDeviceKey, getReadyIconImage]);
+
+  // V2: layout de markers (clusters + leader lines). Se recalcula solo cuando
+  // cambia la seleccion o la segmentacion — no es per-frame. Usa coordenadas
+  // de canvas (planRaster.width/height) para que el clustering considere la
+  // distancia visual real, no la distancia en el espacio del PDF.
+  const markerLayoutByKey = useMemo<Map<string, MarkerPlacement>>(() => {
+    const empty = new Map<string, MarkerPlacement>();
+    if (!SHOW_LEADER_LINES) return empty;
+    if (!segmentation) return empty;
+    const canvasW = planRaster?.width ?? 0;
+    const canvasH = planRaster?.height ?? 0;
+    if (canvasW === 0 || canvasH === 0) return empty;
+    if (selectedPartNumbers.length === 0) return empty;
+
+    const seg = segmentation;
+    const visible: VisibleMarker[] = [];
+
+    // Grupo 1: puntos con switch asignado.
+    seg.points.forEach((p) => {
+      if (!selectedPartNumberSet.has(p.partNumber)) return;
+      if (selectedLabel && p.segmentLabel !== selectedLabel) return;
+      if (p.x < 0 || p.y < 0) return;
+      visible.push({
+        key: p.key,
+        id: p.id,
+        x: (p.x / seg.width) * canvasW,
+        y: (p.y / seg.height) * canvasH,
+      });
+    });
+
+    // Grupo 2: posicionados sin switch (circulo punteado).
+    const noSwitchPoints = collectGroupedEntries(
+      selectedPartNumbers,
+      seg.partNumberNoSwitch
+    );
+    noSwitchPoints.forEach((pt) => {
+      if (selectedLabel && pt.segmentLabel !== selectedLabel) return;
+      if (!pt.canNavigate) return;
+      if (pt.x === null || pt.y === null) return;
+      visible.push({
+        key: pt.key,
+        id: pt.id,
+        x: (pt.x / seg.width) * canvasW,
+        y: (pt.y / seg.height) * canvasH,
+      });
+    });
+
+    return computeMarkerLayout(visible, {
+      clusterRadius: CLUSTER_RADIUS_CANVAS,
+      minClusterSize: MIN_CLUSTER_SIZE,
+      labelOffset: LABEL_OFFSET_CANVAS,
+      labelMinArcGap: LABEL_MIN_ARC_GAP,
+      canvasWidth: canvasW,
+      canvasHeight: canvasH,
+      canvasPadding: LABEL_CANVAS_PADDING,
+    });
+  }, [
+    planRaster?.height,
+    planRaster?.width,
+    segmentation,
+    selectedLabel,
+    selectedPartNumberSet,
+    selectedPartNumbers,
+  ]);
 
   const progressSummary = useMemo(() => {
     const totalDevices = interactiveDevices.length;
@@ -1679,31 +1798,279 @@ export function PlanSegmentationModal({
       // marker de dispositivo con icono (si el iconUrl resuelve) o circulo
       // azul (fallback). En ambos casos pinta el ID del device encima con halo
       // blanco para que siga legible sobre el icono o sobre el plano.
+      //
+      // V2: si el marker es parte de un cluster denso, el ID se dibuja
+      // desplazado (labelX, labelY) sobre un pill blanco, conectado al
+      // anchor del icono con una linea fina. El icono NUNCA se mueve del
+      // anchor original — es la etiqueta la que sale a ventilar.
+      const LEADER_STROKE = "rgba(20, 58, 110, 0.78)";
+      const PILL_FILL = "rgba(255, 255, 255, 0.96)";
+      const PILL_STROKE = "rgba(20, 58, 110, 0.55)";
+
+      const drawRoundRect = (
+        rx: number,
+        ry: number,
+        rw: number,
+        rh: number,
+        rr: number
+      ) => {
+        // Safari <= 15 no soporta ctx.roundRect — usamos arcTo para cubrir
+        // todas las versiones de WebKit relevantes en iPhone.
+        const r = Math.min(rr, rw / 2, rh / 2);
+        ctx.beginPath();
+        ctx.moveTo(rx + r, ry);
+        ctx.lineTo(rx + rw - r, ry);
+        ctx.arcTo(rx + rw, ry, rx + rw, ry + r, r);
+        ctx.lineTo(rx + rw, ry + rh - r);
+        ctx.arcTo(rx + rw, ry + rh, rx + rw - r, ry + rh, r);
+        ctx.lineTo(rx + r, ry + rh);
+        ctx.arcTo(rx, ry + rh, rx, ry + rh - r, r);
+        ctx.lineTo(rx, ry + r);
+        ctx.arcTo(rx, ry, rx + r, ry, r);
+        ctx.closePath();
+      };
+
+      // Helper: dibuja una gota (teardrop) con la punta apuntando hacia abajo
+      // al punto (tipX, tipY). El circulo superior tiene radio `headR` y esta
+      // centrado en (tipX, tipY - tipLen - headR*0.5 aprox). Para facilitar
+      // el calculo del centro donde va el ID, retornamos { centerX, centerY }.
+      //
+      // Construccion geometrica: trazamos el arco del circulo desde la
+      // tangente izquierda hasta la derecha (pasando por arriba), y cerramos
+      // con dos lineas que se juntan en la punta formando un angulo agudo.
+      // El angulo donde la linea toca el circulo lo controla `tipAngle` — mas
+      // agudo = gota mas estilizada, mas abierto = mas redonda/bombilla.
+      const drawTeardropPath = (tipX: number, tipY: number, headR: number, tipLen: number) => {
+        // Centro del circulo superior. La distancia entre el centro y la
+        // punta es (headR + tipLen). Asi el pico siempre sobresale del
+        // circulo aunque el ID ocupe todo el cuerpo.
+        const cx = tipX;
+        const cy = tipY - (headR + tipLen);
+        // Angulo entre el centro del circulo y la punta = 90° (hacia abajo).
+        // Las tangentes al circulo desde la punta tocan el circulo en angulos
+        // simetricos alrededor de esa recta. Calculamos el angulo de contacto
+        // usando trigonometria simple: sin(theta) = headR / dist.
+        const dist = headR + tipLen;
+        // Clampeamos: si dist <= headR, la punta estaria adentro del circulo.
+        const sinTheta = Math.min(headR / Math.max(dist, headR + 0.001), 0.999);
+        const theta = Math.asin(sinTheta);
+        // Angulos donde las tangentes tocan el circulo (en radianes, con 0
+        // apuntando a la derecha y creciendo CCW). La punta esta "abajo" del
+        // centro (angulo = PI/2 en canvas y-abajo = sumar PI/2 desde eje X).
+        // En coordenadas de canvas (y crece hacia abajo) el angulo hacia la
+        // punta desde el centro es +PI/2. Las tangentes estan en
+        // +PI/2 ± (PI/2 - theta) = PI - theta y theta.
+        const rightAngle = theta;        // lado derecho del circulo cerca de la punta
+        const leftAngle = Math.PI - theta; // lado izquierdo del circulo cerca de la punta
+        const rightX = cx + headR * Math.cos(rightAngle);
+        const rightY = cy + headR * Math.sin(rightAngle);
+        const leftX = cx + headR * Math.cos(leftAngle);
+        const leftY = cy + headR * Math.sin(leftAngle);
+
+        ctx.beginPath();
+        // Empieza en el punto de contacto derecho.
+        ctx.moveTo(rightX, rightY);
+        // Linea al pico.
+        ctx.lineTo(tipX, tipY);
+        // Linea al punto de contacto izquierdo.
+        ctx.lineTo(leftX, leftY);
+        // Arco por arriba (CCW en canvas = anticlockwise=true porque canvas
+        // tiene Y invertida respecto al plano cartesiano estandar).
+        ctx.arc(cx, cy, headR, leftAngle, rightAngle, true);
+        ctx.closePath();
+
+        return { centerX: cx, centerY: cy };
+      };
+
+      const drawColoredTeardrop = (
+        tipX: number,
+        tipY: number,
+        idLabel: string,
+        color: MarkerColor,
+        variant: "solid" | "dashed"
+      ) => {
+        ctx.save();
+        if (variant === "dashed") {
+          // Variante "sin switch": contorno punteado para distinguirlo a
+          // primera vista.
+          ctx.setLineDash([3 * RENDER_SCALE, 2 * RENDER_SCALE]);
+        } else {
+          ctx.setLineDash([]);
+        }
+        const geom = drawTeardropPath(tipX, tipY, TEARDROP_HEAD_RADIUS, TEARDROP_TIP_LENGTH);
+        // Sombra ligera para levantar la gota del plano (igual que el PDF
+        // original tiene un halo sutil alrededor del marker naranja).
+        ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
+        ctx.shadowBlur = 1.5 * RENDER_SCALE;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0.5 * RENDER_SCALE;
+        ctx.fillStyle = color.fill;
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.lineWidth = 1 * RENDER_SCALE;
+        ctx.strokeStyle = color.stroke;
+        ctx.stroke();
+
+        // ID al centro del circulo de la gota. Se ajusta el tamano de fuente
+        // a 2 o 3 digitos — si el ID es de 4+ digitos reducimos para que no
+        // rebase el circulo.
+        const labelLen = idLabel.length;
+        const baseFont = labelLen >= 4 ? 7 * RENDER_SCALE : FONT_SIZE;
+        ctx.font = `700 ${baseFont}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = color.textColor;
+        ctx.fillText(idLabel, geom.centerX, geom.centerY);
+        ctx.restore();
+      };
+
       const drawDeviceMarker = (
         x: number,
         y: number,
         deviceKey: string,
         idLabel: string,
-        variant: "solid" | "dashed"
+        variant: "solid" | "dashed",
+        partNumber: string,
+        deviceName?: string
       ) => {
+        // V2: busca el placement para este marker. Si no existe (ej. SHOW_LEADER_LINES
+        // apagado), la gota queda en el anchor — comportamiento V1.
+        const placement = markerLayoutByKey.get(deviceKey);
+        const labelX = placement ? placement.labelX : x;
+        const labelY = placement ? placement.labelY : y;
+        const showLeader = placement?.showLeader === true;
+
+        // Camino C: gota coloreada con ID dentro.
+        if (USE_COLORED_TEARDROPS) {
+          const color =
+            markerColorByDeviceKey.get(deviceKey) ?? resolveMarkerColor(partNumber, deviceName);
+
+          if (showLeader) {
+            // Cluster denso: la gota se desplaza a (labelX, labelY) con la
+            // punta apuntando hacia el anchor original via leader line. La
+            // punta de la gota desplazada NO apunta al anchor — es el
+            // extremo de la linea el que lo hace. Asi la gota conserva su
+            // orientacion "punta hacia abajo" que el tecnico lee de un
+            // vistazo como "esto es un marker".
+
+            // Desplazamos verticalmente la gota para que su punta (tip)
+            // quede sobre (labelX, labelY). Esto preserva la metafora: la
+            // "punta" marca la posicion *reportada* en la vista, y la linea
+            // conecta a la *posicion real*.
+            // Pero como aqui la posicion real sigue siendo (x, y), pintamos
+            // un puntito en el anchor original para no perder la referencia.
+
+            // 1. Leader line primero (debajo de la gota).
+            ctx.save();
+            ctx.setLineDash([]);
+            ctx.strokeStyle = LEADER_STROKE;
+            ctx.lineWidth = 1 * RENDER_SCALE;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(labelX, labelY);
+            ctx.stroke();
+            ctx.restore();
+
+            // 2. Puntito en el anchor original.
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x, y, 1.75 * RENDER_SCALE, 0, Math.PI * 2);
+            ctx.fillStyle = color.fill;
+            ctx.strokeStyle = color.stroke;
+            ctx.lineWidth = 0.75 * RENDER_SCALE;
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // 3. Gota desplazada con ID dentro, punta apuntando al anchor.
+            //    Si el anchor esta debajo del label (caso raro), la gota se
+            //    pinta hacia abajo igual — la leader line sigue conectando
+            //    ambos y se entiende la relacion.
+            drawColoredTeardrop(labelX, labelY, idLabel, color, variant);
+          } else {
+            // Aislado: la gota se pinta justo en el anchor, con la punta
+            // apuntando al punto exacto del dispositivo.
+            drawColoredTeardrop(x, y, idLabel, color, variant);
+          }
+          return;
+        }
+
+        // --- Legacy V2.2: iconos PNG con pill separado. Se deja intacto por
+        // si USE_COLORED_TEARDROPS se apaga. No se ejecuta en Camino C. ---
         const iconUrl = SHOW_ICON_MARKERS ? iconUrlByDeviceKey.get(deviceKey) : undefined;
         const iconImg = iconUrl ? getReadyIconImage(iconUrl) : null;
 
-        if (iconImg) {
-          // Dibujamos el icono centrado en el anchor del marcador.
+        ctx.save();
+        ctx.font = `700 ${FONT_SIZE}px system-ui, sans-serif`;
+        const metrics = ctx.measureText(idLabel);
+        const textW = metrics.width;
+        const padX = 4 * RENDER_SCALE;
+        const padY = 2.5 * RENDER_SCALE;
+        const pillW = Math.max(textW + padX * 2, 14 * RENDER_SCALE);
+        const pillH = FONT_SIZE + padY * 2;
+        ctx.restore();
+
+        let pillCX: number;
+        let pillCY: number;
+        if (showLeader) {
+          pillCX = labelX;
+          pillCY = labelY;
+        } else {
+          pillCX = x;
+          pillCY = y + ICON_MARKER_SIZE / 2 + pillH / 2 + 2 * RENDER_SCALE;
+          if (pillCY + pillH / 2 > canvas.height - 2 * RENDER_SCALE) {
+            pillCY = y - ICON_MARKER_SIZE / 2 - pillH / 2 - 2 * RENDER_SCALE;
+          }
+        }
+
+        if (showLeader) {
           ctx.save();
-          const size = ICON_MARKER_SIZE;
-          // Un leve "card" blanco atras para separar visualmente del plano y
-          // mantener contraste consistente entre iconos con transparencia.
-          const pad = 1.5 * RENDER_SCALE;
-          ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+          ctx.setLineDash([]);
+          const dx = pillCX - x;
+          const dy = pillCY - y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const ux = dx / dist;
+          const uy = dy / dist;
+          const iconEdge = ICON_MARKER_SIZE / 2 + 0.5 * RENDER_SCALE;
+          const pillEdge = Math.min(pillW, pillH) / 2;
+          const startX = x + ux * iconEdge;
+          const startY = y + uy * iconEdge;
+          const endX = pillCX - ux * pillEdge;
+          const endY = pillCY - uy * pillEdge;
+          ctx.strokeStyle = LEADER_STROKE;
+          ctx.lineWidth = 1 * RENDER_SCALE;
+          ctx.lineCap = "round";
           ctx.beginPath();
-          ctx.arc(x, y, size / 2 + pad, 0, Math.PI * 2);
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        if (iconImg) {
+          const size = ICON_MARKER_SIZE;
+          const tilePad = 2 * RENDER_SCALE;
+          const tileSize = size + tilePad * 2;
+          const tileRadius = 3 * RENDER_SCALE;
+          ctx.save();
+          drawRoundRect(
+            x - tileSize / 2,
+            y - tileSize / 2,
+            tileSize,
+            tileSize,
+            tileRadius
+          );
+          ctx.fillStyle = "rgba(255, 255, 255, 1)";
           ctx.fill();
+          ctx.lineWidth = 0.9 * RENDER_SCALE;
+          ctx.strokeStyle = PILL_STROKE;
+          ctx.stroke();
           ctx.drawImage(iconImg, x - size / 2, y - size / 2, size, size);
           ctx.restore();
         } else {
-          // Fallback: circulo clasico (solido o punteado) como antes.
           ctx.save();
           if (variant === "dashed") {
             ctx.setLineDash([5 * RENDER_SCALE, 4 * RENDER_SCALE]);
@@ -1718,18 +2085,20 @@ export function PlanSegmentationModal({
           ctx.restore();
         }
 
-        // ID del dispositivo con halo blanco encima — siempre legible incluso
-        // sobre iconos oscuros/claros o sobre el plano de fondo.
         ctx.save();
+        const pillX = pillCX - pillW / 2;
+        const pillY = pillCY - pillH / 2;
+        drawRoundRect(pillX, pillY, pillW, pillH, pillH / 2);
+        ctx.fillStyle = PILL_FILL;
+        ctx.fill();
+        ctx.lineWidth = 0.9 * RENDER_SCALE;
+        ctx.strokeStyle = PILL_STROKE;
+        ctx.stroke();
         ctx.font = `700 ${FONT_SIZE}px system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.lineJoin = "round";
-        ctx.lineWidth = 3 * RENDER_SCALE;
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-        ctx.strokeText(idLabel, x, y);
         ctx.fillStyle = PART_MARKER_COLOR;
-        ctx.fillText(idLabel, x, y);
+        ctx.fillText(idLabel, pillCX, pillCY);
         ctx.restore();
       };
 
@@ -1787,7 +2156,7 @@ export function PlanSegmentationModal({
           if (allowAnimatedMarkers) {
             drawMarkerPulse(ctx, x, y, R, timeMs);
           }
-          drawDeviceMarker(x, y, point.key, String(point.id), "solid");
+          drawDeviceMarker(x, y, point.key, String(point.id), "solid", point.partNumber);
         });
 
       // Grupo 2: dispositivos posicionados pero sin switch — círculo naranja punteado
@@ -1811,7 +2180,7 @@ export function PlanSegmentationModal({
           }
           // Mismo render que Grupo 1; si no hay icono, el fallback pinta
           // circulo punteado para seguir distinguiendo "sin switch".
-          drawDeviceMarker(x, y, pt.key, String(pt.id), "dashed");
+          drawDeviceMarker(x, y, pt.key, String(pt.id), "dashed", pt.partNumber);
         });
       }
 
@@ -1853,6 +2222,8 @@ export function PlanSegmentationModal({
     iconUrlByDeviceKey,
     interactiveDevices,
     isMobileViewport,
+    markerColorByDeviceKey,
+    markerLayoutByKey,
     pdfReady,
     planRaster?.height,
     planRaster?.width,
