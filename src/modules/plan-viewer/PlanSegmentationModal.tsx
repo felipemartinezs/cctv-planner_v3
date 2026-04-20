@@ -70,9 +70,11 @@ const ICON_MARKER_SIZE = 14 * RENDER_SCALE;
 
 // Dimensiones de la gota. La cabeza circular es donde va el ID; el pico
 // inferior marca la posicion exacta del device (igual que el marker naranja
-// del PDF original de SiteOwl).
-const TEARDROP_HEAD_RADIUS = 9 * RENDER_SCALE;
-const TEARDROP_TIP_LENGTH = 5 * RENDER_SCALE;
+// del PDF original de SiteOwl). Tamano un poco mas grande que el marker V1
+// para cubrir OPACAMENTE el label baked del PDF (que si no se ve de fondo
+// creando doble numeracion).
+const TEARDROP_HEAD_RADIUS = 13 * RENDER_SCALE;
+const TEARDROP_TIP_LENGTH = 8 * RENDER_SCALE;
 
 // V2: leader lines para zonas densas (farmacia, self-checkout, AP office).
 // Cuando varios markers caen cerca, sus IDs se encimen y el tecnico no puede
@@ -1830,53 +1832,41 @@ export function PlanSegmentationModal({
         ctx.closePath();
       };
 
-      // Helper: dibuja una gota (teardrop) con la punta apuntando hacia abajo
-      // al punto (tipX, tipY). El circulo superior tiene radio `headR` y esta
-      // centrado en (tipX, tipY - tipLen - headR*0.5 aprox). Para facilitar
-      // el calculo del centro donde va el ID, retornamos { centerX, centerY }.
+      // Helper: dibuja una gota (teardrop) identica al marker original de
+      // SiteOwl. La punta apunta hacia abajo y toca exactamente (tipX, tipY)
+      // — la posicion del dispositivo. El circulo superior tiene radio headR
+      // y esta centrado en (tipX, tipY - headR - tipLen). Retorna el centro
+      // del circulo para pintar el ID dentro.
       //
-      // Construccion geometrica: trazamos el arco del circulo desde la
-      // tangente izquierda hasta la derecha (pasando por arriba), y cerramos
-      // con dos lineas que se juntan en la punta formando un angulo agudo.
-      // El angulo donde la linea toca el circulo lo controla `tipAngle` — mas
-      // agudo = gota mas estilizada, mas abierto = mas redonda/bombilla.
+      // Construccion: las tangentes al circulo desde la punta tocan el
+      // circulo a ±theta de la vertical. El arco superior va de la tangente
+      // izquierda sobre el TOP del circulo a la tangente derecha.
       const drawTeardropPath = (tipX: number, tipY: number, headR: number, tipLen: number) => {
-        // Centro del circulo superior. La distancia entre el centro y la
-        // punta es (headR + tipLen). Asi el pico siempre sobresale del
-        // circulo aunque el ID ocupe todo el cuerpo.
         const cx = tipX;
         const cy = tipY - (headR + tipLen);
-        // Angulo entre el centro del circulo y la punta = 90° (hacia abajo).
-        // Las tangentes al circulo desde la punta tocan el circulo en angulos
-        // simetricos alrededor de esa recta. Calculamos el angulo de contacto
-        // usando trigonometria simple: sin(theta) = headR / dist.
         const dist = headR + tipLen;
-        // Clampeamos: si dist <= headR, la punta estaria adentro del circulo.
         const sinTheta = Math.min(headR / Math.max(dist, headR + 0.001), 0.999);
         const theta = Math.asin(sinTheta);
-        // Angulos donde las tangentes tocan el circulo (en radianes, con 0
-        // apuntando a la derecha y creciendo CCW). La punta esta "abajo" del
-        // centro (angulo = PI/2 en canvas y-abajo = sumar PI/2 desde eje X).
-        // En coordenadas de canvas (y crece hacia abajo) el angulo hacia la
-        // punta desde el centro es +PI/2. Las tangentes estan en
-        // +PI/2 ± (PI/2 - theta) = PI - theta y theta.
-        const rightAngle = theta;        // lado derecho del circulo cerca de la punta
-        const leftAngle = Math.PI - theta; // lado izquierdo del circulo cerca de la punta
+        // Angulos de contacto en coordenadas canvas (y-abajo, 0 = derecha,
+        // PI/2 = abajo). La punta esta debajo del centro → PI/2. Las
+        // tangentes estan a ±(PI/2 - theta) de la recta centro-punta.
+        const rightAngle = theta;          // 0..PI/2 — debajo del ecuador a la derecha
+        const leftAngle = Math.PI - theta; // PI/2..PI — debajo del ecuador a la izquierda
         const rightX = cx + headR * Math.cos(rightAngle);
         const rightY = cy + headR * Math.sin(rightAngle);
         const leftX = cx + headR * Math.cos(leftAngle);
         const leftY = cy + headR * Math.sin(leftAngle);
 
         ctx.beginPath();
-        // Empieza en el punto de contacto derecho.
-        ctx.moveTo(rightX, rightY);
-        // Linea al pico.
-        ctx.lineTo(tipX, tipY);
-        // Linea al punto de contacto izquierdo.
+        ctx.moveTo(tipX, tipY);
         ctx.lineTo(leftX, leftY);
-        // Arco por arriba (CCW en canvas = anticlockwise=true porque canvas
-        // tiene Y invertida respecto al plano cartesiano estandar).
-        ctx.arc(cx, cy, headR, leftAngle, rightAngle, true);
+        // Arco pasando por ARRIBA del circulo (de leftAngle a rightAngle).
+        // En canvas (y-abajo) "anticlockwise=false" con leftAngle > rightAngle
+        // avanza en angulos crecientes: PI-theta → PI → 3PI/2 (tope) → 2PI → theta.
+        // Ese camino cruza el TOP del circulo (3PI/2 = arriba visual).
+        ctx.arc(cx, cy, headR, leftAngle, rightAngle, false);
+        // arc dejo el cursor en (rightX, rightY); cerramos al tip.
+        ctx.lineTo(tipX, tipY);
         ctx.closePath();
 
         return { centerX: cx, centerY: cy };
@@ -1891,34 +1881,31 @@ export function PlanSegmentationModal({
       ) => {
         ctx.save();
         if (variant === "dashed") {
-          // Variante "sin switch": contorno punteado para distinguirlo a
-          // primera vista.
           ctx.setLineDash([3 * RENDER_SCALE, 2 * RENDER_SCALE]);
         } else {
           ctx.setLineDash([]);
         }
         const geom = drawTeardropPath(tipX, tipY, TEARDROP_HEAD_RADIUS, TEARDROP_TIP_LENGTH);
-        // Sombra ligera para levantar la gota del plano (igual que el PDF
-        // original tiene un halo sutil alrededor del marker naranja).
-        ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
-        ctx.shadowBlur = 1.5 * RENDER_SCALE;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0.5 * RENDER_SCALE;
+        // Fill opaco (sin sombra/halo) para que la gota CUBRA el label baked
+        // del PDF. Si dejamos sombra, se notaria un parche alrededor que el
+        // tecnico lee como suciedad en el plano.
         ctx.fillStyle = color.fill;
         ctx.fill();
-        ctx.shadowColor = "transparent";
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetY = 0;
         ctx.lineWidth = 1 * RENDER_SCALE;
         ctx.strokeStyle = color.stroke;
         ctx.stroke();
 
-        // ID al centro del circulo de la gota. Se ajusta el tamano de fuente
-        // a 2 o 3 digitos — si el ID es de 4+ digitos reducimos para que no
-        // rebase el circulo.
+        // ID grande y blanco al centro del circulo — igual que el original.
+        // Escalamos el tipo con la cantidad de digitos para que 3 o 4 digitos
+        // no se desborden.
         const labelLen = idLabel.length;
-        const baseFont = labelLen >= 4 ? 7 * RENDER_SCALE : FONT_SIZE;
-        ctx.font = `700 ${baseFont}px system-ui, sans-serif`;
+        const fontPx =
+          labelLen >= 4
+            ? 9 * RENDER_SCALE
+            : labelLen === 3
+            ? 11 * RENDER_SCALE
+            : 13 * RENDER_SCALE;
+        ctx.font = `700 ${fontPx}px system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = color.textColor;
@@ -1935,71 +1922,25 @@ export function PlanSegmentationModal({
         partNumber: string,
         deviceName?: string
       ) => {
-        // V2: busca el placement para este marker. Si no existe (ej. SHOW_LEADER_LINES
-        // apagado), la gota queda en el anchor — comportamiento V1.
+        // Camino C: gota coloreada con ID dentro, SIEMPRE en (x, y).
+        // Sin desplazamiento ni leader lines — la gota cubre opacamente el
+        // label baked del PDF y en clusters densos se encimen igual que en
+        // el marcador naranja original. Esto preserva la metafora
+        // inmediata: un solo numero, un solo color, la punta marca donde
+        // esta el dispositivo.
+        if (USE_COLORED_TEARDROPS) {
+          const color =
+            markerColorByDeviceKey.get(deviceKey) ?? resolveMarkerColor(partNumber, deviceName);
+          drawColoredTeardrop(x, y, idLabel, color, variant);
+          return;
+        }
+
+        // --- Legacy V2.2: iconos PNG con pill separado + leader lines. Se
+        // deja intacto por si USE_COLORED_TEARDROPS se apaga. ---
         const placement = markerLayoutByKey.get(deviceKey);
         const labelX = placement ? placement.labelX : x;
         const labelY = placement ? placement.labelY : y;
         const showLeader = placement?.showLeader === true;
-
-        // Camino C: gota coloreada con ID dentro.
-        if (USE_COLORED_TEARDROPS) {
-          const color =
-            markerColorByDeviceKey.get(deviceKey) ?? resolveMarkerColor(partNumber, deviceName);
-
-          if (showLeader) {
-            // Cluster denso: la gota se desplaza a (labelX, labelY) con la
-            // punta apuntando hacia el anchor original via leader line. La
-            // punta de la gota desplazada NO apunta al anchor — es el
-            // extremo de la linea el que lo hace. Asi la gota conserva su
-            // orientacion "punta hacia abajo" que el tecnico lee de un
-            // vistazo como "esto es un marker".
-
-            // Desplazamos verticalmente la gota para que su punta (tip)
-            // quede sobre (labelX, labelY). Esto preserva la metafora: la
-            // "punta" marca la posicion *reportada* en la vista, y la linea
-            // conecta a la *posicion real*.
-            // Pero como aqui la posicion real sigue siendo (x, y), pintamos
-            // un puntito en el anchor original para no perder la referencia.
-
-            // 1. Leader line primero (debajo de la gota).
-            ctx.save();
-            ctx.setLineDash([]);
-            ctx.strokeStyle = LEADER_STROKE;
-            ctx.lineWidth = 1 * RENDER_SCALE;
-            ctx.lineCap = "round";
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(labelX, labelY);
-            ctx.stroke();
-            ctx.restore();
-
-            // 2. Puntito en el anchor original.
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(x, y, 1.75 * RENDER_SCALE, 0, Math.PI * 2);
-            ctx.fillStyle = color.fill;
-            ctx.strokeStyle = color.stroke;
-            ctx.lineWidth = 0.75 * RENDER_SCALE;
-            ctx.fill();
-            ctx.stroke();
-            ctx.restore();
-
-            // 3. Gota desplazada con ID dentro, punta apuntando al anchor.
-            //    Si el anchor esta debajo del label (caso raro), la gota se
-            //    pinta hacia abajo igual — la leader line sigue conectando
-            //    ambos y se entiende la relacion.
-            drawColoredTeardrop(labelX, labelY, idLabel, color, variant);
-          } else {
-            // Aislado: la gota se pinta justo en el anchor, con la punta
-            // apuntando al punto exacto del dispositivo.
-            drawColoredTeardrop(x, y, idLabel, color, variant);
-          }
-          return;
-        }
-
-        // --- Legacy V2.2: iconos PNG con pill separado. Se deja intacto por
-        // si USE_COLORED_TEARDROPS se apaga. No se ejecuta en Camino C. ---
         const iconUrl = SHOW_ICON_MARKERS ? iconUrlByDeviceKey.get(deviceKey) : undefined;
         const iconImg = iconUrl ? getReadyIconImage(iconUrl) : null;
 
@@ -2125,7 +2066,15 @@ export function PlanSegmentationModal({
         ctx.restore();
       });
 
-      if (selectedPartNumbers.length === 0) {
+      // Camino C: las gotas de color se dibujan SIEMPRE (sin esperar a que
+      // el tecnico seleccione un part number). Esto da "vista rapida
+      // inmediata" apenas abre el plano: ve todas las camaras coloreadas por
+      // familia. La seleccion de part number simplemente reduce la muestra
+      // cuando el tecnico quiere enfocarse en un tipo de dispositivo.
+      //
+      // Modo legacy (iconos): solo renderiza al seleccionar, igual que antes.
+      const hasFilter = selectedPartNumbers.length > 0;
+      if (!hasFilter && !USE_COLORED_TEARDROPS) {
         if (devicePreview) {
           const x = (devicePreview.device.x / seg.width) * W;
           const y = (devicePreview.device.y / seg.height) * H;
@@ -2139,13 +2088,14 @@ export function PlanSegmentationModal({
         return;
       }
 
-      // Grupo 1: dispositivos con switch asignado — icono del device + ID con halo
-      // (fallback a circulo azul solido si el iconUrl aun no cargo o no existe).
+      // Grupo 1: dispositivos con switch asignado — gota coloreada (o icono
+      // en modo legacy). Con teardrops: muestra TODOS cuando no hay filtro,
+      // o solo los partNumbers seleccionados si el tecnico filtro.
       ctx.setLineDash([]);
       seg.points
         .filter(
           (p) =>
-            selectedPartNumberSet.has(p.partNumber) &&
+            (!hasFilter || selectedPartNumberSet.has(p.partNumber)) &&
             (!selectedLabel || p.segmentLabel === selectedLabel) &&
             p.x >= 0 &&
             p.y >= 0
@@ -2153,17 +2103,21 @@ export function PlanSegmentationModal({
         .forEach((point) => {
           const x = (point.x / seg.width) * W;
           const y = (point.y / seg.height) * H;
-          if (allowAnimatedMarkers) {
+          // Pulse halo solo en modo legacy (iconos). Con gotas de color la
+          // onda de halo se ve como parches azules que tapan detalles del plano.
+          if (allowAnimatedMarkers && !USE_COLORED_TEARDROPS) {
             drawMarkerPulse(ctx, x, y, R, timeMs);
           }
           drawDeviceMarker(x, y, point.key, String(point.id), "solid", point.partNumber);
         });
 
-      // Grupo 2: dispositivos posicionados pero sin switch — círculo naranja punteado
-      const noSwitchPoints = collectGroupedEntries(
-        selectedPartNumbers,
-        seg.partNumberNoSwitch
-      )
+      // Grupo 2: dispositivos posicionados pero sin switch. Cuando no hay
+      // filtro (vista completa de Camino C) incluimos todos; cuando hay
+      // filtro respetamos la seleccion.
+      const noSwitchKeys = hasFilter
+        ? selectedPartNumbers
+        : Object.keys(seg.partNumberNoSwitch);
+      const noSwitchPoints = collectGroupedEntries(noSwitchKeys, seg.partNumberNoSwitch)
         .filter(
           (pt) =>
             matchesSelectedSegment(pt.segmentLabel) &&
@@ -2175,7 +2129,7 @@ export function PlanSegmentationModal({
         noSwitchPoints.forEach((pt) => {
           const x = ((pt.x as number) / seg.width) * W;
           const y = ((pt.y as number) / seg.height) * H;
-          if (allowAnimatedMarkers) {
+          if (allowAnimatedMarkers && !USE_COLORED_TEARDROPS) {
             drawMarkerPulse(ctx, x, y, R, timeMs);
           }
           // Mismo render que Grupo 1; si no hay icono, el fallback pinta
