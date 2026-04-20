@@ -73,13 +73,15 @@ const ICON_MARKER_SIZE = 14 * RENDER_SCALE;
 // del PDF original de SiteOwl). Tamano un poco mas grande que el marker V1
 // para cubrir OPACAMENTE el label baked del PDF (que si no se ve de fondo
 // creando doble numeracion).
-// Camino C fine-tuning (Felipe, abril 2026): reducimos la gota al 75% del
-// tamano original (13/8) porque en campo se sentian un poco grandes y
-// tapaban detalle del plano adyacente. Quedan lo suficientemente opacas
-// para cubrir el label baked del PDF sin robar area visual de cables /
-// muros / muebles alrededor.
-const TEARDROP_HEAD_RADIUS = 10 * RENDER_SCALE;
-const TEARDROP_TIP_LENGTH = 6 * RENDER_SCALE;
+// Camino C fine-tuning (Felipe, abril 2026):
+//   v1: 13/8  — muy grande, tapaba detalle del plano
+//   v2: 10/6  — 75% de v1, sigue sintiendose grande en zonas densas
+//   v3: 7/4   — otro 70% sobre v2 (~54% del original) para dejar respirar
+//              los planos en farmacia / self-checkout / AP office donde
+//              los markers se encimen. El label baked del PDF es chiquito,
+//              la gota a 7*RS todavia lo cubre y el ID se lee en iPhone.
+const TEARDROP_HEAD_RADIUS = 7 * RENDER_SCALE;
+const TEARDROP_TIP_LENGTH = 4 * RENDER_SCALE;
 
 // V2: leader lines para zonas densas (farmacia, self-checkout, AP office).
 // Cuando varios markers caen cerca, sus IDs se encimen y el tecnico no puede
@@ -1903,16 +1905,17 @@ export function PlanSegmentationModal({
         // ID grande y blanco al centro del circulo — igual que el original.
         // Escalamos el tipo con la cantidad de digitos para que 3 o 4 digitos
         // no se desborden.
-        // Font escalado 75% para empatar con la cabeza de la gota reducida.
-        // 2 digitos: 10 | 3 digitos: 8 | 4+ digitos: 7 — siguen cabiendo
-        // dentro del circulo de radio 10*RS sin desbordar.
+        // Font escalado junto con la cabeza (ahora 7*RS). Tamanos chicos
+        // pero legibles en iPhone — a <5*RS se pierde contraste con el
+        // stroke oscuro del perimetro.
+        //   2 digitos: 7*RS | 3 digitos: 6*RS | 4+ digitos: 5*RS
         const labelLen = idLabel.length;
         const fontPx =
           labelLen >= 4
-            ? 7 * RENDER_SCALE
+            ? 5 * RENDER_SCALE
             : labelLen === 3
-            ? 8 * RENDER_SCALE
-            : 10 * RENDER_SCALE;
+            ? 6 * RENDER_SCALE
+            : 7 * RENDER_SCALE;
         ctx.font = `700 ${fontPx}px system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
