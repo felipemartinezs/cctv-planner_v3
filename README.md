@@ -168,15 +168,17 @@ La vista de segmentacion ya no depende de iconos sobre el plano. En su lugar dib
 El color de la gota depende de la familia del part number, asi el tecnico distingue de un vistazo sin abrir la ficha lateral:
 
 - **rojo** — domes fijos (Micross 8011 / Axis 4115 / TU9001)
-- **azul** — F360 fisheye panoramica
-- **verde** — PTZ (QNP / NDP)
-- **amarillo claro / medio / oscuro / mostaza** — monitores 10" / 24" / 32" / 43"
+- **violeta** — F360 fisheye panoramica
+- **naranja** — PTZ (QNP / NDP)
+- **rosa claro / medio / oscuro / magenta profundo** — monitores 10" / 24" / 32" / 43"
 - **turquesa** — camaras exteriores (NDE, OGP, GRC)
 - **cafe** — manned checkout (BNB / PSA)
 - **gris neutro** — self checkout (MCLB / MCLV)
 - **slate** — fallback cuando el part number no esta clasificado
 
 La clasificacion vive en `src/modules/plan-viewer/marker-colors.ts`. Cubre los part numbers que ya tenemos sembrados en `manteca-visual-knowledge.json` con un mapa directo, y cae a reglas heuristicas por prefijo / substring para part numbers nuevos.
+
+**Restriccion QTS:** los tonos **amarillo** (`#FFE600`), **azul** (`#00B0F0`) y **verde** (`#00B050`) estan reservados para las marcas de avance sobre el plano (Wire Ran / Camera Installed / Connected to Switch — QTS CCTV Color Scheme). Ninguna gota de dispositivo debe usar estos tonos, para que un tecnico nunca confunda un ID con una marca de avance. Por eso la paleta actual reemplazo la combinacion original (azul / verde / amarillos) por violeta / naranja / gradiente rosa.
 
 #### Ajuste de tamano para campo
 
