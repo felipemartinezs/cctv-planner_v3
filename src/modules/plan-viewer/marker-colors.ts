@@ -11,35 +11,39 @@
 // plano y NO deben usarse como color de gota de dispositivo:
 //
 //     Amarillo  #FFE600  ->  Wire Ran
-//     Azul      #00B0F0  ->  Camera Installed
+//     Azul      #00B0F0  ->  Camera Installed      (sky/cyan, brillante)
 //     Verde     #00B050  ->  Connected to Switch
+//
+// NOTA sobre el azul: la gota de F360 usa un azul DISTINTO al QTS
+// (#1f6feb royal/oscuro vs #00B0F0 cielo/brillante). En pantalla se leen
+// claramente como tonos separados: F360 es un azul saturado profundo, y
+// la marca QTS "Camera Installed" es un celeste luminoso. Felipe confirmo
+// que la distincion funciona en campo; si algun dia se confunden, la
+// alternativa seria mover F360 a navy/indigo (#0d47a1) o violeta.
 //
 // Definicion de los tonos de avance: PlanSegmentationModal.tsx
 //   > OPERATIONAL_PROGRESS_VISUALS
 //   > OPERATIONAL_PROGRESS_COMPLETE_VISUAL
-//
-// Si un tecnico ve amarillo/azul/verde sobre el plano, debe significar
-// AVANCE — nunca el color base de un dispositivo.
 // =========================================================================
 //
-// Regla general post-QTS (abril 2026, reemplaza la paleta original que
-// usaba azul para F360, verde para PTZ y gradiente amarillo para monitores;
-// esa paleta chocaba con el QTS CCTV Color Scheme):
+// Regla general post-QTS (abril 2026):
 //   Micross 8011 / domes fijos ....... rojo
-//   F360 fisheye panoramicas ......... violeta   (antes azul)
-//   PTZ .............................. naranja   (antes verde)
+//   F360 fisheye panoramicas ......... azul royal (#1f6feb, NO el celeste QTS)
+//   PTZ .............................. violeta    (antes verde; naranja se
+//                                                  probo y se descarto)
 //   Monitores (PVM) 10" ............. rosa claro    (antes amarillo claro)
 //   Monitores 24" ................... rosa medio    (antes amarillo medio)
 //   Monitores 32" ................... rosa oscuro   (antes amarillo oscuro)
 //   Monitores 43" ................... magenta profundo (antes mostaza)
 //   Self checkout (MCL*) ............. neutro (gris)
 //   Manned checkout (BNB/PSA) ........ cafe
-//   Camaras exteriores .............. turquesa (se queda: es distinguible
-//                                               del azul QTS #00B0F0 por
-//                                               ser mas verdoso y oscuro)
+//   Camaras exteriores .............. turquesa (distinguible del azul QTS)
 //
 // Fallback: gris pizarra. Asi nunca queda un marker sin color y seguimos
 // viendo la posicion en planos que tengan part numbers nuevos.
+//
+// NARANJA descartado: Felipe pidio explicitamente evitar naranja en la
+// paleta de gotas. Queda fuera del diseno.
 
 export interface MarkerColor {
   fill: string;
@@ -56,8 +60,8 @@ const WHITE = "#ffffff";
 
 const COLORS = {
   red:           { fill: "#d33a2c", stroke: "#7a1b12", textColor: WHITE,     family: "Dome fijo (Micross 8011)" },
-  violet:        { fill: "#8e24aa", stroke: "#4a148c", textColor: WHITE,     family: "F360 panoramica" },
-  orange:        { fill: "#e65100", stroke: "#8b2d00", textColor: WHITE,     family: "PTZ" },
+  blue:          { fill: "#1f6feb", stroke: "#0b2f6b", textColor: WHITE,     family: "F360 panoramica" },
+  violet:        { fill: "#8e24aa", stroke: "#4a148c", textColor: WHITE,     family: "PTZ" },
   pinkLight:     { fill: "#f48fb1", stroke: "#ad1457", textColor: "#3a0a20", family: "Monitor 10\"" },
   pinkMid:       { fill: "#ec407a", stroke: "#880e4f", textColor: WHITE,     family: "Monitor 24\"" },
   pinkDark:      { fill: "#ad1457", stroke: "#560027", textColor: WHITE,     family: "Monitor 32\"" },
@@ -82,15 +86,16 @@ const DIRECT_MAP: Record<string, MarkerColor> = {
   "CIP-AX4115":      COLORS.red,
   "CB-AXTU9001":     COLORS.red,
 
-  // F360 fisheye panoramica — violeta (antes azul; QTS reservo azul para "Camera Installed").
-  "NDS-5704-F360-W": COLORS.violet,
+  // F360 fisheye panoramica — azul royal #1f6feb
+  // (distinto del azul QTS #00B0F0 sky que reserva "Camera Installed").
+  "NDS-5704-F360-W": COLORS.blue,
 
-  // Exterior — turquesa (distinguible del azul QTS #00B0F0 por ser mas verdoso).
+  // Exterior — turquesa (distinguible del azul QTS por ser mas verdoso).
   "NDE-5704-AL-W":   COLORS.teal,
 
-  // PTZ — naranja (antes verde; QTS reservo verde para "Connected to Switch").
-  "CIP-QNP6250H":    COLORS.orange,
-  "NDP-5522-Z30C-W": COLORS.orange,
+  // PTZ — violeta (antes verde; QTS reservo verde para "Connected to Switch").
+  "CIP-QNP6250H":    COLORS.violet,
+  "NDP-5522-Z30C-W": COLORS.violet,
 
   // Monitores PVM por tamano — gradiente rosa claro a magenta profundo
   // (antes gradiente amarillo; QTS reservo amarillo para "Wire Ran").
@@ -125,8 +130,8 @@ function heuristicByPartNumber(partKey: string): MarkerColor | null {
   if (/MONITOR|PVM|GVM/.test(partKey)) return COLORS.pinkMid;
 
   // Camaras.
-  if (/F360|FISHEYE|PANORAMIC/.test(partKey)) return COLORS.violet;
-  if (/PTZ|QNP|NDP/.test(partKey)) return COLORS.orange;
+  if (/F360|FISHEYE|PANORAMIC/.test(partKey)) return COLORS.blue;
+  if (/PTZ|QNP|NDP/.test(partKey)) return COLORS.violet;
   if (/QND|AX4115|TU9001|DOME/.test(partKey)) return COLORS.red;
   if (/\bNDE\b|EXTERIOR|OUTDOOR|OGP|GRC/.test(partKey)) return COLORS.teal;
 
@@ -147,8 +152,8 @@ export function resolveMarkerColor(partNumber: string, deviceName?: string): Mar
 
   if (deviceName) {
     const nameKey = normalize(deviceName);
-    if (/F360|FISHEYE|PANORAMIC/.test(nameKey)) return COLORS.violet;
-    if (/\bPTZ\b/.test(nameKey)) return COLORS.orange;
+    if (/F360|FISHEYE|PANORAMIC/.test(nameKey)) return COLORS.blue;
+    if (/\bPTZ\b/.test(nameKey)) return COLORS.violet;
     if (/MONITOR|PVM/.test(nameKey)) return COLORS.pinkMid;
     if (/BNB|PSA|MANNED/.test(nameKey)) return COLORS.brown;
     if (/SELF[- ]?CHECK|\bSCO\b/.test(nameKey)) return COLORS.neutralGray;

@@ -168,13 +168,15 @@ La vista de segmentacion ya no depende de iconos sobre el plano. En su lugar dib
 El color de la gota depende de la familia del part number, asi el tecnico distingue de un vistazo sin abrir la ficha lateral:
 
 - **rojo** — domes fijos (Micross 8011 / Axis 4115 / TU9001)
-- **violeta** — F360 fisheye panoramica
-- **naranja** — PTZ (QNP / NDP)
+- **azul royal** (`#1f6feb`) — F360 fisheye panoramica
+- **violeta** — PTZ (QNP / NDP)
 - **rosa claro / medio / oscuro / magenta profundo** — monitores 10" / 24" / 32" / 43"
 - **turquesa** — camaras exteriores (NDE, OGP, GRC)
 - **cafe** — manned checkout (BNB / PSA)
 - **gris neutro** — self checkout (MCLB / MCLV)
 - **slate** — fallback cuando el part number no esta clasificado
+
+> Nota sobre el azul de F360: el tono `#1f6feb` es un azul **royal saturado profundo**, distinto del azul QTS `#00B0F0` que es **celeste/cielo brillante** y esta reservado para la marca "Camera Installed". En pantalla se leen claramente como tonos separados. Felipe confirmo en campo que la distincion funciona; si algun dia se confunden, la alternativa prevista es mover F360 a navy `#0d47a1`. El naranja quedo descartado de la paleta por decision explicita.
 
 La clasificacion vive en `src/modules/plan-viewer/marker-colors.ts`. Cubre los part numbers que ya tenemos sembrados en `manteca-visual-knowledge.json` con un mapa directo, y cae a reglas heuristicas por prefijo / substring para part numbers nuevos.
 
