@@ -156,6 +156,41 @@ La vista de segmentacion ahora usa un render hibrido pensado para iPhone:
 
 El plano se despliega como capas `<img>` en lugar de depender solo de un `<canvas>` gigante, lo que ayuda a que iOS Safari mantenga mejor la nitidez y la estabilidad durante pan / zoom.
 
+### Markers Camino C — gotas de color por familia
+
+La vista de segmentacion ya no depende de iconos sobre el plano. En su lugar dibuja una **gota de color** con la misma forma que el marker naranja original del PDF de SiteOwl:
+
+- la **punta apunta hacia abajo** y toca exactamente la posicion del dispositivo
+- el **ID del dispositivo** va en blanco negrita al centro de la cabeza circular
+- la gota es **opaca**, asi cubre el label baked del PDF y evita doble numeracion
+- aparece **directo al abrir el plano**, sin necesidad de seleccionar un part number — vista rapida inmediata para campo
+
+El color de la gota depende de la familia del part number, asi el tecnico distingue de un vistazo sin abrir la ficha lateral:
+
+- **rojo** — domes fijos (Micross 8011 / Axis 4115 / TU9001)
+- **azul** — F360 fisheye panoramica
+- **verde** — PTZ (QNP / NDP)
+- **amarillo claro / medio / oscuro / mostaza** — monitores 10" / 24" / 32" / 43"
+- **turquesa** — camaras exteriores (NDE, OGP, GRC)
+- **cafe** — manned checkout (BNB / PSA)
+- **gris neutro** — self checkout (MCLB / MCLV)
+- **slate** — fallback cuando el part number no esta clasificado
+
+La clasificacion vive en `src/modules/plan-viewer/marker-colors.ts`. Cubre los part numbers que ya tenemos sembrados en `manteca-visual-knowledge.json` con un mapa directo, y cae a reglas heuristicas por prefijo / substring para part numbers nuevos.
+
+#### Ajuste de tamano para campo
+
+El tamano de la gota se afino iterativamente probando en iPhone sobre planos densos (farmacia, self-checkout, AP office):
+
+| version | radio cabeza | largo punta | tamano relativo |
+| ------- | ------------ | ----------- | --------------- |
+| v1      | 13 * RS      | 8 * RS      | 100% (muy grande, tapaba detalle) |
+| v2      | 10 * RS      | 6 * RS      | 75% de v1 |
+| v3      | 7 * RS       | 4 * RS      | ~54% del original |
+| **v4**  | **6 * RS**   | **3 * RS**  | **~46% del original** — tamano actual |
+
+`RS` = `RENDER_SCALE` del canvas de markers. La fuente del ID dentro de la gota se escala con la cabeza: 2 digitos `6*RS`, 3 digitos `5*RS`, 4+ digitos `4*RS`. Si se siente necesario reducir aun mas, el plan es activar **zoom adaptativo** (la gota mantiene su tamano en pantalla mientras el plano se escala) en lugar de seguir bajando el font.
+
 ## Ambigüedades ya resueltas visualmente
 
 ### PTZ interior
@@ -213,3 +248,4 @@ Se muestran ambos iconos como ayuda visual sin duplicar conteos.
 5. Agregar actividad historica, snapshots y filtros de inconsistencias.
 6. Evaluar logs funcionales y, mas adelante, consultas AI acotadas.
 7. Explorar renderizado vectorial SVG desde pdfjs para calidad perfecta a cualquier zoom.
+8. **Zoom adaptativo para clusters densos** — mantener el tamano de la gota Camino C constante en pantalla mientras el plano escala, y emitir badges de cluster cuando varios markers quedan superpuestos al nivel de zoom actual.
