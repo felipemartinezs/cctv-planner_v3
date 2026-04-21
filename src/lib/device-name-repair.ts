@@ -39,13 +39,41 @@ function shouldMergeWordTokens(left: string, right: string) {
   return left.length <= 2 || right.length <= 2;
 }
 
+// Strip de ruido inyectado por la extraccion de texto del PDF cuando el
+// tag descriptor "PLACEHOLDER PVM ICON" (o variantes) se inserta MID-palabra
+// y parte tokens canonicos como BULLPEN, PVM, GM, etc.
+//
+// Casos reales observados en SAN_LEANDRO / SAN_DIEGO (abril 2026):
+//   "SAL_COSMETICS_BULLPE PLACEHOLDER PVM ICON N_PVM_01"
+//         ->  "SAL_COSMETICS_BULLPEN_PVM_01"
+//   "FRNT_GM_FRONT_END_P PLACEHOLDER PVM ICON VM_01"
+//         ->  "FRNT_GM_FRONT_END_PVM_01"
+//   "FRNT_SELF_CHECKOUT_BULLPEN_EXIT_PVM_01_G PLACEHOLDER PVM ICON M"
+//         ->  "FRNT_SELF_CHECKOUT_BULLPEN_EXIT_PVM_01_GM"
+//
+// Condicion: la inyeccion SOLO se elimina cuando esta rodeada de caracter
+// alfanumerico a ambos lados (es decir, parte un token). Si aparece al
+// final del nombre como tag descriptor legitimo, se deja intacta.
+const MID_WORD_NOISE_INSERTS = [
+  /(\w)\s+PLACEHOLDER\s+PVM\s+ICON\s+(\w)/gi,
+];
+
+function stripMidWordNoiseInserts(value: string): string {
+  let result = value;
+  for (const pattern of MID_WORD_NOISE_INSERTS) {
+    result = result.replace(pattern, "$1$2");
+  }
+  return result;
+}
+
 export function repairExtractedDeviceName(value: string): string {
   const trimmed = value.replace(/\u00a0/g, " ").trim();
   if (!trimmed) {
     return "";
   }
 
-  const compactSeparators = trimmed.replace(/\s*([_/\-])\s*/g, "$1");
+  const denoised = stripMidWordNoiseInserts(trimmed);
+  const compactSeparators = denoised.replace(/\s*([_/\-])\s*/g, "$1");
   const tokens = compactSeparators.split(/([ _/\-]+)/).filter((token) => token.length > 0);
 
   for (let index = 0; index < tokens.length - 2; index += 1) {
