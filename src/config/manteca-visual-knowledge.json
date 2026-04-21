@@ -346,6 +346,32 @@
       "iconConfidence": 1
     },
     {
+      "namePattern": "SAL COSMETICS BULLPEN PVM",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
+      "namePattern": "FRNT SELF CHECKOUT BULLPEN EXIT PVM GM",
+      "suggestedPartNumber": "MCLV-BAXFA51",
+      "candidatePartNumbers": [
+        "MCLV-BAXFA51"
+      ],
+      "partConfidence": 1,
+      "suggestedIconDevice": "MCLV-BAXFA51 43 LED Monitor",
+      "candidateIconDevices": [
+        "MCLV-BAXFA51 43 LED Monitor"
+      ],
+      "iconConfidence": 1
+    },
+    {
       "namePattern": "FRNT GROCERY FRONT END PVM",
       "suggestedPartNumber": "MCLV-BAXFA51",
       "candidatePartNumbers": [
