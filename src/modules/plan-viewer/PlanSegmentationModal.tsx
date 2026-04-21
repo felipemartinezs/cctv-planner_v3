@@ -75,13 +75,16 @@ const ICON_MARKER_SIZE = 14 * RENDER_SCALE;
 // creando doble numeracion).
 // Camino C fine-tuning (Felipe, abril 2026):
 //   v1: 13/8  — muy grande, tapaba detalle del plano
-//   v2: 10/6  — 75% de v1, sigue sintiendose grande en zonas densas
-//   v3: 7/4   — otro 70% sobre v2 (~54% del original) para dejar respirar
-//              los planos en farmacia / self-checkout / AP office donde
-//              los markers se encimen. El label baked del PDF es chiquito,
-//              la gota a 7*RS todavia lo cubre y el ID se lee en iPhone.
-const TEARDROP_HEAD_RADIUS = 7 * RENDER_SCALE;
-const TEARDROP_TIP_LENGTH = 4 * RENDER_SCALE;
+//   v2: 10/6  — 75% de v1, seguia grande en zonas densas
+//   v3: 7/4   — otro 70% sobre v2 (~54% del original)
+//   v4: 6/3   — otro 85% sobre v3 (~46% del original). Felipe valido que
+//              "se ve mucho mejor" y pidio ajustar un 15% mas. A este
+//              tamano la gota cubre el label baked del PDF por poco y
+//              el ID de 2 digitos (mayoria de devices) sigue legible en
+//              iPhone. Si bajamos mas, el texto pierde contraste contra
+//              el stroke del perimetro.
+const TEARDROP_HEAD_RADIUS = 6 * RENDER_SCALE;
+const TEARDROP_TIP_LENGTH = 3 * RENDER_SCALE;
 
 // V2: leader lines para zonas densas (farmacia, self-checkout, AP office).
 // Cuando varios markers caen cerca, sus IDs se encimen y el tecnico no puede
@@ -1905,17 +1908,17 @@ export function PlanSegmentationModal({
         // ID grande y blanco al centro del circulo — igual que el original.
         // Escalamos el tipo con la cantidad de digitos para que 3 o 4 digitos
         // no se desborden.
-        // Font escalado junto con la cabeza (ahora 7*RS). Tamanos chicos
-        // pero legibles en iPhone — a <5*RS se pierde contraste con el
-        // stroke oscuro del perimetro.
-        //   2 digitos: 7*RS | 3 digitos: 6*RS | 4+ digitos: 5*RS
+        // Font escalado junto con la cabeza (ahora 6*RS). Limite practico
+        // de legibilidad en iPhone — si bajamos mas, el texto se pierde
+        // contra el stroke oscuro. Mantenemos peso 700 para densidad.
+        //   2 digitos: 6*RS | 3 digitos: 5*RS | 4+ digitos: 4*RS
         const labelLen = idLabel.length;
         const fontPx =
           labelLen >= 4
-            ? 5 * RENDER_SCALE
+            ? 4 * RENDER_SCALE
             : labelLen === 3
-            ? 6 * RENDER_SCALE
-            : 7 * RENDER_SCALE;
+            ? 5 * RENDER_SCALE
+            : 6 * RENDER_SCALE;
         ctx.font = `700 ${fontPx}px system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
