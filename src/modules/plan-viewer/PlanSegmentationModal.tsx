@@ -227,30 +227,46 @@ const OPERATIONAL_PROGRESS_DRAW_ORDER: OperationalProgressStep[] = [
   "switchConnected",
 ];
 
+// Codigo de color QTS CCTV (PDF oficial "CCTV COLOR SCHEME" de QTS):
+//   Wire Ran              -> AMARILLO  #FFE600  (highlighter puro)
+//   Camera Installed      -> AZUL      #00B0F0  (azul celeste fuerte)
+//   Connected to Switch   -> VERDE     #00B050  (verde medio)
+//
+// Estos tonos son normativa de la empresa y NO se deben alterar a gusto
+// del app. Si en el futuro QTS actualiza el color scheme, este bloque es
+// el UNICO punto en el codigo que refleja los colores de avance sobre el
+// plano (y su replica visual vive en styles.css bajo
+// `.segmentation-progress-action--*`). La paleta de las gotas Camino C
+// (src/modules/plan-viewer/marker-colors.ts) debe evitar estos tres
+// tonos para que un tecnico nunca confunda un ID con una marca de
+// avance.
 const OPERATIONAL_PROGRESS_VISUALS: Record<
   OperationalProgressStep,
   { fill: string; glow: string; stroke: string }
 > = {
   cableRun: {
-    fill: "rgba(255, 205, 72, 0.24)",
-    glow: "rgba(255, 205, 72, 0.18)",
-    stroke: "rgba(255, 205, 72, 0.94)",
+    fill: "rgba(255, 230, 0, 0.24)",
+    glow: "rgba(255, 230, 0, 0.18)",
+    stroke: "rgba(255, 230, 0, 0.94)",
   },
   installed: {
-    fill: "rgba(95, 176, 255, 0.24)",
-    glow: "rgba(95, 176, 255, 0.18)",
-    stroke: "rgba(95, 176, 255, 0.94)",
+    fill: "rgba(0, 176, 240, 0.24)",
+    glow: "rgba(0, 176, 240, 0.18)",
+    stroke: "rgba(0, 176, 240, 0.94)",
   },
   switchConnected: {
-    fill: "rgba(88, 214, 141, 0.24)",
-    glow: "rgba(88, 214, 141, 0.18)",
-    stroke: "rgba(88, 214, 141, 0.94)",
+    fill: "rgba(0, 176, 80, 0.24)",
+    glow: "rgba(0, 176, 80, 0.18)",
+    stroke: "rgba(0, 176, 80, 0.94)",
   },
 };
 
+// Cuando los 3 pasos estan completos, colapsamos los 3 dots en un solo
+// indicador con el verde QTS al 98% (solid) y un halo pale mint para que
+// se lea "fully done" a primera vista sin romper la normativa de color.
 const OPERATIONAL_PROGRESS_COMPLETE_VISUAL = {
-  fill: "rgba(41, 199, 122, 0.98)",
-  glow: "rgba(41, 199, 122, 0.28)",
+  fill: "rgba(0, 176, 80, 0.98)",
+  glow: "rgba(0, 176, 80, 0.28)",
   stroke: "rgba(194, 255, 221, 0.96)",
 };
 

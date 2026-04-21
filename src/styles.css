@@ -1668,42 +1668,42 @@ img {
 }
 
 .segmentation-progress-action--cable {
-  border-color: rgba(255, 205, 72, 0.2);
+  border-color: rgba(255, 230, 0, 0.2);
 }
 
 .segmentation-progress-action--installed {
-  border-color: rgba(95, 176, 255, 0.2);
+  border-color: rgba(0, 176, 240, 0.2);
 }
 
 .segmentation-progress-action--switch {
-  border-color: rgba(88, 214, 141, 0.2);
+  border-color: rgba(0, 176, 80, 0.2);
 }
 
 .segmentation-progress-action--cable .segmentation-progress-action__swatch {
-  background: rgba(255, 205, 72, 0.94);
+  background: rgba(255, 230, 0, 0.94);
 }
 
 .segmentation-progress-action--installed .segmentation-progress-action__swatch {
-  background: rgba(95, 176, 255, 0.94);
+  background: rgba(0, 176, 240, 0.94);
 }
 
 .segmentation-progress-action--switch .segmentation-progress-action__swatch {
-  background: rgba(88, 214, 141, 0.94);
+  background: rgba(0, 176, 80, 0.94);
 }
 
 .segmentation-progress-action--done.segmentation-progress-action--cable {
-  background: rgba(255, 205, 72, 0.14);
-  border-color: rgba(255, 205, 72, 0.42);
+  background: rgba(255, 230, 0, 0.14);
+  border-color: rgba(255, 230, 0, 0.42);
 }
 
 .segmentation-progress-action--done.segmentation-progress-action--installed {
-  background: rgba(95, 176, 255, 0.15);
-  border-color: rgba(95, 176, 255, 0.44);
+  background: rgba(0, 176, 240, 0.15);
+  border-color: rgba(0, 176, 240, 0.44);
 }
 
 .segmentation-progress-action--done.segmentation-progress-action--switch {
-  background: rgba(88, 214, 141, 0.14);
-  border-color: rgba(88, 214, 141, 0.42);
+  background: rgba(0, 176, 80, 0.14);
+  border-color: rgba(0, 176, 80, 0.42);
 }
 
 .segmentation-progress-action--confirm {
@@ -1931,41 +1931,41 @@ img {
 }
 
 .segmentation-progress-summary__legend-item.segmentation-progress-action--cable {
-  border-color: rgba(255, 205, 72, 0.18);
+  border-color: rgba(255, 230, 0, 0.18);
 }
 
 .segmentation-progress-summary__legend-item.segmentation-progress-action--installed {
-  border-color: rgba(95, 176, 255, 0.18);
+  border-color: rgba(0, 176, 240, 0.18);
 }
 
 .segmentation-progress-summary__legend-item.segmentation-progress-action--switch {
-  border-color: rgba(88, 214, 141, 0.18);
+  border-color: rgba(0, 176, 80, 0.18);
 }
 
 .segmentation-progress-summary__legend-item.segmentation-progress-action--complete {
-  border-color: rgba(41, 199, 122, 0.24);
+  border-color: rgba(0, 176, 80, 0.24);
 }
 
 .segmentation-progress-summary__legend-item.segmentation-progress-action--cable .segmentation-progress-summary__legend-dot {
-  background: rgba(255, 205, 72, 0.9);
-  box-shadow: 0 0 0 1px rgba(255, 205, 72, 0.28);
+  background: rgba(255, 230, 0, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 230, 0, 0.28);
 }
 
 .segmentation-progress-summary__legend-item.segmentation-progress-action--installed .segmentation-progress-summary__legend-dot {
-  background: rgba(95, 176, 255, 0.92);
-  box-shadow: 0 0 0 1px rgba(95, 176, 255, 0.28);
+  background: rgba(0, 176, 240, 0.92);
+  box-shadow: 0 0 0 1px rgba(0, 176, 240, 0.28);
 }
 
 .segmentation-progress-summary__legend-item.segmentation-progress-action--switch .segmentation-progress-summary__legend-dot {
-  background: rgba(88, 214, 141, 0.92);
-  box-shadow: 0 0 0 1px rgba(88, 214, 141, 0.28);
+  background: rgba(0, 176, 80, 0.92);
+  box-shadow: 0 0 0 1px rgba(0, 176, 80, 0.28);
 }
 
 .segmentation-progress-summary__legend-item.segmentation-progress-action--complete .segmentation-progress-summary__legend-dot {
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 999px;
-  background: rgba(41, 199, 122, 0.96);
+  background: rgba(0, 176, 80, 0.96);
   box-shadow: 0 0 0 1px rgba(194, 255, 221, 0.34);
 }
 
@@ -2006,15 +2006,15 @@ img {
 }
 
 .segmentation-progress-summary__card--cable {
-  border-color: rgba(255, 205, 72, 0.18);
+  border-color: rgba(255, 230, 0, 0.18);
 }
 
 .segmentation-progress-summary__card--installed {
-  border-color: rgba(95, 176, 255, 0.18);
+  border-color: rgba(0, 176, 240, 0.18);
 }
 
 .segmentation-progress-summary__card--switch {
-  border-color: rgba(88, 214, 141, 0.18);
+  border-color: rgba(0, 176, 80, 0.18);
 }
 
 .segmentation-progress-summary__status-grid {
@@ -2055,7 +2055,7 @@ img {
 }
 
 .segmentation-progress-summary__status-card--complete {
-  border-color: rgba(41, 199, 122, 0.24);
+  border-color: rgba(0, 176, 80, 0.24);
 }
 
 .segmentation-progress-summary__status-card--remaining {
@@ -2063,7 +2063,7 @@ img {
 }
 
 .segmentation-progress-summary__status-card--partial {
-  border-color: rgba(255, 205, 72, 0.18);
+  border-color: rgba(255, 230, 0, 0.18);
 }
 
 .segmentation-progress-summary__status-card--pending {
@@ -2095,7 +2095,7 @@ img {
 }
 
 .segmentation-segment-progress-pill--complete {
-  border-color: rgba(41, 199, 122, 0.22);
+  border-color: rgba(0, 176, 80, 0.22);
 }
 
 .segmentation-segment-progress-pill--remaining {
@@ -2103,7 +2103,7 @@ img {
 }
 
 .segmentation-segment-progress-pill--partial {
-  border-color: rgba(255, 205, 72, 0.18);
+  border-color: rgba(255, 230, 0, 0.18);
 }
 
 .segmentation-segment-progress-pill--pending {
