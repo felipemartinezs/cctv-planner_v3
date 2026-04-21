@@ -56,6 +56,28 @@ export const DEVICE_RULES: DeviceRule[] = [
     installerNote: "Monitor dual 43\" back-to-back — correr 2 CAT5 (uno por pantalla) + 1 cable 12/2 power",
   },
   {
+    // IMPORTANTE: esta regla va ANTES de salesfloor-evpm-10 porque el token
+    // BULLPEN puede aparecer junto con COSMETICS u otras areas SAL_. El
+    // bullpen es el booth donde se para el cashier y siempre lleva PVM 43"
+    // frente a el, sin importar el prefijo del nombre. Tambien reconocemos
+    // FRONT_END (con o sin FRNT_) porque es la otra firma semantica del 43".
+    // Casos cubiertos:
+    //   FRNT_GROCERY_FRONT_END_PVM_01          -> 43"
+    //   FRNT_GM_FRONT_END_PVM_02               -> 43"
+    //   FRNT_SELF_CHECKOUT_BULLPEN_EXIT_PVM_01 -> 43"
+    //   SAL_COSMETICS_BULLPEN_PVM_01           -> 43"  (antes caia en 10")
+    id: "front-end-bullpen-pvm-43",
+    description: "PVM 43\" para front end / bullpen (incluye SAL_*_BULLPEN_PVM_*)",
+    namePattern:
+      "(?:BULLPEN|FRONT[_ ]END).*(?:EPVM|PVM)|(?:EPVM|PVM).*(?:BULLPEN|FRONT[_ ]END)",
+    deviceType: "PVM 43\"",
+    inferredIconDevice: "MCLV-BAXFA51 43 LED Monitor",
+    inferredPartNumber: "MCLV-BAXFA51",
+    cablesCAT5: 2,
+    cablesPower: 1,
+    installerNote: "PVM 43\" de front end / bullpen — correr 2 CAT5 (uno por pantalla) + 1 cable 12/2 power",
+  },
+  {
     id: "salesfloor-evpm-10",
     description: "Monitor EVPM 10\" en Cosmetics / Sporting Goods / Baby Formula",
     namePattern:
@@ -92,18 +114,6 @@ export const DEVICE_RULES: DeviceRule[] = [
     cablesCAT5: 2,
     cablesPower: 1,
     installerNote: "PVM 24\" con encoder — correr 2 CAT5 (monitor + encoder) + 1 cable 12/2 power",
-  },
-  {
-    id: "front-end-pvm-43",
-    description: "PVM 43\" para front end / bullpen exit",
-    namePattern:
-      "(?:FRNT[_ ].*FRONT[_ ]END|FRNT[_ ].*BULLPEN[_ ]EXIT).*(?:EPVM|PVM)|(?:EPVM|PVM).*(?:FRNT[_ ].*FRONT[_ ]END|FRNT[_ ].*BULLPEN[_ ]EXIT)",
-    deviceType: "PVM 43\"",
-    inferredIconDevice: "MCLV-BAXFA51 43 LED Monitor",
-    inferredPartNumber: "MCLV-BAXFA51",
-    cablesCAT5: 2,
-    cablesPower: 1,
-    installerNote: "PVM 43\" de front end — correr 2 CAT5 (uno por pantalla) + 1 cable 12/2 power",
   },
   {
     id: "garden-center-pvm-32",
