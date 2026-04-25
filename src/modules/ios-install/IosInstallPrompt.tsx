@@ -1,12 +1,141 @@
 import { useEffect, useMemo, useState } from "react";
+import { useI18n } from "../../i18n";
 
 const DISMISS_KEY = "ccp.ios-install.banner.dismissed.v1";
+
+// iOS menu labels are intentionally kept in English because the technician's
+// iPhone interface is in English. The surrounding explanation is translated.
+const IOS_LABELS = {
+  share: "Share",
+  addToHome: "Add to Home Screen",
+  add: "Add",
+} as const;
+
+type Copy = {
+  bannerTitle: string;
+  bannerBody: (share: string, addToHome: string) => React.ReactNode;
+  bannerCta: string;
+  bannerClose: string;
+  fab: string;
+  modalTitle: string;
+  modalIntro: string;
+  step1: (safari: string) => React.ReactNode;
+  step2: (share: string) => React.ReactNode;
+  step3: (addToHome: string) => React.ReactNode;
+  step4: (add: string) => React.ReactNode;
+  note: string;
+  ok: string;
+  ariaDialog: string;
+  ariaModal: string;
+  ariaFab: string;
+  ariaClose: string;
+};
+
+const COPY: Record<"en" | "es", Copy> = {
+  en: {
+    bannerTitle: "Install on your iPhone",
+    bannerBody: (share, addToHome) => (
+      <>
+        Tap{" "}
+        <span aria-label={share} role="img">
+          &#x2B06;&#xFE0F;
+        </span>{" "}
+        <strong>{share}</strong> in Safari and choose{" "}
+        <strong>{addToHome}</strong>.
+      </>
+    ),
+    bannerCta: "How to install",
+    bannerClose: "Close",
+    fab: "Add to Home Screen",
+    modalTitle: "Add to your iPhone Home Screen",
+    modalIntro:
+      "Follow these steps in Safari to get the app icon on your Home Screen:",
+    step1: (safari) => (
+      <>
+        Open this site in <strong>{safari}</strong> (not Chrome or another
+        app).
+      </>
+    ),
+    step2: (share) => (
+      <>
+        Tap the <strong>{share}</strong> button{" "}
+        <span aria-hidden="true">&#x2B06;&#xFE0F;</span> in the bottom toolbar.
+      </>
+    ),
+    step3: (addToHome) => (
+      <>
+        Scroll down and choose <strong>&ldquo;{addToHome}&rdquo;</strong>.
+      </>
+    ),
+    step4: (add) => (
+      <>
+        Tap <strong>{add}</strong> at the top right. The CCTV Field Planner
+        icon will appear on your Home Screen.
+      </>
+    ),
+    note: "iOS does not allow auto-install. You have to use the Share menu.",
+    ok: "Got it",
+    ariaDialog: "Install on Home Screen",
+    ariaModal: "How to add to your iPhone Home Screen",
+    ariaFab: "How to add this app to the iPhone Home Screen",
+    ariaClose: "Close notice",
+  },
+  es: {
+    bannerTitle: "Instalar en el iPhone",
+    bannerBody: (share, addToHome) => (
+      <>
+        Toca{" "}
+        <span aria-label={share} role="img">
+          &#x2B06;&#xFE0F;
+        </span>{" "}
+        <strong>{share}</strong> en Safari y elige{" "}
+        <strong>{addToHome}</strong>.
+      </>
+    ),
+    bannerCta: "Como instalar",
+    bannerClose: "Cerrar",
+    fab: "Add to Home Screen",
+    modalTitle: "Agregar al inicio del iPhone",
+    modalIntro:
+      "Sigue estos pasos en Safari para obtener el icono de la app en tu pantalla de inicio:",
+    step1: (safari) => (
+      <>
+        Abre este sitio en <strong>{safari}</strong> (no Chrome ni otra app
+        como WhatsApp o Gmail).
+      </>
+    ),
+    step2: (share) => (
+      <>
+        Toca el boton <strong>{share}</strong>{" "}
+        <span aria-hidden="true">&#x2B06;&#xFE0F;</span> en la barra inferior
+        de Safari.
+      </>
+    ),
+    step3: (addToHome) => (
+      <>
+        Desplazate hacia abajo y elige{" "}
+        <strong>&ldquo;{addToHome}&rdquo;</strong>.
+      </>
+    ),
+    step4: (add) => (
+      <>
+        Toca <strong>{add}</strong> arriba a la derecha. El icono de CCTV
+        Field Planner apareceria en tu pantalla de inicio.
+      </>
+    ),
+    note: 'iOS no permite instalar automaticamente. Tienes que usar el menu "Share".',
+    ok: "Entendido",
+    ariaDialog: "Instalar en pantalla de inicio",
+    ariaModal: "Como agregar al inicio del iPhone",
+    ariaFab: "Como agregar esta app al inicio del iPhone",
+    ariaClose: "Cerrar aviso",
+  },
+};
 
 function isIos(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
   const isIPhoneOrIPad = /iPhone|iPad|iPod/i.test(ua);
-  // iPadOS 13+ identifies as Mac but is touch-capable
   const isIpadOs =
     /Macintosh/i.test(ua) &&
     typeof navigator.maxTouchPoints === "number" &&
@@ -17,8 +146,6 @@ function isIos(): boolean {
 function isSafari(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
-  // Exclude in-app webviews (CriOS = Chrome iOS, FxiOS = Firefox iOS, EdgiOS, etc.)
-  // and social in-app browsers (FBAN/FBAV = Facebook, Instagram, Line, etc.).
   if (/(CriOS|FxiOS|EdgiOS|OPiOS|YaBrowser|DuckDuckGo|mercury)/i.test(ua)) {
     return false;
   }
@@ -39,6 +166,8 @@ function isStandalone(): boolean {
 }
 
 export default function IosInstallPrompt() {
+  const { lang } = useI18n();
+  const copy = COPY[lang === "en" ? "en" : "es"];
   const eligible = useMemo(() => isIos() && isSafari() && !isStandalone(), []);
   const [dismissed, setDismissed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -73,19 +202,11 @@ export default function IosInstallPrompt() {
   return (
     <>
       {!dismissed ? (
-        <div
-          role="dialog"
-          aria-label="Instalar en la pantalla de inicio"
-          style={bannerStyle}
-        >
+        <div role="dialog" aria-label={copy.ariaDialog} style={bannerStyle}>
           <div style={bannerTextStyle}>
-            <strong>Instalar en el iPhone</strong>
+            <strong>{copy.bannerTitle}</strong>
             <span style={{ opacity: 0.85 }}>
-              Toca{" "}
-              <span aria-label="Compartir" role="img">
-                &#x2B06;&#xFE0F;
-              </span>{" "}
-              Compartir y elige &ldquo;Agregar a pantalla de inicio&rdquo;.
+              {copy.bannerBody(IOS_LABELS.share, IOS_LABELS.addToHome)}
             </span>
           </div>
           <div style={bannerActionsStyle}>
@@ -94,15 +215,15 @@ export default function IosInstallPrompt() {
               onClick={() => setModalOpen(true)}
               style={primaryButtonStyle}
             >
-              Como instalar
+              {copy.bannerCta}
             </button>
             <button
               type="button"
               onClick={dismissBanner}
               style={ghostButtonStyle}
-              aria-label="Cerrar aviso"
+              aria-label={copy.ariaClose}
             >
-              Cerrar
+              {copy.bannerClose}
             </button>
           </div>
         </div>
@@ -111,9 +232,9 @@ export default function IosInstallPrompt() {
           type="button"
           onClick={() => setModalOpen(true)}
           style={fabStyle}
-          aria-label="Como agregar esta app al inicio del iPhone"
+          aria-label={copy.ariaFab}
         >
-          Agregar al inicio
+          {copy.fab}
         </button>
       )}
 
@@ -121,7 +242,7 @@ export default function IosInstallPrompt() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Como agregar al inicio del iPhone"
+          aria-label={copy.ariaModal}
           style={modalBackdropStyle}
           onClick={(event) => {
             if (event.target === event.currentTarget) setModalOpen(false);
@@ -129,42 +250,41 @@ export default function IosInstallPrompt() {
         >
           <div style={modalCardStyle}>
             <h2 style={{ margin: 0, fontSize: 20, color: "#14213d" }}>
-              Agregar al inicio del iPhone
+              {copy.modalTitle}
             </h2>
             <p style={{ margin: "8px 0 16px", color: "#333" }}>
-              Sigue estos pasos en Safari para obtener el icono de la app en tu
-              pantalla de inicio:
+              {copy.modalIntro}
             </p>
-            <ol style={{ margin: 0, paddingLeft: 20, color: "#333", lineHeight: 1.5 }}>
-              <li>
-                Abre este sitio en <strong>Safari</strong> (no Chrome ni otra
-                app).
-              </li>
-              <li>
-                Toca el boton <strong>Compartir</strong>{" "}
-                <span aria-hidden="true">&#x2B06;&#xFE0F;</span> en la barra
-                inferior.
-              </li>
-              <li>
-                Desplazate y elige{" "}
-                <strong>&ldquo;Agregar a pantalla de inicio&rdquo;</strong>.
-              </li>
-              <li>
-                Toca <strong>Agregar</strong>. Veras el icono de CCTV Field
-                Planner en tu pantalla de inicio.
-              </li>
+            <ol
+              style={{
+                margin: 0,
+                paddingLeft: 20,
+                color: "#333",
+                lineHeight: 1.5,
+              }}
+            >
+              <li>{copy.step1("Safari")}</li>
+              <li>{copy.step2(IOS_LABELS.share)}</li>
+              <li>{copy.step3(IOS_LABELS.addToHome)}</li>
+              <li>{copy.step4(IOS_LABELS.add)}</li>
             </ol>
             <p style={{ margin: "16px 0 0", color: "#555", fontSize: 13 }}>
-              iOS no permite instalar la app automaticamente, tienes que
-              hacerlo desde el menu Compartir.
+              {copy.note}
             </p>
-            <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <div
+              style={{
+                marginTop: 20,
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
                 style={primaryButtonStyle}
               >
-                Entendido
+                {copy.ok}
               </button>
             </div>
           </div>
