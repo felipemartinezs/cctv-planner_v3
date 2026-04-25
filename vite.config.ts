@@ -288,7 +288,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "device-icons/index.json", "device-icons/**/*"],
+      includeAssets: [
+        "favicon.svg",
+        "apple-touch-icon.png",
+        "pwa-icon-192.png",
+        "pwa-icon-512.png",
+        "device-icons/index.json",
+        "device-icons/**/*"
+      ],
       manifest: {
         name: "CCTV Field Planner",
         short_name: "CCTV Planner",
@@ -298,18 +305,38 @@ export default defineConfig({
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
+        scope: "/",
+        lang: "es",
         icons: [
           {
-            src: "/pwa-icon.svg",
-            sizes: "any",
-            type: "image/svg+xml",
+            src: "/pwa-icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "/pwa-icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: "/pwa-icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
+          },
+          {
+            src: "/apple-touch-icon.png",
+            sizes: "180x180",
+            type: "image/png",
             purpose: "any"
           },
           {
             src: "/pwa-icon.svg",
             sizes: "any",
             type: "image/svg+xml",
-            purpose: "maskable"
+            purpose: "any"
           }
         ]
       }
