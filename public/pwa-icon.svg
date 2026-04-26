@@ -1,79 +1,93 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#06122a" />
-      <stop offset="55%" stop-color="#11254d" />
+      <stop offset="0%" stop-color="#05112a" />
       <stop offset="100%" stop-color="#1d3a78" />
     </linearGradient>
-    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fca311" stop-opacity="0.95" />
-      <stop offset="100%" stop-color="#fca311" stop-opacity="0" />
+    <linearGradient id="housing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fcfdff" />
+      <stop offset="55%" stop-color="#dde2ec" />
+      <stop offset="100%" stop-color="#8d96aa" />
     </linearGradient>
-    <radialGradient id="lensGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#7df9ff" stop-opacity="1" />
-      <stop offset="60%" stop-color="#36c5ff" stop-opacity="0.85" />
-      <stop offset="100%" stop-color="#1d3a78" stop-opacity="0" />
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c1c8d6" />
+      <stop offset="100%" stop-color="#5e6779" />
+    </linearGradient>
+    <radialGradient id="dome" cx="38%" cy="32%" r="72%">
+      <stop offset="0%" stop-color="#3d475c" stop-opacity="0.95" />
+      <stop offset="50%" stop-color="#101729" />
+      <stop offset="100%" stop-color="#000000" />
     </radialGradient>
-    <linearGradient id="bodyHi" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fdfcf6" />
-      <stop offset="100%" stop-color="#bfc4d1" />
+    <linearGradient id="domeHi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
     </linearGradient>
+    <radialGradient id="lens" cx="36%" cy="36%" r="65%">
+      <stop offset="0%" stop-color="#d6f9ff" />
+      <stop offset="35%" stop-color="#36c5ff" />
+      <stop offset="80%" stop-color="#0a2244" />
+      <stop offset="100%" stop-color="#000000" />
+    </radialGradient>
   </defs>
 
-  <!-- Full-bleed background. iOS will apply its own corner mask. -->
+  <!-- Full-bleed background. iOS applies its own corner mask. -->
   <rect width="512" height="512" fill="url(#bg)" />
 
-  <!-- Blueprint grid -->
-  <g stroke="#7df9ff" stroke-width="1" opacity="0.07">
-    <path d="M64 0V512M128 0V512M192 0V512M256 0V512M320 0V512M384 0V512M448 0V512" />
-    <path d="M0 64H512M0 128H512M0 192H512M0 256H512M0 320H512M0 384H512M0 448H512" />
+  <!-- Soft cyan halo behind the camera -->
+  <ellipse cx="256" cy="290" rx="230" ry="190" fill="#36c5ff" opacity="0.08" />
+
+  <!-- Drop shadow under the dome -->
+  <ellipse cx="256" cy="448" rx="180" ry="22" fill="#000000" opacity="0.35" />
+
+  <!-- OUTER MOUNTING DISC (white puck base, perspective ellipse) -->
+  <ellipse cx="256" cy="338" rx="200" ry="98" fill="url(#housing)" />
+
+  <!-- Bottom rim shadow (gives the puck thickness) -->
+  <path
+    d="M56 338 a200 98 0 0 0 400 0 a200 92 0 0 1 -400 0 z"
+    fill="#0b1226"
+    opacity="0.35"
+  />
+
+  <!-- Step ring (transition between base and dome collar) -->
+  <ellipse cx="256" cy="306" rx="174" ry="80" fill="url(#ring)" />
+  <ellipse cx="256" cy="298" rx="170" ry="74" fill="url(#housing)" />
+
+  <!-- DARK GLASS DOME (signature Flexidome look) -->
+  <ellipse cx="256" cy="252" rx="142" ry="118" fill="url(#dome)" />
+
+  <!-- Dome highlight (large soft reflection on upper-left) -->
+  <ellipse cx="208" cy="180" rx="86" ry="34" fill="url(#domeHi)" />
+  <ellipse cx="186" cy="172" rx="38" ry="11" fill="#ffffff" opacity="0.4" />
+
+  <!-- LENS MODULE inside the dome (slightly off-center, aimed forward) -->
+  <g transform="translate(286 268)">
+    <!-- Lens housing back -->
+    <ellipse cx="0" cy="6" rx="56" ry="48" fill="#0b1226" opacity="0.75" />
+    <!-- Outer lens ring -->
+    <circle cx="0" cy="0" r="52" fill="#0b1226" />
+    <circle cx="0" cy="0" r="46" fill="#1a2744" />
+    <!-- Glass with cyan glow -->
+    <circle cx="0" cy="0" r="38" fill="url(#lens)" />
+    <!-- Iris / inner barrel -->
+    <circle cx="0" cy="0" r="17" fill="#0b1226" />
+    <circle cx="0" cy="0" r="8" fill="#fca311" />
+    <!-- Specular highlight -->
+    <ellipse cx="-13" cy="-15" rx="9" ry="5" fill="#ffffff" opacity="0.9" transform="rotate(-25 -13 -15)" />
   </g>
 
-  <!-- Soft outer halo behind camera -->
-  <circle cx="256" cy="206" r="190" fill="#36c5ff" opacity="0.08" />
-
-  <!-- Vision beam / scan cone -->
-  <path d="M256 240 L92 470 L420 470 Z" fill="url(#beam)" />
-  <path d="M256 240 L92 470 L420 470 Z" fill="none" stroke="#fca311" stroke-opacity="0.35" stroke-width="2" />
-
-  <!-- Mount stem -->
-  <rect x="242" y="86" width="28" height="44" fill="#9aa6bc" />
-  <rect x="232" y="78" width="48" height="14" rx="4" fill="#5e6a83" />
-
-  <!-- Camera body (slight tilt for dynamism) -->
-  <g transform="translate(256 200) rotate(-10)">
-    <!-- Body -->
-    <rect x="-118" y="-58" width="236" height="116" rx="26" fill="url(#bodyHi)" />
-    <!-- Underside accent -->
-    <rect x="-118" y="14" width="236" height="44" rx="22" fill="#0b1226" opacity="0.18" />
-    <!-- Top vent strip -->
-    <rect x="-96" y="-46" width="64" height="8" rx="4" fill="#0b1226" opacity="0.45" />
-    <!-- Brand mark on body -->
-    <rect x="-96" y="-26" width="46" height="6" rx="3" fill="#14213d" opacity="0.55" />
-    <!-- LED -->
-    <circle cx="-90" cy="34" r="6" fill="#ff3366" />
-    <circle cx="-90" cy="34" r="11" fill="#ff3366" opacity="0.25" />
-    <!-- Lens housing -->
-    <circle cx="74" cy="0" r="56" fill="#0b1226" />
-    <circle cx="74" cy="0" r="48" fill="#14213d" />
-    <circle cx="74" cy="0" r="38" fill="url(#lensGlow)" />
-    <circle cx="74" cy="0" r="20" fill="#0b1226" />
-    <circle cx="74" cy="0" r="10" fill="#fca311" />
-    <!-- Lens highlight -->
-    <circle cx="62" cy="-12" r="6" fill="#ffffff" opacity="0.85" />
-  </g>
-
-  <!-- Planner nodes (engineering anchors at the cone corners) -->
+  <!-- Recording LED on the white collar -->
   <g>
-    <circle cx="92" cy="470" r="16" fill="none" stroke="#fca311" stroke-width="3" />
-    <circle cx="92" cy="470" r="6" fill="#fca311" />
-    <circle cx="420" cy="470" r="16" fill="none" stroke="#fca311" stroke-width="3" />
-    <circle cx="420" cy="470" r="6" fill="#fca311" />
+    <circle cx="138" cy="306" r="6" fill="#ff3366" />
+    <circle cx="138" cy="306" r="11" fill="#ff3366" opacity="0.35" />
   </g>
 
-  <!-- Top-right active indicator -->
-  <g transform="translate(440 72)">
-    <circle r="10" fill="#7df9ff" opacity="0.25" />
-    <circle r="5" fill="#7df9ff" />
+  <!-- Subtle brand text bar on the front of the white base (Bosch-like cue) -->
+  <rect x="208" y="370" width="96" height="6" rx="3" fill="#0b1226" opacity="0.4" />
+
+  <!-- Active indicator top-right -->
+  <g transform="translate(456 56)">
+    <circle r="11" fill="#7df9ff" opacity="0.25" />
+    <circle r="5.5" fill="#7df9ff" />
   </g>
 </svg>
