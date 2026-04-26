@@ -2537,3 +2537,355 @@ img {
     width: calc(100% - 0.9rem);
   }
 }
+
+/* ============================================================
+   Hamburger menu + slide-in drawer (mobile-first technician UX)
+   ============================================================ */
+
+.topbar__row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.topbar__title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.hamburger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 8px 18px rgba(35, 71, 103, 0.1);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+  flex: 0 0 auto;
+}
+
+.hamburger-button:hover,
+.hamburger-button:focus-visible {
+  transform: translateY(-1px);
+  background: rgba(87, 213, 255, 0.12);
+  border-color: var(--line-strong);
+  outline: none;
+}
+
+.hamburger-button svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.app-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  pointer-events: none;
+}
+
+.app-drawer--open {
+  pointer-events: auto;
+}
+
+.app-drawer__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 26, 48, 0);
+  backdrop-filter: blur(0);
+  transition: background 220ms ease, backdrop-filter 220ms ease;
+}
+
+.app-drawer--open .app-drawer__scrim {
+  background: rgba(7, 26, 48, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.app-drawer__panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(420px, 92vw);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #f7fbff, #e8f0f7);
+  border-right: 1px solid var(--line);
+  box-shadow: 24px 0 56px rgba(7, 26, 48, 0.22);
+  transform: translateX(-104%);
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.app-drawer--open .app-drawer__panel {
+  transform: translateX(0);
+}
+
+.app-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.1rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.85);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.app-drawer__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.app-drawer__close {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.app-drawer__close:hover,
+.app-drawer__close:focus-visible {
+  background: rgba(255, 110, 110, 0.16);
+  transform: scale(1.04);
+  outline: none;
+}
+
+.app-drawer__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  padding: 0.85rem 0.85rem 0.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.app-drawer__nav-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.65rem 0.95rem;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-align: left;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.app-drawer__nav-button:hover {
+  background: rgba(87, 213, 255, 0.12);
+  border-color: var(--line);
+}
+
+.app-drawer__nav-button--active {
+  background: linear-gradient(135deg, rgba(18, 63, 113, 0.96), rgba(11, 34, 62, 0.96));
+  color: white;
+  border-color: rgba(11, 34, 62, 0.96);
+  box-shadow: 0 12px 24px rgba(12, 32, 51, 0.18);
+}
+
+.app-drawer__nav-button--active:hover {
+  background: linear-gradient(135deg, rgba(18, 63, 113, 0.96), rgba(11, 34, 62, 0.96));
+}
+
+.app-drawer__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.9rem 0.85rem 1.4rem;
+}
+
+.app-drawer__body > section,
+.app-drawer__body > .knowledge-studio,
+.app-drawer__body > .insights-panel {
+  margin-bottom: 0;
+}
+
+.app-drawer__about {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--line);
+}
+
+.app-drawer__about-item {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.app-drawer__about-item span {
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.app-drawer__about-item strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.app-drawer__about-item small {
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    padding: 0.85rem;
+    border-radius: 22px;
+  }
+  .topbar h1 {
+    font-size: 1.4rem;
+  }
+  .topbar__utility-row {
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+  .app-drawer__panel {
+    width: 92vw;
+  }
+  .app-drawer__nav-button {
+    font-size: 0.92rem;
+  }
+}
+
+/* ============================================================
+   Full-page views (triggered from the hamburger menu)
+   ============================================================ */
+
+.app-page {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.app-page__header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(246, 251, 255, 0.96), rgba(230, 240, 248, 0.96)),
+    linear-gradient(180deg, rgba(87, 213, 255, 0.08), transparent 60%);
+  box-shadow: var(--panel-shadow);
+  position: sticky;
+  top: 0.4rem;
+  z-index: 5;
+}
+
+.app-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.55rem 0.95rem 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.app-page__back:hover,
+.app-page__back:focus-visible {
+  transform: translateX(-2px);
+  background: rgba(87, 213, 255, 0.12);
+  border-color: var(--line-strong);
+  outline: none;
+}
+
+.app-page__back svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.app-page__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.15rem, 2.2vw, 1.5rem);
+  letter-spacing: -0.01em;
+  font-weight: 800;
+}
+
+.app-page__body {
+  display: grid;
+  gap: 1rem;
+}
+
+.app-page__body > section,
+.app-page__body > .knowledge-studio,
+.app-page__body > .insights-panel {
+  margin-bottom: 0;
+}
+
+@media (max-width: 720px) {
+  .app-page__header {
+    padding: 0.7rem 0.8rem;
+    border-radius: 18px;
+    gap: 0.6rem;
+  }
+  .app-page__back span {
+    display: none;
+  }
+  .app-page__back {
+    padding: 0.5rem 0.65rem;
+    min-width: 44px;
+    justify-content: center;
+  }
+  .app-page__title {
+    font-size: 1.1rem;
+  }
+}

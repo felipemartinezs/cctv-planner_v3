@@ -576,6 +576,10 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState<"all" | DeviceCategory>("all");
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [showSegmentationModal, setShowSegmentationModal] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<
+    "main" | "reports" | "admin" | "insights" | "knowledge" | "about"
+  >("main");
   const [status, setStatus] = useState<StatusDescriptor>({
     kind: "translated",
     key: "status.initial",
@@ -1446,28 +1450,23 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div>
-          <h1>CCTV Field Planner</h1>
-        </div>
-        <div className="status-block">
+        <div className="topbar__row">
+          <div className="topbar__title-group">
+            <button
+              type="button"
+              className="hamburger-button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label={t("menu.open")}
+              aria-expanded={drawerOpen}
+              aria-controls="app-drawer"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
+            <h1>CCTV Field Planner</h1>
+          </div>
           <div className="topbar__utility-row">
-            <div className="report-menu" aria-label={t("reports.aria")}>
-              <span className="report-menu__label">{t("reports.label")}</span>
-              <div className="report-menu__links">
-                {reportLinks.map((report) => (
-                  <a
-                    key={report.href}
-                    className="report-link"
-                    href={report.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={t("reports.openInNewTab")}
-                  >
-                    {report.label}
-                  </a>
-                ))}
-              </div>
-            </div>
             <div className="language-toggle" role="group" aria-label="Language selector">
               <button
                 type="button"
@@ -1485,155 +1484,15 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
+        <div className="status-block">
           <span className={`status-pill ${isBusy ? "status-pill--busy" : ""}`}>{statusText}</span>
           {processedAt && <span className="status-note">{t("status.processedAt", { time: processedAt })}</span>}
         </div>
       </header>
 
-      <section className="report-hub-card">
-        <div className="report-hub-card__header">
-          <div>
-            <p className="eyebrow">{t("reports.cardEyebrow")}</p>
-            <h2>{t("reports.cardTitle")}</h2>
-          </div>
-          <p className="report-hub-card__description">{t("reports.cardDescription")}</p>
-        </div>
-        <div className="report-hub-grid">
-          {reportLinks.map((report) => (
-            <a
-              key={report.href}
-              className="report-hub-link"
-              href={report.href}
-              target="_blank"
-              rel="noreferrer"
-              title={t("reports.openInNewTab")}
-            >
-              <strong>{report.label}</strong>
-              <span>{report.description}</span>
-              <small>{t("reports.openInNewTab")}</small>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      <section className="ingest-card">
-        <div className="ingest-card__header">
-          <div>
-            <p className="eyebrow">{t("ingest.eyebrow")}</p>
-            <h2>{t("ingest.title")}</h2>
-          </div>
-          <div className="ingest-card__actions">
-            <button type="button" className="primary-action" disabled={isBusy || !planFile} onClick={handleProcess}>
-              {isBusy ? t("ingest.processing") : t("ingest.process")}
-            </button>
-            <button
-              type="button"
-              className="secondary-action"
-              disabled={!canViewPlan}
-              onClick={() => setShowPdfViewer(true)}
-            >
-              {t("ingest.viewPage1")}
-            </button>
-            <button
-              type="button"
-              className="secondary-action"
-              disabled={!canViewPlan || !segmentation}
-              onClick={() => setShowSegmentationModal(true)}
-            >
-              {t("ingest.viewSegmentation")}
-            </button>
-          </div>
-        </div>
-
-        <div className="upload-grid">
-          <label className="upload-card">
-            <span>{t("ingest.planPdf")}</span>
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={(event) => setPlanFile(event.target.files?.[0] || null)}
-            />
-            <strong>{fileLabel(planFile, t("common.noFile"))}</strong>
-          </label>
-          <label className="upload-card">
-            <span>{t("ingest.baseCsv")}</span>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(event) => setDataFile(event.target.files?.[0] || null)}
-            />
-            <strong>{fileLabel(dataFile, t("common.noFile"))}</strong>
-          </label>
-          <label className="upload-card">
-            <span>{t("ingest.extraData")}</span>
-            <input
-              type="file"
-              accept="application/pdf,.pdf,.csv,text/csv"
-              onChange={(event) => setExtraDataFile(event.target.files?.[0] || null)}
-            />
-            <strong>{fileLabel(extraDataFile, t("common.noFile"))}</strong>
-          </label>
-          <label className="upload-card">
-            <span>{t("ingest.mappingCsv")}</span>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(event) => setMappingFile(event.target.files?.[0] || null)}
-            />
-            <strong>{fileLabel(mappingFile, t("common.noFile"))}</strong>
-          </label>
-          <label className="upload-card">
-            <span>{t("ingest.extraZip")}</span>
-            <input
-              type="file"
-              accept=".zip,application/zip"
-              onClick={(event) => {
-                event.currentTarget.value = "";
-              }}
-              onChange={(event) => {
-                const nextFile = event.target.files?.[0] || null;
-                console.log("[icons] Archivo ZIP elegido:", nextFile ? {
-                  lastModified: formatDateTime(nextFile.lastModified),
-                  name: nextFile.name,
-                  size: nextFile.size,
-                  type: nextFile.type,
-                } : "sin archivo");
-                setIconFolderFiles([]);
-                setIconCount(bundledIconCount);
-                setIconFileFingerprint("");
-                setIconDebugInfo(bundledIconMap.size ? buildIconDebugInfo(bundledIconMap) : null);
-                setRawIconMap(bundledIconMap);
-                setIconZipFile(nextFile);
-              }}
-            />
-            <strong>{fileLabel(iconZipFile, t("common.noFile"))}</strong>
-            <small>{t("ingest.extraZipHelp")}</small>
-          </label>
-          <label className="upload-card">
-            <span>{t("ingest.extraFolder")}</span>
-            <input
-              ref={iconFolderInputRef}
-              type="file"
-              multiple
-              onChange={(event) => {
-                setIconZipFile(null);
-                setIconCount(bundledIconCount);
-                setIconFileFingerprint("");
-                setIconDebugInfo(bundledIconMap.size ? buildIconDebugInfo(bundledIconMap) : null);
-                setRawIconMap(bundledIconMap);
-                setIconFolderFiles(Array.from(event.target.files || []));
-              }}
-            />
-            <strong>
-              {iconFolderFiles.length
-                ? `${iconFolderFiles.length} ${t("common.filePlural")}`
-                : t("common.noFolder")}
-            </strong>
-            <small>{t("ingest.extraFolderHelp")}</small>
-          </label>
-        </div>
-      </section>
-
+      {currentView === "main" && (
+      <>
       <section className="project-library-card">
         <div className="project-library-card__header">
           <div>
@@ -1715,31 +1574,25 @@ export default function App() {
                   >
                     {t("library.open")}
                   </button>
+                  <button
+                    type="button"
+                    className="primary-action"
+                    disabled={
+                      activeProjectScope !== project.scope ||
+                      !canViewPlan ||
+                      !segmentation
+                    }
+                    onClick={() => setShowSegmentationModal(true)}
+                    title={t("work.segmentation")}
+                  >
+                    {t("work.segmentation")}
+                  </button>
                 </div>
               </article>
             ))
           )}
         </div>
       </section>
-
-      <ProjectInsightsPanel insights={insights} />
-
-      {showKnowledgeStudio && (
-        <KnowledgeStudioPanel
-          baseCoverage={baseKnowledgeCoverage}
-          baseIssues={baseVisualDecisionIssues}
-          effectiveCoverage={insights?.knowledge ?? baseKnowledgeCoverage}
-          effectiveIssues={effectiveVisualDecisionIssues}
-          enabled={manualKnowledgeEnabled}
-          manualSeed={manualKnowledgeSeed}
-          nameRepairs={nameRepairFindings}
-          pendingPatterns={pendingKnowledgePatterns}
-          onClearRules={handleClearManualRules}
-          onDeleteRule={handleDeleteManualRule}
-          onToggleEnabled={handleToggleManualKnowledge}
-          onUpsertRule={handleUpsertManualRule}
-        />
-      )}
 
       <section className="snapshot-grid">
         <article className="snapshot-card">
@@ -1761,20 +1614,6 @@ export default function App() {
         <article className="snapshot-card">
           <span>{t("snapshot.noSwitch")}</span>
           <strong>{insights?.review.missingSwitch ?? 0}</strong>
-        </article>
-        <article className="snapshot-card">
-          <span>{t("snapshot.icons")}</span>
-          <strong>{iconCount}</strong>
-          <small style={{ color: "rgba(255,255,255,0.56)", lineHeight: 1.3 }}>{iconSourceLabel}</small>
-          {iconDebugInfo && (
-            <small style={{ color: "rgba(255,255,255,0.44)", lineHeight: 1.3 }}>
-              BNB {iconDebugInfo.bnb ? t("common.yes") : t("common.no")} · PSA{" "}
-              {iconDebugInfo.psa ? t("common.yes") : t("common.no")} · CIP{" "}
-              {iconDebugInfo.cip ? t("common.yes") : t("common.no")}
-              {iconDebugInfo.lastModifiedLabel ? ` · mod ${iconDebugInfo.lastModifiedLabel}` : ""}
-            </small>
-          )}
-          <small style={{ color: "rgba(255,255,255,0.38)", lineHeight: 1.3 }}>Build {BUILD_LABEL}</small>
         </article>
       </section>
 
@@ -2079,6 +1918,313 @@ export default function App() {
           )}
         </aside>
       </main>
+      </>
+      )}
+
+      {currentView !== "main" && (
+        <main className="app-page">
+          <header className="app-page__header">
+            <button
+              type="button"
+              className="app-page__back"
+              onClick={() => setCurrentView("main")}
+              aria-label={t("page.back")}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 6l-6 6 6 6" />
+              </svg>
+              <span>{t("page.back")}</span>
+            </button>
+            <h2 className="app-page__title">
+              {currentView === "reports" && t("menu.section.reports")}
+              {currentView === "admin" && t("menu.section.admin")}
+              {currentView === "insights" && t("menu.section.insights")}
+              {currentView === "knowledge" && t("menu.section.knowledge")}
+              {currentView === "about" && t("menu.section.about")}
+            </h2>
+          </header>
+
+          <div className="app-page__body">
+            {currentView === "reports" && (
+              <section className="report-hub-card">
+                <div className="report-hub-card__header">
+                  <div>
+                    <p className="eyebrow">{t("reports.cardEyebrow")}</p>
+                    <h2>{t("reports.cardTitle")}</h2>
+                  </div>
+                  <p className="report-hub-card__description">{t("reports.cardDescription")}</p>
+                </div>
+                <div className="report-hub-grid">
+                  {reportLinks.map((report) => (
+                    <a
+                      key={report.href}
+                      className="report-hub-link"
+                      href={report.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={t("reports.openInNewTab")}
+                    >
+                      <strong>{report.label}</strong>
+                      <span>{report.description}</span>
+                      <small>{t("reports.openInNewTab")}</small>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {currentView === "admin" && (
+              <section className="ingest-card">
+                <div className="ingest-card__header">
+                  <div>
+                    <p className="eyebrow">{t("ingest.eyebrow")}</p>
+                    <h2>{t("ingest.title")}</h2>
+                  </div>
+                  <div className="ingest-card__actions">
+                    <button
+                      type="button"
+                      className="primary-action"
+                      disabled={isBusy || !planFile}
+                      onClick={handleProcess}
+                    >
+                      {isBusy ? t("ingest.processing") : t("ingest.process")}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-action"
+                      disabled={!canViewPlan}
+                      onClick={() => setShowPdfViewer(true)}
+                    >
+                      {t("ingest.viewPage1")}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-action"
+                      disabled={!canViewPlan || !segmentation}
+                      onClick={() => setShowSegmentationModal(true)}
+                    >
+                      {t("ingest.viewSegmentation")}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="upload-grid">
+                  <label className="upload-card">
+                    <span>{t("ingest.planPdf")}</span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(event) => setPlanFile(event.target.files?.[0] || null)}
+                    />
+                    <strong>{fileLabel(planFile, t("common.noFile"))}</strong>
+                  </label>
+                  <label className="upload-card">
+                    <span>{t("ingest.baseCsv")}</span>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={(event) => setDataFile(event.target.files?.[0] || null)}
+                    />
+                    <strong>{fileLabel(dataFile, t("common.noFile"))}</strong>
+                  </label>
+                  <label className="upload-card">
+                    <span>{t("ingest.extraData")}</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf,.csv,text/csv"
+                      onChange={(event) => setExtraDataFile(event.target.files?.[0] || null)}
+                    />
+                    <strong>{fileLabel(extraDataFile, t("common.noFile"))}</strong>
+                  </label>
+                  <label className="upload-card">
+                    <span>{t("ingest.mappingCsv")}</span>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={(event) => setMappingFile(event.target.files?.[0] || null)}
+                    />
+                    <strong>{fileLabel(mappingFile, t("common.noFile"))}</strong>
+                  </label>
+                  <label className="upload-card">
+                    <span>{t("ingest.extraZip")}</span>
+                    <input
+                      type="file"
+                      accept=".zip,application/zip"
+                      onClick={(event) => {
+                        event.currentTarget.value = "";
+                      }}
+                      onChange={(event) => {
+                        const nextFile = event.target.files?.[0] || null;
+                        console.log("[icons] Archivo ZIP elegido:", nextFile ? {
+                          lastModified: formatDateTime(nextFile.lastModified),
+                          name: nextFile.name,
+                          size: nextFile.size,
+                          type: nextFile.type,
+                        } : "sin archivo");
+                        setIconFolderFiles([]);
+                        setIconCount(bundledIconCount);
+                        setIconFileFingerprint("");
+                        setIconDebugInfo(bundledIconMap.size ? buildIconDebugInfo(bundledIconMap) : null);
+                        setRawIconMap(bundledIconMap);
+                        setIconZipFile(nextFile);
+                      }}
+                    />
+                    <strong>{fileLabel(iconZipFile, t("common.noFile"))}</strong>
+                    <small>{t("ingest.extraZipHelp")}</small>
+                  </label>
+                  <label className="upload-card">
+                    <span>{t("ingest.extraFolder")}</span>
+                    <input
+                      ref={iconFolderInputRef}
+                      type="file"
+                      multiple
+                      onChange={(event) => {
+                        setIconZipFile(null);
+                        setIconCount(bundledIconCount);
+                        setIconFileFingerprint("");
+                        setIconDebugInfo(bundledIconMap.size ? buildIconDebugInfo(bundledIconMap) : null);
+                        setRawIconMap(bundledIconMap);
+                        setIconFolderFiles(Array.from(event.target.files || []));
+                      }}
+                    />
+                    <strong>
+                      {iconFolderFiles.length
+                        ? `${iconFolderFiles.length} ${t("common.filePlural")}`
+                        : t("common.noFolder")}
+                    </strong>
+                    <small>{t("ingest.extraFolderHelp")}</small>
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {currentView === "insights" && (
+              <ProjectInsightsPanel insights={insights} />
+            )}
+
+            {currentView === "knowledge" && showKnowledgeStudio && (
+              <KnowledgeStudioPanel
+                baseCoverage={baseKnowledgeCoverage}
+                baseIssues={baseVisualDecisionIssues}
+                effectiveCoverage={insights?.knowledge ?? baseKnowledgeCoverage}
+                effectiveIssues={effectiveVisualDecisionIssues}
+                enabled={manualKnowledgeEnabled}
+                manualSeed={manualKnowledgeSeed}
+                nameRepairs={nameRepairFindings}
+                pendingPatterns={pendingKnowledgePatterns}
+                onClearRules={handleClearManualRules}
+                onDeleteRule={handleDeleteManualRule}
+                onToggleEnabled={handleToggleManualKnowledge}
+                onUpsertRule={handleUpsertManualRule}
+              />
+            )}
+
+            {currentView === "about" && (
+              <div className="app-drawer__about">
+                <div className="app-drawer__about-item">
+                  <span>{t("menu.about.iconSource")}</span>
+                  <strong>
+                    {iconCount} {t("snapshot.icons").toLowerCase()}
+                  </strong>
+                  <small>{iconSourceLabel}</small>
+                </div>
+                {iconDebugInfo && (
+                  <div className="app-drawer__about-item">
+                    <span>{t("menu.about.iconDebug")}</span>
+                    <small>
+                      BNB {iconDebugInfo.bnb ? t("common.yes") : t("common.no")} · PSA{" "}
+                      {iconDebugInfo.psa ? t("common.yes") : t("common.no")} · CIP{" "}
+                      {iconDebugInfo.cip ? t("common.yes") : t("common.no")}
+                      {iconDebugInfo.lastModifiedLabel ? ` · mod ${iconDebugInfo.lastModifiedLabel}` : ""}
+                    </small>
+                  </div>
+                )}
+                <div className="app-drawer__about-item">
+                  <span>{t("menu.about.build")}</span>
+                  <strong>{BUILD_LABEL}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      )}
+
+      <aside
+        id="app-drawer"
+        className={`app-drawer${drawerOpen ? " app-drawer--open" : ""}`}
+        aria-hidden={!drawerOpen}
+      >
+        <div
+          className="app-drawer__scrim"
+          onClick={() => setDrawerOpen(false)}
+          aria-hidden="true"
+        />
+        <div
+          className="app-drawer__panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("menu.title")}
+        >
+          <div className="app-drawer__header">
+            <h2>{t("menu.title")}</h2>
+            <button
+              type="button"
+              className="app-drawer__close"
+              onClick={() => setDrawerOpen(false)}
+              aria-label={t("menu.close")}
+            >
+              ×
+            </button>
+          </div>
+
+          <nav className="app-drawer__nav">
+            <button
+              type="button"
+              className={`app-drawer__nav-button${currentView === "main" ? " app-drawer__nav-button--active" : ""}`}
+              onClick={() => { setCurrentView("main"); setDrawerOpen(false); }}
+            >
+              {t("menu.section.main")}
+            </button>
+            <button
+              type="button"
+              className={`app-drawer__nav-button${currentView === "reports" ? " app-drawer__nav-button--active" : ""}`}
+              onClick={() => { setCurrentView("reports"); setDrawerOpen(false); }}
+            >
+              {t("menu.section.reports")}
+            </button>
+            <button
+              type="button"
+              className={`app-drawer__nav-button${currentView === "admin" ? " app-drawer__nav-button--active" : ""}`}
+              onClick={() => { setCurrentView("admin"); setDrawerOpen(false); }}
+            >
+              {t("menu.section.admin")}
+            </button>
+            <button
+              type="button"
+              className={`app-drawer__nav-button${currentView === "insights" ? " app-drawer__nav-button--active" : ""}`}
+              onClick={() => { setCurrentView("insights"); setDrawerOpen(false); }}
+            >
+              {t("menu.section.insights")}
+            </button>
+            {showKnowledgeStudio && (
+              <button
+                type="button"
+                className={`app-drawer__nav-button${currentView === "knowledge" ? " app-drawer__nav-button--active" : ""}`}
+                onClick={() => { setCurrentView("knowledge"); setDrawerOpen(false); }}
+              >
+                {t("menu.section.knowledge")}
+              </button>
+            )}
+            <button
+              type="button"
+              className={`app-drawer__nav-button${currentView === "about" ? " app-drawer__nav-button--active" : ""}`}
+              onClick={() => { setCurrentView("about"); setDrawerOpen(false); }}
+            >
+              {t("menu.section.about")}
+            </button>
+          </nav>
+        </div>
+      </aside>
 
       <PlanViewerModal
         open={showPdfViewer}
