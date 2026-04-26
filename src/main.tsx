@@ -41,6 +41,20 @@ if (typeof document !== "undefined") {
   });
 }
 
+// When a brand-new SW takes control of this page (e.g. after skipWaiting +
+// clientsClaim), force a hard reload so the user always sees the freshest
+// bundle. Guard against reload loops by acting only the first time.
+if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) {
+      return;
+    }
+    reloading = true;
+    window.location.reload();
+  });
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <I18nProvider>
