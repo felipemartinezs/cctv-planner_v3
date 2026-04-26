@@ -8,6 +8,16 @@ El proyecto nace de una friccion operativa concreta: recibir informacion de proy
 
 https://cctv-planner-491120.uc.r.appspot.com (Google App Engine)
 
+> **Deploy siempre a Google App Engine.** Nunca usar Netlify, Vercel ni otro provider.
+> Proyecto GCP: `cctv-planner-491120` · Runtime: `nodejs24` · Servicio: `default` (ver `app.yaml`).
+>
+> ```bash
+> npm run build
+> gcloud app deploy --quiet --project=cctv-planner-491120
+> ```
+>
+> Referencia rapida en `.windsurf/workflows/deploy.md` (slash command `/deploy`).
+
 ## Reportes y presentaciones
 
 - Tecnico: `reporte/index.html`
