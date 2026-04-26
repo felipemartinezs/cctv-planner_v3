@@ -114,11 +114,27 @@ export interface IconAsset {
   sourcePath: string;
 }
 
+export interface TechnicianIdentity {
+  id: string;
+  name: string;
+  initials: string;
+}
+
+export interface OperationalStepStamp {
+  by: TechnicianIdentity;
+  at: number;
+}
+
+export type OperationalStepStamps = Partial<
+  Record<OperationalProgressStep, OperationalStepStamp>
+>;
+
 export interface OperationalDeviceProgress {
   cableRun: boolean;
   installed: boolean;
   switchConnected: boolean;
   updatedAt: number;
+  stamps?: OperationalStepStamps;
 }
 
 export interface OperationalProjectMeta {

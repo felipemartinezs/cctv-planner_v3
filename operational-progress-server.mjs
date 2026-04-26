@@ -78,6 +78,55 @@ function normalizeProjectMeta(scope, input) {
   };
 }
 
+const PROGRESS_STEP_KEYS = ["cableRun", "installed", "switchConnected"];
+
+function normalizeStamp(input) {
+  if (!input || typeof input !== "object") {
+    return null;
+  }
+  const by = input.by;
+  if (!by || typeof by !== "object") {
+    return null;
+  }
+  const id = typeof by.id === "string" ? by.id.trim() : "";
+  const name = typeof by.name === "string" ? by.name.trim() : "";
+  const initials =
+    typeof by.initials === "string" && by.initials.trim()
+      ? by.initials.trim().slice(0, 4).toUpperCase()
+      : name
+        ? name
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((token) => token[0])
+            .join("")
+            .toUpperCase()
+        : "";
+  if (!id || !name) {
+    return null;
+  }
+  const at =
+    typeof input.at === "number" && Number.isFinite(input.at) ? input.at : nowMs();
+  return { by: { id, name, initials }, at };
+}
+
+function normalizeStamps(input, progress) {
+  if (!input || typeof input !== "object") {
+    return null;
+  }
+  const result = {};
+  PROGRESS_STEP_KEYS.forEach((step) => {
+    if (!progress[step]) {
+      return;
+    }
+    const stamp = normalizeStamp(input[step]);
+    if (stamp) {
+      result[step] = stamp;
+    }
+  });
+  return Object.keys(result).length > 0 ? result : null;
+}
+
 function normalizeDeviceProgress(input) {
   if (!input || typeof input !== "object") {
     return null;
@@ -92,6 +141,11 @@ function normalizeDeviceProgress(input) {
         ? input.updatedAt
         : nowMs(),
   };
+
+  const stamps = normalizeStamps(input.stamps, progress);
+  if (stamps) {
+    progress.stamps = stamps;
+  }
 
   return progress;
 }

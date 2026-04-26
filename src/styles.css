@@ -2889,3 +2889,194 @@ img {
     font-size: 1.1rem;
   }
 }
+
+/* ============================================================
+   Technician identity (onboarding + working-as badge)
+   ============================================================ */
+
+.segmentation-progress-action__stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  line-height: 1.1;
+}
+
+.technician-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.4rem;
+  margin-right: 0.45rem;
+  background: rgba(102, 153, 255, 0.18);
+  border: 1px solid rgba(102, 153, 255, 0.45);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #b8d0ff;
+}
+
+.app-drawer__technician {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.app-drawer__technician strong {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+}
+
+.app-drawer__technician-edit {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.85);
+  padding: 0.32rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-drawer__technician-edit:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.technician-onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.technician-onboarding__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 13, 24, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.technician-onboarding__panel {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: #131a2a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.6rem 1.4rem 1.3rem;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  color: #e8edf6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.technician-onboarding__title {
+  font-size: 1.25rem;
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.technician-onboarding__subtitle {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: rgba(232, 237, 246, 0.78);
+}
+
+.technician-onboarding__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(232, 237, 246, 0.7);
+  margin-top: 0.25rem;
+}
+
+.technician-onboarding__input {
+  width: 100%;
+  font-size: 1.05rem;
+  padding: 0.78rem 0.95rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 600;
+  box-sizing: border-box;
+}
+
+.technician-onboarding__input:focus {
+  outline: none;
+  border-color: rgba(102, 153, 255, 0.65);
+  background: rgba(102, 153, 255, 0.08);
+}
+
+.technician-onboarding__initials {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #b8d0ff;
+  font-weight: 600;
+}
+
+.technician-onboarding__error {
+  margin: 0;
+  color: #ff8b8b;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.technician-onboarding__privacy {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(232, 237, 246, 0.55);
+  line-height: 1.4;
+}
+
+.technician-onboarding__actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.technician-onboarding__cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.82);
+  padding: 0.65rem 1.05rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.technician-onboarding__submit {
+  background: linear-gradient(135deg, #4f8cff, #2c5fdc);
+  border: none;
+  color: #fff;
+  padding: 0.7rem 1.25rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.98rem;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+}
+
+.technician-onboarding__submit:hover {
+  filter: brightness(1.08);
+}
+

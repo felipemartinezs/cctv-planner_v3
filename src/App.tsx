@@ -27,11 +27,16 @@ import type {
   DeviceRecord,
   ImportBundle,
   OperationalDeviceProgress,
+  OperationalProgressStep,
   OperationalProjectMeta,
+  OperationalStepStamp,
+  OperationalStepStamps,
   PlanData,
   PublishedProjectDraft,
   PublishedProjectRecord,
 } from "./types";
+import { useTechnicianIdentity } from "./lib/technician-identity";
+import { TechnicianOnboardingModal } from "./modules/technician-identity";
 import {
   VISUAL_KNOWLEDGE_SEEDS,
   type NamePatternKnowledgeRule,
@@ -126,20 +131,80 @@ function slugifyProjectValue(value: string): string {
     .slice(0, 72);
 }
 
+function normalizeStampForHydration(value: unknown): OperationalStepStamp | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const raw = value as { by?: unknown; at?: unknown };
+  const by = raw.by as { id?: unknown; name?: unknown; initials?: unknown } | undefined;
+  if (!by || typeof by !== "object") {
+    return null;
+  }
+  const id = typeof by.id === "string" ? by.id : "";
+  const name = typeof by.name === "string" ? by.name : "";
+  const initials =
+    typeof by.initials === "string" && by.initials
+      ? by.initials
+      : name
+        ? name
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((token) => token[0])
+            .join("")
+            .toUpperCase()
+        : "";
+  if (!id || !name) {
+    return null;
+  }
+  const at =
+    typeof raw.at === "number" && Number.isFinite(raw.at) ? (raw.at as number) : 0;
+  return { by: { id, name, initials }, at };
+}
+
+function normalizeStampsForHydration(
+  value: unknown,
+  activeSteps: { cableRun: boolean; installed: boolean; switchConnected: boolean }
+): OperationalStepStamps | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const raw = value as Record<string, unknown>;
+  const result: OperationalStepStamps = {};
+  (Object.keys(activeSteps) as OperationalProgressStep[]).forEach((step) => {
+    if (!activeSteps[step]) {
+      return;
+    }
+    const stamp = normalizeStampForHydration(raw[step]);
+    if (stamp) {
+      result[step] = stamp;
+    }
+  });
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 function normalizeOperationalProgress(raw: unknown): OperationalDeviceProgress | null {
   if (!raw || typeof raw !== "object") {
     return null;
   }
 
   const input = raw as Partial<OperationalDeviceProgress>;
-  return {
+  const steps = {
     cableRun: Boolean(input.cableRun),
     installed: Boolean(input.installed),
     switchConnected: Boolean(input.switchConnected),
+  };
+  const stamps = normalizeStampsForHydration(
+    (input as { stamps?: unknown }).stamps,
+    steps
+  );
+  return {
+    ...steps,
     updatedAt:
       typeof input.updatedAt === "number" && Number.isFinite(input.updatedAt)
         ? input.updatedAt
         : 0,
+    ...(stamps ? { stamps } : {}),
   };
 }
 
@@ -596,6 +661,12 @@ export default function App() {
   );
   const [manualKnowledgeEnabled, setManualKnowledgeEnabled] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const {
+    identity: technicianIdentity,
+    isReady: technicianIdentityReady,
+    setIdentityFromName: setTechnicianIdentityFromName,
+  } = useTechnicianIdentity();
+  const [showTechnicianEditor, setShowTechnicianEditor] = useState(false);
   const iconFolderInputRef = useRef<HTMLInputElement | null>(null);
   const operationalProgressStoreRef = useRef(operationalProgressStore);
   const deferredSearch = useDeferredValue(search);
@@ -979,19 +1050,53 @@ export default function App() {
     };
   }, [plan]);
 
-  function setOperationalDeviceProgress(deviceKey: string, nextProgress: OperationalDeviceProgress) {
+  function setOperationalDeviceProgress(
+    deviceKey: string,
+    nextProgress: OperationalDeviceProgress,
+    changedStep?: OperationalProgressStep
+  ) {
     if (!activeProjectScope || !deviceKey) {
       return;
     }
 
-    const normalized = {
+    const stampTimestamp =
+      typeof nextProgress.updatedAt === "number" && Number.isFinite(nextProgress.updatedAt)
+        ? nextProgress.updatedAt
+        : Date.now();
+
+    const incomingStamps: OperationalStepStamps =
+      nextProgress.stamps && typeof nextProgress.stamps === "object"
+        ? { ...nextProgress.stamps }
+        : {};
+
+    if (changedStep) {
+      const stepActive = Boolean(nextProgress[changedStep]);
+      if (stepActive && technicianIdentity) {
+        incomingStamps[changedStep] = {
+          by: technicianIdentity,
+          at: stampTimestamp,
+        };
+      } else if (!stepActive) {
+        delete incomingStamps[changedStep];
+      }
+    }
+
+    const cleanedStamps: OperationalStepStamps = {};
+    (Object.keys(incomingStamps) as OperationalProgressStep[]).forEach((step) => {
+      if (nextProgress[step]) {
+        const stamp = incomingStamps[step];
+        if (stamp) {
+          cleanedStamps[step] = stamp;
+        }
+      }
+    });
+
+    const normalized: OperationalDeviceProgress = {
       cableRun: Boolean(nextProgress.cableRun),
       installed: Boolean(nextProgress.installed),
       switchConnected: Boolean(nextProgress.switchConnected),
-      updatedAt:
-        typeof nextProgress.updatedAt === "number" && Number.isFinite(nextProgress.updatedAt)
-          ? nextProgress.updatedAt
-          : Date.now(),
+      updatedAt: stampTimestamp,
+      ...(Object.keys(cleanedStamps).length > 0 ? { stamps: cleanedStamps } : {}),
     };
 
     setOperationalProgressStore((current) => {
@@ -2121,6 +2226,27 @@ export default function App() {
 
             {currentView === "about" && (
               <div className="app-drawer__about">
+                {technicianIdentity && (
+                  <div className="app-drawer__about-item app-drawer__technician">
+                    <span>{t("technician.menu.workingAs", { name: "" }).replace(/:\s*$/, "")}</span>
+                    <strong>
+                      <span className="technician-badge" aria-hidden="true">
+                        {technicianIdentity.initials}
+                      </span>
+                      {technicianIdentity.name}
+                    </strong>
+                    <button
+                      type="button"
+                      className="app-drawer__technician-edit"
+                      onClick={() => {
+                        setShowTechnicianEditor(true);
+                        setDrawerOpen(false);
+                      }}
+                    >
+                      {t("technician.menu.edit")}
+                    </button>
+                  </div>
+                )}
                 <div className="app-drawer__about-item">
                   <span>{t("menu.about.iconSource")}</span>
                   <strong>
@@ -2248,6 +2374,23 @@ export default function App() {
         visualKnowledgeIndex={effectiveVisualKnowledgeIndex}
         onChangeDeviceProgress={setOperationalDeviceProgress}
         onClose={() => setShowSegmentationModal(false)}
+      />
+      <TechnicianOnboardingModal
+        open={technicianIdentityReady && !technicianIdentity}
+        mode="onboarding"
+        onSubmit={(name) => {
+          setTechnicianIdentityFromName(name);
+        }}
+      />
+      <TechnicianOnboardingModal
+        open={showTechnicianEditor && Boolean(technicianIdentity)}
+        mode="edit"
+        existingIdentity={technicianIdentity}
+        onSubmit={(name) => {
+          setTechnicianIdentityFromName(name);
+          setShowTechnicianEditor(false);
+        }}
+        onCancel={() => setShowTechnicianEditor(false)}
       />
     </div>
   );

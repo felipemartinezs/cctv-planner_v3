@@ -9,6 +9,7 @@ import type {
   DeviceRecord,
   OperationalDeviceProgress,
   OperationalProgressStep,
+  OperationalStepStamp,
   PlanData,
 } from "../../types";
 import { lookupIcon, normalizeIconKey } from "../../lib/icons";
@@ -115,7 +116,11 @@ interface PlanSegmentationModalProps {
   iconDebugLabel: string;
   open: boolean;
   iconSourceLabel: string;
-  onChangeDeviceProgress: (deviceKey: string, nextProgress: OperationalDeviceProgress) => void;
+  onChangeDeviceProgress: (
+    deviceKey: string,
+    nextProgress: OperationalDeviceProgress,
+    changedStep?: OperationalProgressStep
+  ) => void;
   projectProgressScope: string;
   projectProgressStatusLabel: string;
   plan: PlanData | null;
@@ -220,6 +225,34 @@ const EMPTY_OPERATIONAL_PROGRESS: OperationalDeviceProgress = {
   switchConnected: false,
   updatedAt: 0,
 };
+
+function findLatestStamp(progress: OperationalDeviceProgress): OperationalStepStamp | null {
+  const stamps = progress.stamps;
+  if (!stamps) {
+    return null;
+  }
+  let latest: OperationalStepStamp | null = null;
+  (Object.keys(stamps) as OperationalProgressStep[]).forEach((step) => {
+    const stamp = stamps[step];
+    if (stamp && (!latest || stamp.at > latest.at)) {
+      latest = stamp;
+    }
+  });
+  return latest;
+}
+
+function formatStampDateTime(at: number): string {
+  const date = new Date(at);
+  const dayMonth = date.toLocaleDateString([], {
+    day: "2-digit",
+    month: "2-digit",
+  });
+  const time = date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${dayMonth} ${time}`;
+}
 
 const OPERATIONAL_PROGRESS_DRAW_ORDER: OperationalProgressStep[] = [
   "cableRun",
@@ -2521,12 +2554,21 @@ export function PlanSegmentationModal({
     return [progress.cableRun, progress.installed, progress.switchConnected].filter(Boolean).length;
   }
 
-  function commitProgress(deviceKey: string, nextProgress: OperationalDeviceProgress, message: string) {
+  function commitProgress(
+    deviceKey: string,
+    nextProgress: OperationalDeviceProgress,
+    message: string,
+    changedStep?: OperationalProgressStep
+  ) {
     const previousProgress = progressForDevice(deviceKey);
-    onChangeDeviceProgress(deviceKey, {
-      ...nextProgress,
-      updatedAt: Date.now(),
-    });
+    onChangeDeviceProgress(
+      deviceKey,
+      {
+        ...nextProgress,
+        updatedAt: Date.now(),
+      },
+      changedStep
+    );
     setUndoProgressAction({
       deviceKey,
       message,
@@ -2552,7 +2594,8 @@ export function PlanSegmentationModal({
         },
         nextValue
           ? t("segmentation.progress.saved", { step: label })
-          : t("segmentation.progress.cleared", { step: label })
+          : t("segmentation.progress.cleared", { step: label }),
+        step
       );
       return;
     }
@@ -2969,14 +3012,30 @@ export function PlanSegmentationModal({
                     </strong>
                   </div>
                   <span className="segmentation-device-progress__status">
-                    {previewProgress.updatedAt
-                      ? t("segmentation.progress.updatedAt", {
-                          time: new Date(previewProgress.updatedAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }),
-                        })
-                      : t("segmentation.progress.noProgress")}
+                    {(() => {
+                      if (!previewProgress.updatedAt) {
+                        return t("segmentation.progress.noProgress");
+                      }
+                      const latestStamp = findLatestStamp(previewProgress);
+                      if (latestStamp) {
+                        return (
+                          <span
+                            title={t("segmentation.progress.stampTooltip", {
+                              name: latestStamp.by.name,
+                              date: new Date(latestStamp.at).toLocaleString(),
+                            })}
+                          >
+                            {t("segmentation.progress.lastChangeBy", {
+                              time: formatStampDateTime(latestStamp.at),
+                              initials: latestStamp.by.initials,
+                            })}
+                          </span>
+                        );
+                      }
+                      return t("segmentation.progress.updatedAt", {
+                        time: formatStampDateTime(previewProgress.updatedAt),
+                      });
+                    })()}
                   </span>
                 </div>
                 <div className="segmentation-device-progress__actions">
@@ -2986,6 +3045,13 @@ export function PlanSegmentationModal({
                       pendingProgressAction?.deviceKey === devicePreview.device.key &&
                       pendingProgressAction.step === definition.key;
                     const nextValue = isConfirming ? pendingProgressAction.nextValue : !currentValue;
+                    const stepStamp = previewProgress.stamps?.[definition.key] ?? null;
+                    const stampTitle = stepStamp
+                      ? t("segmentation.progress.stampTooltip", {
+                          name: stepStamp.by.name,
+                          date: new Date(stepStamp.at).toLocaleString(),
+                        })
+                      : undefined;
                     return (
                       <button
                         key={definition.key}
@@ -2994,6 +3060,7 @@ export function PlanSegmentationModal({
                           currentValue ? " segmentation-progress-action--done" : ""
                         }${isConfirming ? " segmentation-progress-action--confirm" : ""}`}
                         disabled={!projectProgressScope}
+                        title={stampTitle}
                         onClick={() =>
                           toggleProgressStep(
                             devicePreview.device.key,
@@ -3013,13 +3080,22 @@ export function PlanSegmentationModal({
                               : t("segmentation.progress.pending")}
                         </span>
                         <strong>{definition.compactLabel}</strong>
-                        <span className="segmentation-progress-action__hint">
-                          {isConfirming
-                            ? t("segmentation.progress.confirmHint")
-                            : currentValue
-                              ? t("segmentation.progress.clearHint")
-                              : t("segmentation.progress.markHint")}
-                        </span>
+                        {currentValue && stepStamp ? (
+                          <span className="segmentation-progress-action__stamp">
+                            {t("segmentation.progress.byStamp", {
+                              initials: stepStamp.by.initials,
+                              time: formatStampDateTime(stepStamp.at),
+                            })}
+                          </span>
+                        ) : (
+                          <span className="segmentation-progress-action__hint">
+                            {isConfirming
+                              ? t("segmentation.progress.confirmHint")
+                              : currentValue
+                                ? t("segmentation.progress.clearHint")
+                                : t("segmentation.progress.markHint")}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
